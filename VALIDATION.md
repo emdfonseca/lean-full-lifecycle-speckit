@@ -46,7 +46,7 @@ specify bundle build --path . --output dist/
 python scripts/smoke_test.py --integration opencode
 ```
 
-Run those in an environment with Spec Kit 0.16.5 or later before publishing or
+Run those in an environment with Spec Kit 1.0.1 or later before publishing or
 using the catalogs as an install source.
 
 ## Publishing placeholders

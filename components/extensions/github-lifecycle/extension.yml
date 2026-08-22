@@ -11,7 +11,7 @@ extension:
   category: integration
   effect: read-write
 requires:
-  speckit_version: '>=0.16.5'
+  speckit_version: '>=1.0.1,<2.0.0'
   tools:
   - name: gh
     required: true
@@ -36,7 +36,7 @@ provides:
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.
   config:
-  - name: github-lifecycle
+  - name: github-lifecycle-config.yml
     template: config-template.yml
 tags:
 - github

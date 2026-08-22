@@ -18,7 +18,7 @@
       "category": "integration",
       "effect": "read-write",
       "requires": {
-        "speckit_version": ">=0.16.5",
+        "speckit_version": ">=1.0.1,<2.0.0",
         "tools": [
           {
             "name": "gh",

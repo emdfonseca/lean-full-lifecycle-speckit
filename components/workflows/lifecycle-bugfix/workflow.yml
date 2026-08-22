@@ -6,7 +6,7 @@ workflow:
   author: Lean Full-Lifecycle Contributors
   description: Reproduce, regression-specify, fix, verify, converge, and close a bounded defect.
 requires:
-  speckit_version: '>=0.16.5'
+  speckit_version: '>=1.0.1,<2.0.0'
 inputs:
   integration:
     type: string

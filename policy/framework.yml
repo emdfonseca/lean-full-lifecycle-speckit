@@ -7,7 +7,7 @@ environment:
   forbid_undocumented_global_dependencies: true
 
 spec_kit:
-  minimum_version: "0.16.5"
+  minimum_version: "1.0.1"
   integration: opencode
   preset_stack:
     - id: lean

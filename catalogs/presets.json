@@ -15,7 +15,7 @@
       "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/presets/lean-full-lifecycle-governance",
       "license": "MIT",
       "requires": {
-        "speckit_version": ">=0.16.5"
+        "speckit_version": ">=1.0.1,<2.0.0"
       },
       "provides": {
         "templates": 4,

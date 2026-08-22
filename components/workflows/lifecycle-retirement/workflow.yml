@@ -6,7 +6,7 @@ workflow:
   author: Lean Full-Lifecycle Contributors
   description: Plan and deliver controlled deprecation, migration, shutdown, and evidence archival.
 requires:
-  speckit_version: '>=0.16.5'
+  speckit_version: '>=1.0.1,<2.0.0'
 inputs:
   integration:
     type: string

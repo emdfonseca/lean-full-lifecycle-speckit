@@ -14,7 +14,7 @@
       "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lean-full-lifecycle-0.1.0.zip",
       "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
       "requires": {
-        "speckit_version": ">=0.16.5"
+        "speckit_version": ">=1.0.1,<2.0.0"
       },
       "provides": {
         "extensions": 1,

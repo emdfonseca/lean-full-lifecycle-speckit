@@ -34,9 +34,12 @@ def run(command: list[str], timeout: int = 20) -> dict[str, Any]:
 
 def main() -> int:
     project = Path.cwd()
+    # Spec Kit scaffolds extension config as <id>-config.yml and reads the
+    # .local.yml sibling first; anything else is not preserved across an update.
+    ext_home = project / ".specify/extensions/github-lifecycle"
     config_candidates = [
-        project / ".specify/extensions/github-lifecycle/config.yml",
-        project / ".specify/extensions/github-lifecycle/config-template.yml",
+        ext_home / "github-lifecycle-config.local.yml",
+        ext_home / "github-lifecycle-config.yml",
     ]
     report = {
         "gh_auth": run(["gh", "auth", "status"]),

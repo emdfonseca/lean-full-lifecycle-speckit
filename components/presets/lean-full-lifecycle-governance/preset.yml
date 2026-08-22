@@ -8,7 +8,7 @@ preset:
   repository: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
   license: MIT
 requires:
-  speckit_version: '>=0.16.5'
+  speckit_version: '>=1.0.1,<2.0.0'
 provides:
   templates:
   - type: command

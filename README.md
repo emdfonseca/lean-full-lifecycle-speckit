@@ -67,11 +67,11 @@ policy/
 
 ## Prerequisite
 
-Install the approved Spec Kit release. This source targets Spec Kit 0.16.5 or
+Install the approved Spec Kit release. This source targets Spec Kit 1.0.1 or
 later.
 
 ```bash
-uv tool install specify-cli   --from git+https://github.com/github/spec-kit.git@v0.16.5
+uv tool install specify-cli   --from git+https://github.com/github/spec-kit.git@v1.0.1
 ```
 
 Also provide the target project's approved Devbox, OpenCode, GitHub CLI, and Git
