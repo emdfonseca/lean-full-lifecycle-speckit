@@ -3,7 +3,7 @@
 
 This complements, but does not replace, the official command:
 
-    specify bundle validate --path .
+    specify bundle validate --path bundle/ --offline
 """
 
 from __future__ import annotations
@@ -18,6 +18,13 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# The packaged surface. Everything outside it is development tooling: Spec Kit
+# packages the whole bundle directory and honours no ignore file.
+BUNDLE = ROOT / "bundle"
+
+# Directories the publishing-placeholder scan never walks: build output, VCS
+# and tool state, the local virtualenv, and agent scratch.
+_SCAN_EXCLUDED = {"dist", ".git", ".venv", ".specify", ".claude", "__pycache__"}
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -108,7 +115,7 @@ def check_version(value: Any, label: str, result: Validation) -> None:
 
 
 def validate_bundle(result: Validation) -> dict[str, Any]:
-    data = load_yaml(ROOT / "bundle.yml", result)
+    data = load_yaml(BUNDLE / "bundle.yml", result)
     if data.get("schema_version") != "1.0":
         result.error("bundle.yml: schema_version must be 1.0")
 
@@ -159,7 +166,7 @@ def validate_bundle(result: Validation) -> dict[str, Any]:
 
     expected_workflows = sorted(
         path.parent.name
-        for path in (ROOT / "components/workflows").glob("*/workflow.yml")
+        for path in (BUNDLE / "components/workflows").glob("*/workflow.yml")
     )
     actual_workflows = sorted(
         entry.get("id")
@@ -191,7 +198,7 @@ def validate_policy(result: Validation) -> None:
     root_policy = ROOT / "policy"
     preset_policy = (
         ROOT
-        / "components/presets/lean-full-lifecycle-governance/policy"
+        / "bundle/components/presets/lean-full-lifecycle-governance/policy"
     )
 
     root_files = {path.name for path in root_policy.glob("*.yml")}
@@ -221,7 +228,7 @@ def validate_policy(result: Validation) -> None:
 
 
 def validate_preset(result: Validation) -> None:
-    base = ROOT / "components/presets/lean-full-lifecycle-governance"
+    base = BUNDLE / "components/presets/lean-full-lifecycle-governance"
     manifest = load_yaml(base / "preset.yml", result)
     preset = manifest.get("preset", {})
     check_id(preset.get("id"), "preset.id", result)
@@ -267,7 +274,7 @@ def validate_preset(result: Validation) -> None:
 
 
 def validate_extension(result: Validation) -> None:
-    base = ROOT / "components/extensions/github-lifecycle"
+    base = BUNDLE / "components/extensions/github-lifecycle"
     manifest = load_yaml(base / "extension.yml", result)
     extension = manifest.get("extension", {})
     check_id(extension.get("id"), "extension.id", result)
@@ -409,7 +416,7 @@ def validate_transition_contract(
 
 def validate_workflows(result: Validation) -> None:
     for path in sorted(
-        (ROOT / "components/workflows").glob("*/workflow.yml")
+        (BUNDLE / "components/workflows").glob("*/workflow.yml")
     ):
         data = load_yaml(path, result)
         workflow = data.get("workflow", {})
@@ -499,7 +506,7 @@ def validate_catalogs(
     strict_publish: bool,
 ) -> None:
     expected_version = load_yaml(
-        ROOT / "bundle.yml",
+        BUNDLE / "bundle.yml",
         result,
     ).get("bundle", {}).get("version")
 
@@ -540,7 +547,7 @@ def validate_docs(
     strict_publish: bool,
 ) -> None:
     for path in ROOT.rglob("*"):
-        if not path.is_file() or "dist" in path.parts:
+        if not path.is_file() or _SCAN_EXCLUDED.intersection(path.parts):
             continue
         if path.suffix not in {
             ".md",
@@ -588,7 +595,7 @@ def main() -> int:
         return 1
 
     print("Source structure and safety invariants are internally consistent.")
-    print("Run `specify bundle validate --path .` before publishing.")
+    print("Run `specify bundle validate --path bundle/ --offline` before publishing.")
     return 0
 
 

@@ -18,3 +18,12 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python scripts/validate_source.py
       - run: python -m unittest discover -s tests -v
+      - uses: astral-sh/setup-uv@v5
+      - name: Install pinned Spec Kit
+        run: |
+          uv tool install --from git+https://github.com/github/spec-kit.git@v1.0.1 specify-cli
+          echo "$(uv tool dir)/bin" >> "$GITHUB_PATH"
+      - name: Official bundle validate and build
+        run: |
+          specify bundle validate --path bundle/ --offline
+          specify bundle build --path bundle/ --output dist/

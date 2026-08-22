@@ -11,6 +11,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "bundle"
 
 
 class BundleSourceTests(unittest.TestCase):
@@ -26,7 +27,7 @@ class BundleSourceTests(unittest.TestCase):
 
     def test_bundle_references_local_components(self) -> None:
         bundle = yaml.safe_load(
-            (ROOT / "bundle.yml").read_text(encoding="utf-8")
+            (BUNDLE / "bundle.yml").read_text(encoding="utf-8")
         )
         provides = bundle["provides"]
 
@@ -37,20 +38,20 @@ class BundleSourceTests(unittest.TestCase):
         self.assertTrue(
             (
                 ROOT
-                / "components/presets/"
+                / "bundle/components/presets/"
                 "lean-full-lifecycle-governance/preset.yml"
             ).exists()
         )
         self.assertTrue(
             (
                 ROOT
-                / "components/extensions/github-lifecycle/extension.yml"
+                / "bundle/components/extensions/github-lifecycle/extension.yml"
             ).exists()
         )
 
         for ref in provides["workflows"]:
             path = (
-                ROOT
+                BUNDLE
                 / "components/workflows"
                 / ref["id"]
                 / "workflow.yml"
@@ -59,7 +60,7 @@ class BundleSourceTests(unittest.TestCase):
 
     def test_workflow_shell_steps_are_fixed(self) -> None:
         allowed = {"devbox run verify", "devbox run release-verify"}
-        for path in (ROOT / "components/workflows").glob("*/workflow.yml"):
+        for path in (BUNDLE / "components/workflows").glob("*/workflow.yml"):
             workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
             for step in workflow["steps"]:
                 if step.get("type") != "shell":
@@ -69,7 +70,7 @@ class BundleSourceTests(unittest.TestCase):
                 self.assertIn(run, allowed)
 
     def test_gate_inputs_are_declared(self) -> None:
-        for path in (ROOT / "components/workflows").glob("*/workflow.yml"):
+        for path in (BUNDLE / "components/workflows").glob("*/workflow.yml"):
             workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
             inputs = workflow["inputs"]
             for step in workflow["steps"]:
@@ -80,7 +81,7 @@ class BundleSourceTests(unittest.TestCase):
                 self.assertIn("", inputs[verdict]["enum"])
 
     def test_transition_commands_have_prior_plans_and_gates(self) -> None:
-        for path in (ROOT / "components/workflows").glob("*/workflow.yml"):
+        for path in (BUNDLE / "components/workflows").glob("*/workflow.yml"):
             workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
             steps = workflow["steps"]
             for index, step in enumerate(steps):
@@ -112,7 +113,7 @@ class BundleSourceTests(unittest.TestCase):
         root_policy = ROOT / "policy"
         preset_policy = (
             ROOT
-            / "components/presets/"
+            / "bundle/components/presets/"
             "lean-full-lifecycle-governance/policy"
         )
         root_files = sorted(

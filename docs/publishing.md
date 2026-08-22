@@ -18,7 +18,7 @@ python -m unittest discover -s tests
 ## 3. Validate with official Spec Kit
 
 ```bash
-specify bundle validate --path .
+specify bundle validate --path bundle/ --offline
 ```
 
 Install each component in a clean sandbox project and run:

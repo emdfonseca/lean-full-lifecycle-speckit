@@ -54,16 +54,22 @@ them. The extension only implements GitHub-specific lifecycle operations.
 ## Repository layout
 
 ```text
-bundle.yml
-components/
-  presets/lean-full-lifecycle-governance/
-  extensions/github-lifecycle/
-  workflows/
+bundle/                       <- the packaged surface; everything else is source tooling
+  bundle.yml
+  README.md
+  components/
+    presets/lean-full-lifecycle-governance/
+    extensions/github-lifecycle/
+    workflows/
+policy/                       canonical policy, mirrored into the governance preset
 catalogs/
 scripts/
 tests/
-policy/
+docs/
 ```
+
+Spec Kit packages the entire bundle directory and honours no ignore file, so
+development tooling is kept outside `bundle/` rather than excluded from it.
 
 ## Prerequisite
 
@@ -140,7 +146,7 @@ python scripts/build_release.py
 When `specify` is installed:
 
 ```bash
-specify bundle validate --path .
+specify bundle validate --path bundle/ --offline
 specify bundle build --path . --output dist/
 python scripts/smoke_test.py --integration opencode
 ```

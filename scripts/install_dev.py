@@ -14,6 +14,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "bundle"
 WORKFLOWS = [
     "lifecycle-greenfield-bootstrap",
     "lifecycle-brownfield-adoption",
@@ -130,7 +131,7 @@ def main() -> int:
                 "--dev",
                 str(
                     ROOT
-                    / "components/presets/lean-full-lifecycle-governance"
+                    / "bundle/components/presets/lean-full-lifecycle-governance"
                 ),
                 "--priority",
                 "10",
@@ -146,7 +147,7 @@ def main() -> int:
                 "extension",
                 "add",
                 "--dev",
-                str(ROOT / "components/extensions/github-lifecycle"),
+                str(BUNDLE / "components/extensions/github-lifecycle"),
             ],
             target,
             args.dry_run,
@@ -160,21 +161,21 @@ def main() -> int:
                 "specify",
                 "workflow",
                 "add",
-                str(ROOT / "components/workflows" / workflow_id),
+                str(BUNDLE / "components/workflows" / workflow_id),
             ],
             target,
             args.dry_run,
         )
 
     run(
-        ["specify", "bundle", "validate", "--path", str(ROOT)],
+        ["specify", "bundle", "validate", "--path", str(BUNDLE), "--offline"],
         target,
         args.dry_run,
     )
 
     if not args.skip_bundle_record:
         run(
-            ["specify", "bundle", "install", str(ROOT)],
+            ["specify", "bundle", "install", str(BUNDLE)],
             target,
             args.dry_run,
         )

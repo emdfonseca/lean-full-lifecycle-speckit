@@ -17,6 +17,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "bundle"
 DIST = ROOT / "dist"
 VERSION = "0.1.0"
 
@@ -55,17 +56,17 @@ def main() -> int:
 
     artifacts: list[Path] = []
 
-    preset = ROOT / "components/presets/lean-full-lifecycle-governance"
+    preset = BUNDLE / "components/presets/lean-full-lifecycle-governance"
     preset_zip = DIST / f"lean-full-lifecycle-governance-{VERSION}.zip"
     zip_dir(preset, preset_zip)
     artifacts.append(preset_zip)
 
-    extension = ROOT / "components/extensions/github-lifecycle"
+    extension = BUNDLE / "components/extensions/github-lifecycle"
     extension_zip = DIST / f"github-lifecycle-{VERSION}.zip"
     zip_dir(extension, extension_zip)
     artifacts.append(extension_zip)
 
-    for workflow in sorted((ROOT / "components/workflows").iterdir()):
+    for workflow in sorted((BUNDLE / "components/workflows").iterdir()):
         if not (workflow / "workflow.yml").exists():
             continue
         destination = DIST / f"{workflow.name}-{VERSION}.zip"
@@ -76,7 +77,7 @@ def main() -> int:
     # to create the canonical published bundle artifact.
     bundle_local = DIST / f"lean-full-lifecycle-local-source-{VERSION}.zip"
     with zipfile.ZipFile(bundle_local, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(ROOT / "bundle.yml", "bundle.yml")
+        archive.write(BUNDLE / "bundle.yml", "bundle.yml")
         archive.write(ROOT / "README.md", "README.md")
     artifacts.append(bundle_local)
 
@@ -89,7 +90,7 @@ def main() -> int:
     (DIST / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
 
     print(f"Built {len(artifacts)} local artifacts in {DIST}")
-    print("Run `specify bundle build --path . --output dist/` for the canonical bundle ZIP.")
+    print("Run `specify bundle build --path bundle/ --output dist/` for the canonical bundle ZIP.")
     return 0
 
 

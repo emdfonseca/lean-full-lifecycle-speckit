@@ -41,7 +41,7 @@ gh
 Therefore this source release has **not** been claimed to pass:
 
 ```bash
-specify bundle validate --path .
+specify bundle validate --path bundle/ --offline
 specify bundle build --path . --output dist/
 python scripts/smoke_test.py --integration opencode
 ```
