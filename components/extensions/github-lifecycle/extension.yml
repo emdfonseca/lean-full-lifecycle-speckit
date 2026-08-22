@@ -1,0 +1,46 @@
+schema_version: '1.0'
+extension:
+  id: github-lifecycle
+  name: GitHub Lifecycle
+  version: 0.1.0
+  description: Plan and apply audited GitHub Issue Field lifecycle operations.
+  author: Lean Full-Lifecycle Contributors
+  repository: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
+  license: MIT
+  homepage: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
+  category: integration
+  effect: read-write
+requires:
+  speckit_version: '>=0.16.5'
+  tools:
+  - name: gh
+    required: true
+provides:
+  commands:
+  - name: speckit.github-lifecycle.inspect
+    file: commands/inspect.md
+    description: Inspect GitHub lifecycle configuration without mutation.
+  - name: speckit.github-lifecycle.plan
+    file: commands/plan.md
+    description: Create a read-only plan for GitHub lifecycle changes.
+  - name: speckit.github-lifecycle.transition
+    file: commands/transition.md
+    description: Apply one approved lifecycle transition and read it back.
+  - name: speckit.github-lifecycle.capture
+    file: commands/capture.md
+    description: Deduplicate and create an approved backlog finding.
+  - name: speckit.github-lifecycle.link
+    file: commands/link.md
+    description: Manage approved issue hierarchy and dependency links.
+  - name: speckit.github-lifecycle.doctor
+    file: commands/doctor.md
+    description: Run read-only GitHub lifecycle diagnostics.
+  config:
+  - name: github-lifecycle
+    template: config-template.yml
+tags:
+- github
+- integration
+- issues
+- lifecycle
+- backlog

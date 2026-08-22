@@ -1,0 +1,24 @@
+required:
+  - id
+  - scope
+  - policy_rule
+  - reason
+  - owner
+  - approver
+  - created_at
+  - review_or_expiry_at
+  - compensating_controls
+  - disposition
+
+forbidden:
+  - blanket_legacy_exception
+  - ownerless_exception
+  - permanent_exception_without_explicit_approval
+  - exception_hiding_new_violations
+
+dispositions:
+  - active
+  - remediated
+  - expired
+  - superseded
+  - accepted_permanently_by_authority

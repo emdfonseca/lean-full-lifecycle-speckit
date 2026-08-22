@@ -1,0 +1,26 @@
+default_scope: product_goal_or_epic
+story_level_outcome_required: false
+
+required:
+  - hypothesis
+  - owner
+  - baseline
+  - target
+  - guardrails
+  - data_source
+  - observation_window
+  - decision_date
+  - result
+  - decision
+
+validation_authority:
+  - product_owner
+  - analytics_owner
+
+agent_may:
+  - summarize_evidence
+  - identify_data_quality_gaps
+  - recommend_decision
+
+agent_may_not:
+  - mark_outcome_validated_without_authority

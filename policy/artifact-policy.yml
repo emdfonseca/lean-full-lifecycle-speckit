@@ -1,0 +1,35 @@
+artifacts:
+  product_intent:
+    authority: authoritative
+    retention: product_lifetime
+  constitution:
+    authority: authoritative
+    retention: project_lifetime
+  living_spec:
+    authority: authoritative
+    retention: capability_lifetime
+  plan:
+    authority: derived_historical
+    retention: archive_after_output_done
+    regenerable: true
+  tasks:
+    authority: derived_ephemeral
+    retention: delete_or_archive_after_output_done
+    regenerable: true
+  prototype:
+    authority: ephemeral
+    retention: delete_or_archive_after_decision
+    promote_only_by_explicit_decision: true
+  adr:
+    authority: historical
+    retention: project_lifetime
+    update_policy: supersede_not_rewrite
+  discovery_notes:
+    authority: evidence_ephemeral
+    retention: archive_or_delete_after_reconciliation
+  outcome_record:
+    authority: historical_evidence
+    retention: product_governance_policy
+  runbook:
+    authority: authoritative_operational
+    retention: while_operation_exists

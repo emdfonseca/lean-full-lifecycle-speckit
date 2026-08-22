@@ -1,0 +1,170 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-story-delivery
+  name: Story Delivery
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Run a bounded Story through core Spec Kit, verification, convergence, and Output Done.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  intent:
+    type: string
+    required: true
+  readiness_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  spec_verdict:
+    type: string
+    default: ''
+    enum: *id001
+  plan_verdict:
+    type: string
+    default: ''
+    enum: *id001
+  tasks_verdict:
+    type: string
+    default: ''
+    enum: *id001
+  output_verdict:
+    type: string
+    default: ''
+    enum: *id001
+steps:
+- id: inspect-item
+  command: speckit.github-lifecycle.inspect
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Inspect issue {{ inputs.issue_ref }} and lifecycle metadata. Read-only.
+- id: assess-readiness
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Assess Readiness Criteria for issue {{ inputs.issue_ref }}.
+
+    Intended change: {{ inputs.intent }}
+
+
+    Write .specify/lifecycle/readiness-{{ context.run_id }}.md containing
+
+    READY or NOT READY, blocking questions, risk, spec impact, material
+
+    uncertainty, dependencies, and one next engineering action.
+
+
+    Do not require technical design merely for readiness.
+
+    '
+- id: plan-in-progress-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → In Progress. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md. Do not mutate.
+- id: approve-readiness
+  type: gate
+  message: Review readiness. Continue only when the item is Ready.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: readiness_verdict
+  show_file: .specify/lifecycle/readiness-{{ context.run_id }}.md
+- id: transition-in-progress
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back. Approved plan:
+      .specify/github-lifecycle/plans/{{ context.run_id }}-in-progress.md.'
+- id: specify
+  command: speckit.specify
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.intent }} Source issue: {{ inputs.issue_ref }}'
+- id: review-spec
+  type: gate
+  message: Review specification and Acceptance Criteria.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: spec_verdict
+- id: plan
+  command: speckit.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.intent }}'
+- id: checklist
+  command: speckit.checklist
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Create only risk-appropriate product, security, migration, operability, and accessibility checks.
+- id: review-plan
+  type: gate
+  message: Review technical plan and risk-triggered controls.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: plan_verdict
+- id: tasks
+  command: speckit.tasks
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.intent }}'
+- id: analyze
+  command: speckit.analyze
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Analyze spec, plan, tasks, Constitution, risk controls, and safe parallelism.
+- id: review-tasks
+  type: gate
+  message: Review TDD ordering, dependencies, and ownership.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: tasks_verdict
+- id: implement
+  command: speckit.implement
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.intent }}'
+- id: verify
+  type: shell
+  run: devbox run verify
+- id: converge
+  command: speckit.converge
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Converge implementation, spec, tasks, Constitution, and Output Done evidence.
+- id: plan-output-done-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done and optional completed closure. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md. Do not mutate.
+- id: approve-output-done
+  type: gate
+  message: Review verification and convergence. Approve Output Done?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: output_verdict
+  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md
+- id: transition-output-done
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close only if authorized;
+      read back. Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md.'

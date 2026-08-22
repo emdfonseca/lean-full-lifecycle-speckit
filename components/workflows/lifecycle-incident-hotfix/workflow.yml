@@ -1,0 +1,116 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-incident-hotfix
+  name: Incident Hotfix
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Contain, remediate, verify, and reconcile an emergency production change.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  incident:
+    type: string
+    required: true
+  emergency_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  output_verdict:
+    type: string
+    default: ''
+    enum: *id001
+steps:
+- id: create-incident-record
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Create .specify/lifecycle/incident-record.md for:
+
+    {{ inputs.incident }}
+
+
+    Record severity, incident commander, containment, affected scope,
+
+    evidence, customer/security/privacy impact, minimum remediation,
+
+    rollback, and emergency authority. Do not remediate yet.
+
+    '
+- id: plan-in-progress-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → In Progress. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md. Do not mutate.
+- id: approve-emergency-change
+  type: gate
+  message: Review containment and emergency scope. Approve bounded remediation?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: emergency_verdict
+  show_file: .specify/lifecycle/incident-record.md
+- id: transition-in-progress
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md.'
+- id: bounded-remediation
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Implement only the approved emergency remediation. Preserve an audit
+
+    trail and add the smallest affected-path/regression evidence feasible.
+
+    Do not perform unrelated cleanup or modernization.
+
+    '
+- id: verify
+  type: shell
+  run: devbox run verify
+- id: converge
+  command: speckit.converge
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Converge emergency implementation with intended containment and policy.
+- id: plan-output-done-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md. Do not mutate.
+- id: approve-output-done
+  type: gate
+  message: Review emergency verification and recovery. Approve Output Done?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: output_verdict
+  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md
+- id: transition-output-done
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done. Approved plan: .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md.'
+- id: post-incident-reconciliation
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Create post-incident follow-up: regression tests, spec reconciliation,
+
+    temporary-access removal, root cause, communications, and deduplicated
+
+    follow-up items with owners and dates.
+
+    '

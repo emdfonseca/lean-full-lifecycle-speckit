@@ -1,0 +1,106 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-retirement
+  name: Deprecation and Retirement
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Plan and deliver controlled deprecation, migration, shutdown, and evidence archival.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  retirement_intent:
+    type: string
+    required: true
+  plan_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  output_verdict:
+    type: string
+    default: ''
+    enum: *id001
+steps:
+- id: specify-retirement
+  command: speckit.specify
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Deprecation/retirement: {{ inputs.retirement_intent }}. Source: {{ inputs.issue_ref }}'
+- id: plan-retirement
+  command: speckit.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan notice, replacement/migration, usage telemetry, support end, data export/retention/deletion, secret revocation,
+      dependency removal, shutdown, archive, rollback, and verification.
+- id: tasks
+  command: speckit.tasks
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Create phased, reversible retirement tasks with communication and verification.
+- id: analyze
+  command: speckit.analyze
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Analyze hidden dependencies, compatibility, retention/legal obligations, and rollback.
+- id: plan-in-progress-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → In Progress. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md. Do not mutate.
+- id: approve-retirement-plan
+  type: gate
+  message: Review retirement specification, dependencies, and irreversible actions.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: plan_verdict
+- id: transition-in-progress
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md.'
+- id: implement
+  command: speckit.implement
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.retirement_intent }}'
+- id: verify
+  type: shell
+  run: devbox run verify
+- id: converge
+  command: speckit.converge
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Verify retirement intent, migrations, hidden dependencies, and archival.
+- id: plan-output-done-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md. Do not mutate.
+- id: approve-output-done
+  type: gate
+  message: Review retirement verification. Approve Output Done?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: output_verdict
+  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md
+- id: transition-output-done
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done. Approved plan: .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md.'

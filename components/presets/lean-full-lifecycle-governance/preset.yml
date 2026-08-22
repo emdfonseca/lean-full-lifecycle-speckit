@@ -1,0 +1,85 @@
+schema_version: '1.0'
+preset:
+  id: lean-full-lifecycle-governance
+  name: Lean Full-Lifecycle Governance
+  version: 0.1.0
+  description: Additive engineering, security, readiness, output, outcome, and brownfield governance for Lean Spec Kit.
+  author: Lean Full-Lifecycle Contributors
+  repository: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
+  license: MIT
+requires:
+  speckit_version: '>=0.16.5'
+provides:
+  templates:
+  - type: command
+    name: speckit.constitution
+    file: commands/speckit.constitution.md
+    strategy: append
+    description: Adds Engineering Excellence and lifecycle-governance principles.
+  - type: command
+    name: speckit.specify
+    file: commands/speckit.specify.md
+    strategy: append
+    description: Adds readiness, risk, outcome, and artifact-authority guidance.
+  - type: command
+    name: speckit.clarify
+    file: commands/speckit.clarify.md
+    strategy: append
+    description: Keeps clarification focused on blocking product uncertainty.
+  - type: command
+    name: speckit.checklist
+    file: commands/speckit.checklist.md
+    strategy: append
+    description: Adds risk-shaped, non-ceremonial lifecycle and Output Done checks.
+  - type: command
+    name: speckit.plan
+    file: commands/speckit.plan.md
+    strategy: append
+    description: Adds risk-triggered security, migration, reliability, and operability planning.
+  - type: command
+    name: speckit.tasks
+    file: commands/speckit.tasks.md
+    strategy: append
+    description: Adds TDD ordering, dependency waves, and bounded parallel ownership.
+  - type: command
+    name: speckit.analyze
+    file: commands/speckit.analyze.md
+    strategy: append
+    description: Adds lifecycle and governance consistency analysis.
+  - type: command
+    name: speckit.implement
+    file: commands/speckit.implement.md
+    strategy: append
+    description: Adds scope, engineering-quality, and evidence guardrails.
+  - type: command
+    name: speckit.converge
+    file: commands/speckit.converge.md
+    strategy: append
+    description: Adds Output Done and brownfield quality-ratchet checks.
+  - type: template
+    name: constitution-template
+    file: templates/constitution-addendum.md
+    strategy: append
+    description: Adds framework-wide engineering and lifecycle policy sections.
+  - type: template
+    name: spec-template
+    file: templates/spec-addendum.md
+    strategy: append
+    description: Adds risk, outcome, and artifact metadata to specifications.
+  - type: template
+    name: plan-template
+    file: templates/plan-addendum.md
+    strategy: append
+    description: Adds conditional SSDLC, migration, rollout, and operability planning.
+  - type: template
+    name: tasks-template
+    file: templates/tasks-addendum.md
+    strategy: append
+    description: Adds Red-Green-Refactor and parallel delivery guidance.
+tags:
+- lean
+- governance
+- tdd
+- security
+- brownfield
+- outcomes

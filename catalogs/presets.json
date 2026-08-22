@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-08-22T00:00:00Z",
+  "catalog_url": "https://raw.githubusercontent.com/YOUR-ORG/lean-full-lifecycle-speckit/main/catalogs/presets.json",
+  "presets": {
+    "lean-full-lifecycle-governance": {
+      "name": "Lean Full-Lifecycle Governance",
+      "id": "lean-full-lifecycle-governance",
+      "version": "0.1.0",
+      "description": "Additive engineering, security, lifecycle, outcome, and brownfield governance.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lean-full-lifecycle-governance-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/presets/lean-full-lifecycle-governance",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "provides": {
+        "templates": 4,
+        "commands": 9
+      },
+      "tags": [
+        "lean",
+        "governance",
+        "tdd",
+        "security",
+        "brownfield",
+        "outcomes"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    }
+  }
+}

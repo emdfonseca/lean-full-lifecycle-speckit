@@ -1,0 +1,37 @@
+evaluated_at: null
+expires_at: null
+
+roles:
+  fast:
+    primary: null
+    fallbacks: []
+  planner:
+    primary: null
+    fallbacks: []
+    constraints: {high_reasoning: true}
+  architect:
+    primary: null
+    fallbacks: []
+    constraints: {high_reasoning: true}
+  builder:
+    primary: null
+    fallbacks: []
+  long_horizon_builder:
+    primary: null
+    fallbacks: []
+    constraints: {long_running_agent_support: true}
+  reviewer:
+    primary: null
+    fallbacks: []
+    constraints:
+      different_model_family_from: builder
+      edit_permission: deny
+  security:
+    primary: null
+    fallbacks: []
+    constraints: {approved_for_security_context: true}
+
+resolution:
+  require_approved_provider: true
+  refresh_available_models: true
+  record_resolved_mapping: true

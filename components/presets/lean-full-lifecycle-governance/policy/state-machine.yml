@@ -1,0 +1,70 @@
+delivery_status:
+  values:
+    - Inbox
+    - Refining
+    - Ready
+    - In Progress
+    - Output Done
+  transitions:
+    - from: null
+      to: Inbox
+      authority: automation_or_triage_policy
+      evidence: [issue_exists]
+    - from: Inbox
+      to: Refining
+      authority: triager_or_assigned_team
+      evidence: [refinement_started]
+    - from: Refining
+      to: Ready
+      authority: product_or_refinement_authority
+      evidence: [readiness_verdict_ready]
+    - from: Ready
+      to: In Progress
+      authority: assigned_engineering_owner
+      evidence: [owner_assigned, work_started]
+    - from: In Progress
+      to: Output Done
+      authority: automated_gates_and_authorized_review
+      evidence:
+        - acceptance_criteria_satisfied
+        - required_ci_green
+        - applicable_security_green
+        - convergence_clear
+        - operability_complete
+    - from: Output Done
+      to: In Progress
+      authority: engineering_authority
+      evidence: [reopen_reason]
+
+outcome_status:
+  values:
+    - Not Applicable
+    - Not Yet Measurable
+    - Measuring
+    - Outcome Validated
+    - Outcome Missed / Inconclusive
+  transitions:
+    - from: Not Yet Measurable
+      to: Measuring
+      authority: product_or_analytics_owner
+      evidence: [measurement_started]
+    - from: Measuring
+      to: Outcome Validated
+      authority: product_or_analytics_owner
+      evidence: [outcome_record, sufficient_evidence]
+    - from: Measuring
+      to: Outcome Missed / Inconclusive
+      authority: product_or_analytics_owner
+      evidence: [outcome_record, result_and_decision]
+
+blocked:
+  representation: native_issue_dependency
+  add_delivery_status: false
+
+closure:
+  completed:
+    require_delivery_status: Output Done
+    close_reason: completed
+  not_planned:
+    set_output_done: false
+    close_reason: not_planned

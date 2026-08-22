@@ -1,0 +1,31 @@
+always:
+  - format_or_style_validation
+  - lint_or_static_analysis
+  - type_or_compile_check_when_supported
+  - deterministic_change_appropriate_tests
+  - secret_detection
+  - dependency_hygiene
+  - build_or_package_validation
+  - specification_convergence_for_promoted_work
+
+conditional:
+  integration_contract_tests:
+    when: [external_contract_changed, important_boundary_changed]
+  end_to_end_tests:
+    when: [critical_user_journey_changed]
+  property_or_fuzz_tests:
+    when: [parser_protocol_or_untrusted_input, high_state_space_invariant]
+  performance_tests:
+    when: [explicit_performance_requirement, critical_resource_path_changed]
+  migration_tests:
+    when: [persistent_data_or_schema_changed]
+  accessibility:
+    when: [user_facing_interaction_changed]
+  security_review:
+    when: [risk_high]
+  sbom_provenance_signing:
+    when: [externally_distributed, regulated, supply_chain_risk_high]
+
+flaky_tests:
+  policy: defect
+  dispositions: [fix, quarantine_with_owner_and_expiry, remove_if_invalid]

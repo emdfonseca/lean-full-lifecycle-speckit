@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-08-22T00:00:00Z",
+  "catalog_url": "https://raw.githubusercontent.com/YOUR-ORG/lean-full-lifecycle-speckit/main/catalogs/workflows.json",
+  "workflows": {
+    "lifecycle-greenfield-bootstrap": {
+      "name": "Greenfield Bootstrap",
+      "id": "lifecycle-greenfield-bootstrap",
+      "version": "0.1.0",
+      "description": "Plan, approve, and validate a greenfield foundation and first Ready queue.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-greenfield-bootstrap-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-greenfield-bootstrap",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-brownfield-adoption": {
+      "name": "Brownfield Adoption",
+      "id": "lifecycle-brownfield-adoption",
+      "version": "0.1.0",
+      "description": "Adopt Spec Kit through scoped discovery, reconciliation, and quality ratcheting.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-brownfield-adoption-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-brownfield-adoption",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-story-delivery": {
+      "name": "Story Delivery",
+      "id": "lifecycle-story-delivery",
+      "version": "0.1.0",
+      "description": "Deliver a bounded Story through core SDD and Output Done.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-story-delivery-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-story-delivery",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-bugfix": {
+      "name": "Bugfix",
+      "id": "lifecycle-bugfix",
+      "version": "0.1.0",
+      "description": "Run a regression-first bounded defect workflow.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-bugfix-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-bugfix",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-release-outcome": {
+      "name": "Release and Outcome",
+      "id": "lifecycle-release-outcome",
+      "version": "0.1.0",
+      "description": "Separate release readiness, rollout, and outcome measurement.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-release-outcome-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-release-outcome",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-incident-hotfix": {
+      "name": "Incident Hotfix",
+      "id": "lifecycle-incident-hotfix",
+      "version": "0.1.0",
+      "description": "Run a bounded emergency remediation with mandatory reconciliation.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-incident-hotfix-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-incident-hotfix",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    },
+    "lifecycle-retirement": {
+      "name": "Deprecation and Retirement",
+      "id": "lifecycle-retirement",
+      "version": "0.1.0",
+      "description": "Deliver controlled deprecation, migration, shutdown, and archival.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lifecycle-retirement-0.1.0.zip",
+      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/workflows/lifecycle-retirement",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "tags": [
+        "lifecycle",
+        "lean",
+        "sdd"
+      ],
+      "created_at": "2026-08-22T00:00:00Z",
+      "updated_at": "2026-08-22T00:00:00Z"
+    }
+  }
+}

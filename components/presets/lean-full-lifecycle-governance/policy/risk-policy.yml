@@ -1,0 +1,53 @@
+dimensions:
+  data_sensitivity: 1
+  external_exposure: 1
+  authentication_authorization: 2
+  privilege: 2
+  tenant_isolation: 2
+  financial_impact: 2
+  availability_impact: 1
+  blast_radius: 1
+  reversibility: 1
+  regulatory_impact: 2
+  implementation_novelty: 1
+  migration_complexity: 1
+
+score:
+  per_dimension: {minimum: 0, maximum: 3}
+  thresholds:
+    low: {maximum: 8}
+    medium: {minimum: 9, maximum: 19}
+    high: {minimum: 20}
+
+overrides_to_high:
+  - authentication_or_authorization_boundary_change
+  - tenant_isolation_change
+  - regulated_or_highly_sensitive_data
+  - money_movement
+  - remote_code_execution_or_untrusted_code
+  - destructive_privileged_operation
+  - irreversible_high_blast_radius_migration
+
+controls:
+  low:
+    - acceptance_criteria
+    - automated_tests
+    - normal_ci
+    - convergence
+  medium:
+    - specification
+    - plan
+    - negative_tests
+    - dependency_and_configuration_validation
+    - observability_consideration
+    - convergence
+  high:
+    - specification
+    - plan
+    - explicit_threat_analysis
+    - abuse_cases
+    - security_tests
+    - authorized_security_review
+    - rollout_and_rollback
+    - observability_and_audit
+    - convergence

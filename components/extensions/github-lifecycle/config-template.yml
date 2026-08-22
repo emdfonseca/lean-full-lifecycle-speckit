@@ -1,0 +1,48 @@
+schema_version: "1.0"
+
+mode: "plan"
+
+organization: null
+repository: null
+project_number: null
+
+authoritative_metadata:
+  prefer_issue_fields: true
+  fallback_project_fields: true
+  status_labels: false
+
+fields:
+  delivery_status: "Delivery Status"
+  outcome_status: "Outcome Status"
+  priority: "Priority"
+  risk: "Risk"
+  severity: "Severity"
+  capability: "Capability"
+
+delivery_values:
+  inbox: "Inbox"
+  refining: "Refining"
+  ready: "Ready"
+  in_progress: "In Progress"
+  output_done: "Output Done"
+
+outcome_values:
+  not_applicable: "Not Applicable"
+  not_yet_measurable: "Not Yet Measurable"
+  measuring: "Measuring"
+  validated: "Outcome Validated"
+  missed_or_inconclusive: "Outcome Missed / Inconclusive"
+
+safety:
+  require_approved_plan_for_write: true
+  require_read_back: true
+  allow_organization_schema_mutation: false
+  allow_status_labels: false
+  close_completed_after_output_done: true
+  infer_output_done_from_closed_issue: false
+
+capture:
+  default_status: "Inbox"
+  search_open_and_recently_closed: true
+  require_provenance: true
+  auto_create_threshold: "strong-evidence"

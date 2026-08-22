@@ -1,0 +1,138 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-brownfield-adoption
+  name: Brownfield Adoption
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Adopt Spec Kit through scoped discovery, intent reconciliation, and a quality ratchet.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  target:
+    type: string
+    default: ''
+    prompt: Bounded target; empty for shallow readiness scan
+  known_intent:
+    type: string
+    default: ''
+  adoption_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  discovery_verdict:
+    type: string
+    default: ''
+    enum: *id001
+steps:
+- id: inspect-github
+  command: speckit.github-lifecycle.inspect
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Inspect GitHub lifecycle metadata for brownfield adoption. Read-only.
+- id: create-adoption-plan
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Inspect the existing repository without broad cleanup or mutation.
+
+
+    Target: {{ inputs.target }}
+
+    Known intent: {{ inputs.known_intent }}
+
+
+    Code/tests are evidence, not automatically intended behavior. Preserve
+
+    working Devbox, package, build, CI, and deployment mechanisms.
+
+
+    Create .specify/lifecycle/brownfield-adoption-plan.md containing current
+
+    state, quality baseline, quality ratchet, scoped exceptions, bounded
+
+    discovery scope, approvals, validation, and rollback.
+
+
+    If Target is empty, plan framework adoption plus a shallow readiness
+
+    scan only. Do not inventory the whole estate.
+
+    '
+- id: approve-adoption-plan
+  type: gate
+  message: Review .specify/lifecycle/brownfield-adoption-plan.md. Approve adoption?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: adoption_verdict
+  show_file: .specify/lifecycle/brownfield-adoption-plan.md
+- id: establish-constitution
+  command: speckit.constitution
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Apply Lean Full-Lifecycle governance with brownfield quality ratchet and scoped exceptions.
+- id: scoped-discovery
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Apply approved framework-adoption changes, then perform only the approved
+
+    discovery scope.
+
+
+    Target: {{ inputs.target }}
+
+    Known intent: {{ inputs.known_intent }}
+
+
+    Cite evidence. Reconcile current and intended behavior. Identify
+
+    characterization/regression tests, seams, risk, observability,
+
+    compatibility, migration, and rollback needs.
+
+
+    Do not infer authoritative requirements from code alone. Do not rewrite,
+
+    mass-format, or upgrade unrelated dependencies.
+
+
+    Write .specify/lifecycle/brownfield-discovery.md and an explicit
+
+    readiness verdict. If Target is empty, recommend exactly one bounded
+
+    first target.
+
+    '
+- id: review-discovery
+  type: gate
+  message: Review .specify/lifecycle/brownfield-discovery.md and its readiness verdict.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: discovery_verdict
+  show_file: .specify/lifecycle/brownfield-discovery.md
+- id: github-doctor
+  command: speckit.github-lifecycle.doctor
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Read-only final lifecycle configuration check.
+- id: validate-adoption
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Validate actual state, quality ratchet, scoped exceptions, preserved
+
+    build paths, and absence of unrelated changes.
+
+
+    Write .specify/lifecycle/brownfield-adoption-report.md with exactly one
+
+    next action.
+
+    '

@@ -1,0 +1,48 @@
+framework_version: "0.1.0"
+policy_version: "0.1.0"
+
+environment:
+  manager: devbox
+  require_lockfile: true
+  forbid_undocumented_global_dependencies: true
+
+spec_kit:
+  minimum_version: "0.16.5"
+  integration: opencode
+  preset_stack:
+    - id: lean
+      priority: 20
+      strategy: replace
+    - id: lean-full-lifecycle-governance
+      priority: 10
+      strategy: append
+  required_commands:
+    - constitution
+    - specify
+    - clarify
+    - plan
+    - checklist
+    - tasks
+    - analyze
+    - implement
+    - converge
+
+bootstrap:
+  phases:
+    - inspect
+    - plan
+    - approve
+    - apply
+    - read_back
+    - validate
+    - prove_idempotency
+
+source_of_truth:
+  work_item: github_issue
+  structured_backlog_metadata: github_issue_fields
+  intended_behavior: living_spec
+  engineering_policy: constitution_and_installed_policy
+  implementation: git
+  verification: ci
+  deployment: deployment_platform
+  outcome_evidence: outcome_record

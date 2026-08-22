@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-08-22T00:00:00Z",
+  "catalog_url": "https://raw.githubusercontent.com/YOUR-ORG/lean-full-lifecycle-speckit/main/catalogs/bundles.json",
+  "bundles": {
+    "lean-full-lifecycle": {
+      "name": "Lean Full-Lifecycle for Spec Kit",
+      "id": "lean-full-lifecycle",
+      "version": "0.1.0",
+      "role": "developer",
+      "description": "Lean Spec Kit extended across product, secure delivery, release, outcomes, and brownfield adoption.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lean-full-lifecycle-0.1.0.zip",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "requires": {
+        "speckit_version": ">=0.16.5"
+      },
+      "provides": {
+        "extensions": 1,
+        "presets": 2,
+        "steps": 0,
+        "workflows": 7
+      },
+      "tags": [
+        "lean",
+        "pdlc",
+        "ssdlc",
+        "github",
+        "brownfield",
+        "outcomes"
+      ],
+      "verified": false
+    }
+  }
+}

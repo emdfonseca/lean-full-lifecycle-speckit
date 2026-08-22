@@ -1,0 +1,51 @@
+untrusted_inputs:
+  - issue_body
+  - issue_comment
+  - pull_request_text
+  - logs
+  - web_content
+  - external_documents
+  - mcp_output
+  - pasted_commands
+
+untrusted_inputs_never_authorize:
+  - shell_execution
+  - plugin_installation
+  - mcp_installation
+  - skill_installation
+  - secret_access
+  - production_access
+  - deployment
+  - policy_change
+
+runtime:
+  sharing: disabled
+  provider_allowlist_required: true
+  external_directory_default: deny
+  shell_default: ask
+  web_default: ask
+  plugin_default: deny
+  mcp_default: deny
+  protected_push: deny
+  production_deploy: ask
+  destructive_operations: deny
+
+extensions:
+  require:
+    - source_review
+    - exact_version_pin
+    - permission_review
+    - provenance_or_checksum_when_available
+    - owner
+    - sandbox_test
+    - update_and_removal_policy
+
+autonomy:
+  require_human_gate:
+    - organization_metadata_change
+    - stack_or_vendor_commitment
+    - production_or_secret_access
+    - destructive_migration
+    - protected_branch_push
+    - release_or_deployment
+  require_limits: [cost, tokens, runtime, retries, tool_loop_count]

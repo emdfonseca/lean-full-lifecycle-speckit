@@ -1,0 +1,128 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-release-outcome
+  name: Release and Outcome
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Prepare release readiness, progressive rollout, and evidence-backed outcome measurement.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  release_context:
+    type: string
+    required: true
+  release_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  rollout_verdict:
+    type: string
+    default: ''
+    enum: *id001
+  outcome_verdict:
+    type: string
+    default: ''
+    enum:
+    - ''
+    - approve
+    - reject
+steps:
+- id: prepare-release-readiness
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Prepare .specify/lifecycle/release-readiness.md for
+
+    {{ inputs.issue_ref }}.
+
+
+    Context: {{ inputs.release_context }}
+
+
+    Assess artifact/version, CI/security, environment/configuration,
+
+    migrations, compatibility, rollback/recovery, operational readiness,
+
+    communication, feature flags, and deployment authority.
+
+
+    Output Done is required but does not mean deployed or enabled.
+
+    '
+- id: approve-release-readiness
+  type: gate
+  message: Review release readiness. Approve rollout verification?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: release_verdict
+  show_file: .specify/lifecycle/release-readiness.md
+- id: release-verify
+  type: shell
+  run: devbox run release-verify
+- id: prepare-rollout
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Create .specify/lifecycle/rollout-plan.md with environments, approvals,
+
+    increments, success/guardrail metrics, pause/rollback criteria, flag
+
+    owner/expiry, post-deployment verification, and audit evidence.
+
+
+    Do not deploy or expose production automatically.
+
+    '
+- id: approve-rollout
+  type: gate
+  message: Review rollout plan. This gate does not authorize production deployment.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: rollout_verdict
+  show_file: .specify/lifecycle/rollout-plan.md
+- id: prepare-outcome-record
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Create/update an outcome record for {{ inputs.issue_ref }} with
+
+    hypothesis, owner, baseline, target, guardrails, data source,
+
+    observation window, privacy/data-quality review, decision date, and
+
+    pending result. Prefer Epic/Product Goal scope unless independently
+
+    measurable.
+
+    '
+- id: plan-outcome-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Outcome Status → Measuring. Write exactly .specify/github-lifecycle/plans/{{ context.run_id
+      }}-outcome-measuring.md. Do not mutate.
+- id: approve-outcome-transition
+  type: gate
+  message: Review the outcome record and planned transition to Measuring.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: outcome_verdict
+  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md
+- id: transition-outcome-measuring
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Outcome Status → Measuring. Do not claim Outcome Validated.
+      Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.'

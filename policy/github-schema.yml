@@ -1,0 +1,49 @@
+scope: organization_preferred
+
+issue_fields:
+  Delivery Status:
+    type: single_select
+    values: [Inbox, Refining, Ready, In Progress, Output Done]
+  Outcome Status:
+    type: single_select
+    values:
+      - Not Applicable
+      - Not Yet Measurable
+      - Measuring
+      - Outcome Validated
+      - Outcome Missed / Inconclusive
+  Priority:
+    strategy: reuse_or_customize_existing_default
+    do_not_create_duplicate: true
+  Risk:
+    type: single_select
+    values: [Low, Medium, High]
+  Severity:
+    type: single_select
+    values: [Critical, High, Medium, Low]
+    applies_to: [Bug]
+  Capability:
+    strategy: organization_choice
+    allowed_strategies: [text, bounded_single_select, area_labels]
+
+native_metadata:
+  - issue_type
+  - assignee
+  - parent_sub_issue
+  - sub_issue_progress
+  - issue_dependencies
+  - linked_branch_pr
+  - milestone
+
+automation:
+  prefer_github_app: true
+  require_approved_plan_for_write: true
+  require_read_back: true
+  require_idempotency: true
+  infer_output_done_from_closed_issue: false
+  status_labels: disabled
+
+fallback:
+  when_issue_fields_unavailable:
+    authoritative_project_count: 1
+    allow_status_labels: false

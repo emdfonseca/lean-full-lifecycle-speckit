@@ -1,0 +1,122 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-bugfix
+  name: Bugfix
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Reproduce, regression-specify, fix, verify, converge, and close a bounded defect.
+requires:
+  speckit_version: '>=0.16.5'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  bug:
+    type: string
+    required: true
+  assessment_verdict:
+    type: string
+    default: ''
+    enum: &id001
+    - ''
+    - approve
+    - reject
+  output_verdict:
+    type: string
+    default: ''
+    enum: *id001
+steps:
+- id: assess-bug
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Assess issue {{ inputs.issue_ref }}: {{ inputs.bug }}
+
+
+    Reproduce from evidence, identify intended behavior and relevant spec,
+
+    classify severity/security implications, and define the smallest failing
+
+    regression test. Identify characterization tests for risky legacy
+
+    behavior. Write .specify/lifecycle/bugfix-assessment.md. Do not fix yet.
+
+    '
+- id: plan-in-progress-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → In Progress. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md. Do not mutate.
+- id: approve-assessment
+  type: gate
+  message: Review reproduction, intended behavior, and regression-test plan.
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: assessment_verdict
+  show_file: .specify/lifecycle/bugfix-assessment.md
+- id: transition-in-progress
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
+      context.run_id }}-in-progress.md.'
+- id: specify-bugfix
+  command: speckit.specify
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Bugfix: {{ inputs.bug }}. Reconcile an existing authoritative capability spec when appropriate; otherwise create
+      the smallest durable behavioral contract. Source: {{ inputs.issue_ref }}'
+- id: plan
+  command: speckit.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Create the smallest safe bugfix plan; avoid unrelated cleanup.
+- id: tasks
+  command: speckit.tasks
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Order regression/characterization tests before minimum fix and refactor.
+- id: analyze
+  command: speckit.analyze
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Check minimal scope, regression evidence, spec impact, and brownfield ratchet.
+- id: implement
+  command: speckit.implement
+  integration: '{{ inputs.integration }}'
+  input:
+    args: '{{ inputs.bug }}'
+- id: verify
+  type: shell
+  run: devbox run verify
+- id: converge
+  command: speckit.converge
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Verify intended bug behavior and absence of unrelated divergence.
+- id: plan-output-done-transition
+  command: speckit.github-lifecycle.plan
+  integration: '{{ inputs.integration }}'
+  input:
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done. Write exactly .specify/github-lifecycle/plans/{{
+      context.run_id }}-output-done.md. Do not mutate.
+- id: approve-output-done
+  type: gate
+  message: Review regression evidence and convergence. Approve Output Done?
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: output_verdict
+  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md
+- id: transition-output-done
+  command: speckit.github-lifecycle.transition
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; read back. Approved plan:
+      .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md.'
