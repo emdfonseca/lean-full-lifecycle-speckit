@@ -3,11 +3,13 @@
 generate:
 	python scripts/generate_manifests.py
 	python scripts/generate_catalogs.py
+	python scripts/generate_item_templates.py
 
 # Generated files must match the manifests; CI runs this so a hand-edit fails.
 generate-check:
 	python scripts/generate_manifests.py --check
 	python scripts/generate_catalogs.py --check
+	python scripts/generate_item_templates.py --check
 
 validate: generate-check
 	python scripts/validate_source.py

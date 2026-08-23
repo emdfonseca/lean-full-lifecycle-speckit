@@ -18,6 +18,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python scripts/generate_manifests.py --check
       - run: python scripts/generate_catalogs.py --check
+      - run: python scripts/generate_item_templates.py --check
       - run: python scripts/validate_source.py
       - run: python scripts/validate_requirements.py
       - run: python -m pytest -m 'not sandbox'

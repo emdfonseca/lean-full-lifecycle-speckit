@@ -1,0 +1,183 @@
+# What a backlog item of each type must contain.
+#
+# Written because nothing defined it. Issues were being authored to a structure
+# that existed only in one author's habit, while `state-machine.yml` required a
+# readiness verdict whose shape was described nowhere and `github-schema.yml`
+# referenced an issue type taxonomy it never listed.
+#
+# Every field here is one already in use in hand-written issues. This records a
+# contract rather than inventing one.
+#
+# .github/ISSUE_TEMPLATE/ is generated from this file. Edit here, then run
+# `make generate`.
+schema_version: "1.0"
+
+# Sections shared by every type. Kept short deliberately: a contract that asks
+# for more than a reader needs is one people work around.
+common_sections:
+  - id: problem
+    label: Problem
+    required: true
+    prompt: >-
+      What is wrong or missing, and who feels it. Not the solution.
+
+types:
+
+  epic:
+    name: Epic
+    description: A phase or theme. Progress derives from its children.
+    decomposable: true
+    carries_severity: false
+    carries_outcome: true
+    github_labels: [epic]
+    sections:
+      - id: delivers
+        label: What this delivers
+        required: true
+        prompt: The observable difference when this is done.
+      - id: exit
+        label: Exit condition
+        required: true
+        prompt: >-
+          How anyone can tell it is finished, without asking the author.
+      - id: outcome_intent
+        label: Intended outcome
+        required: false
+        prompt: >-
+          The measurable result this is meant to produce, if any. Leave empty
+          for work with no user-facing outcome; do not invent one.
+
+  story:
+    name: Story
+    description: A bounded deliverable, small enough to finish and verify.
+    decomposable: false
+    carries_severity: false
+    carries_outcome: true
+    github_labels: [story]
+    sections:
+      - id: scope
+        label: Scope
+        required: true
+        prompt: What is being changed, and where.
+      - id: acceptance
+        label: Acceptance criteria
+        required: true
+        prompt: >-
+          Checkable statements. Each one either holds or does not; "works well"
+          is not a criterion.
+      - id: out_of_scope
+        label: Out of scope
+        required: false
+        prompt: >-
+          What a reader would reasonably expect to be included and is not.
+      - id: risk_note
+        label: Risk
+        required: true
+        prompt: >-
+          Low, Medium, or High, and why. The reason matters more than the
+          grade.
+
+  bug:
+    name: Bug
+    description: Behaviour that differs from intent.
+    decomposable: false
+    carries_severity: true
+    carries_outcome: false
+    github_labels: [bug]
+    sections:
+      - id: reproduction
+        label: Reproduction
+        required: true
+        prompt: The shortest sequence that shows it.
+      - id: expected
+        label: Expected
+        required: true
+        prompt: What should happen, and what says so.
+      - id: actual
+        label: Actual
+        required: true
+        prompt: What happens instead. Quote the decisive output, not a log dump.
+      - id: regression_test
+        label: Regression test
+        required: true
+        prompt: >-
+          The test that fails now and passes after. A fix without one is
+          not accepted.
+
+  spike:
+    name: Spike
+    description: >-
+      Bounded investigation. Answers a question; does not deliver a change.
+    decomposable: false
+    carries_severity: false
+    carries_outcome: false
+    github_labels: [spike]
+    sections:
+      - id: question
+        label: Question
+        required: true
+        prompt: The single question. If there are two, there are two spikes.
+      - id: blocks
+        label: What it blocks
+        required: true
+        prompt: >-
+          What cannot proceed until this is answered. A spike blocking nothing
+          is curiosity, not work.
+      - id: permitted_scope
+        label: Permitted scope
+        required: true
+        prompt: >-
+          What may be touched. Read-only unless stated otherwise.
+      - id: required_evidence
+        label: Required evidence
+        required: true
+        prompt: What must be shown for the answer to be believed.
+      - id: exit_criteria
+        label: Exit criteria
+        required: true
+        prompt: >-
+          The stated outcomes that end it, including the one where the answer
+          invalidates the work that prompted it.
+      - id: time_box
+        label: Time box
+        required: true
+        prompt: How long before stopping and reporting whatever is known.
+
+# The evidence `state-machine.yml` requires for Refining -> Ready. Its shape was
+# previously described only in roadmap prose.
+readiness_verdict:
+  applies_to: [story, bug, spike]
+  fields:
+    readiness:
+      type: enum
+      values: [ready, not_ready]
+      required: true
+    blocking_questions:
+      type: list
+      required: true
+      note: >-
+        Non-empty means not ready. An item cannot be Ready with an open
+        question about what it is.
+    risk:
+      type: enum
+      values: [low, medium, high]
+      required: true
+    spec_impact:
+      type: enum
+      values: [none, update, create]
+      required: true
+    material_uncertainty:
+      type: enum
+      values: [none, discovery, prototype, spike, threat-analysis]
+      required: true
+    next_engineering_action:
+      type: string
+      required: true
+      note: Free text. What the assigned owner does first.
+
+rules:
+  - Technical design is not a prerequisite for Ready.
+  - A verdict with blocking questions leaves the item in Refining.
+  - Only Epics are decomposed. A Story that needs splitting is two Stories.
+  - Severity applies to Bugs alone, matching github-schema.yml.
+  - Outcome fields stay empty for work with no user-facing result.

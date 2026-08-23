@@ -157,6 +157,14 @@ def break_extension_config_name(tmp):
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
 
 
+def break_item_content(tmp):
+    # A type whose sections are all optional contracts nothing.
+    def mutate(d):
+        for section in d["types"]["story"]["sections"]:
+            section["required"] = False
+    _edit_yaml(tmp / "policy/item-types.yml", mutate)
+
+
 def break_no_placeholder(tmp):
     (tmp / "docs").mkdir(exist_ok=True)
     (tmp / "docs/leak.md").write_text("https://github.com/YOUR-ORG/x\n", encoding="utf-8")
@@ -182,6 +190,7 @@ MUTATORS = {
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
+    "INV-ITEM-CONTENT": break_item_content,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
     "PUB-CATALOG-ROOT": break_catalog_root,
 }
@@ -214,6 +223,7 @@ def test_every_check_has_a_negative_case():
     assert not set(MUTATORS) - set(REGISTRY)
 
 
+@pytest.mark.req("REQ-BACKLOG-ITEMS-001")
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
 @pytest.mark.req("REQ-CORE-COMPOSE-001")
 @pytest.mark.req("REQ-CORE-COMMANDS-001")

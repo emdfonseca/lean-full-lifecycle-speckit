@@ -18,6 +18,7 @@ here rather than silently ceasing to verify anything.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import subprocess
@@ -75,17 +76,25 @@ def collect_tests() -> tuple[dict[str, set[str]], set[str]]:
     claims: dict[str, set[str]] = defaultdict(set)
     for path in sorted((ROOT / "tests").rglob("test_*.py")):
         rel = str(path.relative_to(ROOT))
-        text = path.read_text(encoding="utf-8")
-        # Capture every req marker stacked above a def, in source order.
-        for block in re.finditer(
-            r"((?:@pytest\.mark\.\w+(?:\([^)]*\))?\s*)+)def\s+(\w+)", text
-        ):
-            decorators, func = block.group(1), block.group(2)
-            fn_key = f"{rel}::{func}"
+        # Parsed rather than scanned. Text matching kept failing on real
+        # decorators: nested parentheses in parametrize(..., sorted(x)) defeat
+        # a regex, and a multi-line parametrize list defeats a line scanner.
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            fn_key = f"{rel}::{node.name}"
             if fn_key not in known_fns:
                 continue
-            for m in re.finditer(r'@pytest\.mark\.req\(\s*"([^"]+)"\s*\)', decorators):
-                claims[m.group(1)].add(fn_key)
+            for dec in node.decorator_list:
+                if not isinstance(dec, ast.Call):
+                    continue
+                func = dec.func
+                if not (isinstance(func, ast.Attribute) and func.attr == "req"):
+                    continue
+                for arg in dec.args:
+                    if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                        claims[arg.value].add(fn_key)
     return claims, nodes
 
 

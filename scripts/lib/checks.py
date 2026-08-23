@@ -282,6 +282,59 @@ def extension_config_name(ctx: Ctx) -> Iterator[Finding]:
 
 
 # --------------------------------------------------------------------------
+# Backlog item contract
+# --------------------------------------------------------------------------
+
+@check("INV-ITEM-CONTENT", "Every item type defines the content it requires",
+       scope="policy")
+def item_content(ctx: Ctx) -> Iterator[Finding]:
+    from .inventory import load_yaml
+
+    policy_path = ctx.root / "policy" / "item-types.yml"
+    if not policy_path.is_file():
+        yield ctx.finding("INV-ITEM-CONTENT", "policy/item-types.yml", "missing")
+        return
+    policy = load_yaml(policy_path)
+
+    types = policy.get("types") or {}
+    if not types:
+        yield ctx.finding("INV-ITEM-CONTENT", "policy/item-types.yml", "defines no types")
+        return
+
+    for type_id, spec in types.items():
+        subject = f"item-type:{type_id}"
+        for key in ("name", "description", "sections"):
+            if not spec.get(key):
+                yield ctx.finding("INV-ITEM-CONTENT", subject, f"missing {key!r}")
+        # A type whose sections are all optional imposes no contract at all.
+        sections = spec.get("sections") or []
+        if sections and not any(sec.get("required") for sec in sections):
+            yield ctx.finding("INV-ITEM-CONTENT", subject,
+                              "no section is required, so the type contracts nothing")
+        for sec in sections:
+            for key in ("id", "label", "prompt"):
+                if not sec.get(key):
+                    yield ctx.finding("INV-ITEM-CONTENT",
+                                      f"{subject}:{sec.get('id', '?')}",
+                                      f"section missing {key!r}")
+
+    # Severity is scoped to Bug by github-schema.yml; the two must agree.
+    schema = load_yaml(ctx.root / "policy" / "github-schema.yml")
+    severity = ((schema.get("issue_fields") or {}).get("Severity") or {})
+    applies = {str(x).lower() for x in (severity.get("applies_to") or [])}
+    carries = {t for t, spec in types.items() if spec.get("carries_severity")}
+    if applies and applies != carries:
+        yield ctx.finding("INV-ITEM-CONTENT", "policy",
+                          f"Severity applies_to {sorted(applies)} in github-schema.yml "
+                          f"but carries_severity is set on {sorted(carries)}")
+
+    verdict = policy.get("readiness_verdict") or {}
+    if not verdict.get("fields"):
+        yield ctx.finding("INV-ITEM-CONTENT", "readiness_verdict",
+                          "state-machine.yml requires this evidence; its shape is undefined")
+
+
+# --------------------------------------------------------------------------
 # Publishing
 # --------------------------------------------------------------------------
 

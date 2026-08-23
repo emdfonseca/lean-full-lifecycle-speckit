@@ -402,6 +402,41 @@ requirements:
       - policy:state-machine.yml
       - policy:outcome-policy.yml
 
+  - id: REQ-BACKLOG-ITEMS-001
+    statement: >-
+      Every backlog item type defines the content it requires, and the issue
+      templates are generated from that definition so the two cannot diverge.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:item-types.yml
+      - check:INV-ITEM-CONTENT
+      - script:scripts/generate_item_templates.py
+    verified_by:
+      - "tests/test_item_types.py::test_every_type_requires_something"
+      - "tests/test_item_types.py::test_every_type_has_a_generated_template"
+      - "tests/test_item_types.py::test_templates_are_regenerated_from_the_policy"
+      - "tests/test_item_types.py::test_severity_scope_agrees_with_github_schema"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
+
+  - id: REQ-BACKLOG-READINESS-001
+    statement: >-
+      The readiness verdict has a schema. Refining to Ready is evidenced by a
+      valid verdict with no blocking questions, not by judgement.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:item-types.yml
+      - policy:state-machine.yml
+    verified_by:
+      - "tests/test_item_types.py::test_a_well_formed_verdict_validates"
+      - "tests/test_item_types.py::test_every_field_is_required"
+      - "tests/test_item_types.py::test_an_out_of_vocabulary_value_is_rejected"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Readiness verdict",
+  "description": "Evidence for the Refining to Ready transition. Generated from policy/item-types.yml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "readiness",
+    "blocking_questions",
+    "risk",
+    "spec_impact",
+    "material_uncertainty",
+    "next_engineering_action"
+  ],
+  "properties": {
+    "readiness": {
+      "enum": [
+        "ready",
+        "not_ready"
+      ]
+    },
+    "blocking_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Non-empty means not ready. An item cannot be Ready with an open question about what it is."
+    },
+    "risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "spec_impact": {
+      "enum": [
+        "none",
+        "update",
+        "create"
+      ]
+    },
+    "material_uncertainty": {
+      "enum": [
+        "none",
+        "discovery",
+        "prototype",
+        "spike",
+        "threat-analysis"
+      ]
+    },
+    "next_engineering_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free text. What the assigned owner does first."
+    }
+  }
+}
