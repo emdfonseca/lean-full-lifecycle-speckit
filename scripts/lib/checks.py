@@ -181,6 +181,33 @@ def gate_verdict(ctx: Ctx) -> Iterator[Finding]:
                                   f"verdict input {name!r} enum lacks the empty default")
 
 
+@check("INV-GATE-SHAPE", "Gates carry the fields the runner requires",
+       scope="workflow")
+def gate_shape(ctx: Ctx) -> Iterator[Finding]:
+    # Found by installing a workflow rather than by validating it: the runner
+    # rejects a gate with no `message`, and a gate written with `prompt`
+    # instead passed every local check while being unusable.
+    for comp in ctx.inv.by_kind("workflow"):
+        for step in _steps(comp):
+            if step.get("type") != "gate":
+                continue
+            subject = f"{comp.id}:{step.get('id')}"
+            if not str(step.get("message", "")).strip():
+                yield ctx.finding("INV-GATE-SHAPE", subject,
+                                  "gate has no 'message'; the runner refuses it")
+            options = step.get("options") or []
+            if "approve" not in options or "reject" not in options:
+                yield ctx.finding("INV-GATE-SHAPE", subject,
+                                  f"gate options {options!r} must offer approve and reject")
+            if step.get("on_reject") != "abort":
+                yield ctx.finding("INV-GATE-SHAPE", subject,
+                                  f"on_reject is {step.get('on_reject')!r}; a rejected "
+                                  f"gate must stop the run")
+            if "prompt" in step:
+                yield ctx.finding("INV-GATE-SHAPE", subject,
+                                  "gate uses 'prompt'; the runner reads 'message'")
+
+
 @check("INV-COMMAND-RESOLVES", "Every workflow step references a provided command",
        scope="workflow")
 def command_resolves(ctx: Ctx) -> Iterator[Finding]:

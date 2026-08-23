@@ -28,6 +28,7 @@ script_backed_commands:
   - inspect
   - plan
   - transition
+  - readiness
   - doctor
 
 # Safety keys the extension config template must declare, with required values.

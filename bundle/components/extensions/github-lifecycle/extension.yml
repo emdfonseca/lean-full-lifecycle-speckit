@@ -32,6 +32,9 @@ provides:
   - name: speckit.github-lifecycle.link
     file: commands/link.md
     description: Manage approved issue hierarchy and dependency links.
+  - name: speckit.github-lifecycle.readiness
+    file: commands/readiness.md
+    description: Validate a readiness verdict before an item may become Ready.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.

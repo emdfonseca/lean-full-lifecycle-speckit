@@ -37,6 +37,8 @@ provides:
     version: 0.1.0
   - id: lifecycle-incident-hotfix
     version: 0.1.0
+  - id: lifecycle-refine
+    version: 0.1.0
   - id: lifecycle-release-outcome
     version: 0.1.0
   - id: lifecycle-retirement

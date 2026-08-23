@@ -538,6 +538,25 @@ requirements:
       - "tests/test_transition.py::test_closed_while_not_output_done_is_reported"
       - "tests/test_transition.py::test_output_done_over_an_incomplete_child_is_reported"
 
+  - id: REQ-BACKLOG-REFINE-001
+    statement: >-
+      An item reaches Ready only through a validated readiness verdict and two
+      human approvals, and the resulting delivery state is read back from
+      GitHub rather than assumed.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-refine
+      - command:speckit.github-lifecycle.readiness
+      - check:INV-GATE-SHAPE
+    verified_by:
+      - "tests/test_workflow_refine.py::test_the_workflow_gates_before_every_write"
+      - "tests/test_workflow_refine.py::test_the_transition_applies_a_plan_a_prior_step_wrote"
+      - "tests/test_workflow_refine.py::test_rejecting_a_gate_aborts_the_run"
+      - "tests/test_workflow_refine.py::test_the_workflow_is_registered_by_generation"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

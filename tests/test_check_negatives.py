@@ -112,6 +112,18 @@ def break_gate_verdict(tmp):
     _edit_yaml(p, mutate)
 
 
+def break_gate_shape(tmp):
+    # The exact mistake: a gate written with `prompt` instead of `message`.
+    p = _workflow_with(tmp, lambda s: s.get("type") == "gate")
+
+    def mutate(d):
+        for step in d["steps"]:
+            if step.get("type") == "gate":
+                step["prompt"] = step.pop("message", "review")
+                return
+    _edit_yaml(p, mutate)
+
+
 def break_command_resolves(tmp):
     def mutate(d):
         for step in d["steps"]:
@@ -194,6 +206,7 @@ MUTATORS = {
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
     "SEC-SHELL-NO-INTERPOLATION": break_shell_interpolation,
     "INV-GATE-VERDICT": break_gate_verdict,
+    "INV-GATE-SHAPE": break_gate_shape,
     "INV-COMMAND-RESOLVES": break_command_resolves,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,

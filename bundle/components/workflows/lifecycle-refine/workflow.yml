@@ -1,0 +1,126 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-refine
+  name: Refine to Ready
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Take one item from Refining to Ready through an evidenced readiness verdict.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  readiness_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+  transition_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: inspect-item
+    command: speckit.github-lifecycle.inspect
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Inspect {{ inputs.issue_ref }} and the lifecycle configuration. Read-only.
+        Report the backend selected and whether the target is usable. Stop if it is not.
+
+  - id: assess-readiness
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Assess whether {{ inputs.issue_ref }} is ready to be worked.
+
+
+      Read the item and the content contract for its type in
+      policy/item-types.yml. Judge only what is written: an item is not ready
+      because you can guess what was meant.
+
+
+      Write .specify/lifecycle/readiness-{{ context.run_id }}.md containing a
+      fenced yaml verdict with readiness, blocking_questions, risk, spec_impact,
+      material_uncertainty, and next_engineering_action.
+
+
+      List a blocking question for anything a reader would have to ask before
+      starting. An empty list is a claim that nobody would need to ask
+      anything. Technical design is not a prerequisite; not knowing what
+      "done" means is.
+
+  - id: validate-readiness
+    command: speckit.github-lifecycle.readiness
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Validate .specify/lifecycle/readiness-{{ context.run_id }}.md against the
+        schema and lint the acceptance criteria of {{ inputs.issue_ref }}.
+        Report blocking findings separately from advisory ones. Stop on any
+        blocking finding; the item stays in Refining.
+
+  - id: approve-readiness
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: readiness_verdict
+    show_file: .specify/lifecycle/readiness-{{ context.run_id }}.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve moving this item to Ready on this verdict. Rejecting leaves it in
+      Refining, which is the correct outcome when a question is still open.
+
+  - id: plan-ready-transition
+    command: speckit.github-lifecycle.plan
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Plan issue {{ inputs.issue_ref }} Delivery Status → Ready. Write exactly
+        .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Do not mutate.
+
+  - id: approve-transition
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: transition_verdict
+    show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve applying this plan. It names one field and one value, and records
+      the value it observed; applying refuses if that has changed since.
+
+  - id: transition-ready
+    command: speckit.github-lifecycle.transition
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Apply approved transition for {{ inputs.issue_ref }}: Delivery Status →
+        Ready; read back. Approved plan:
+        .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Assert the
+        evidence the plan requires. Report the value before and after.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report the outcome for {{ inputs.issue_ref }}: the readiness verdict, any
+      advisory findings on its acceptance criteria, and the delivery state read
+      back after the transition.
+
+
+      If the run stopped before the transition, say which step stopped it and
+      why. A run that ends in Refining is a result, not a failure.

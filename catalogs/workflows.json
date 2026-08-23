@@ -75,6 +75,24 @@
         "steps": 11
       }
     },
+    "lifecycle-refine": {
+      "name": "Refine to Ready",
+      "id": "lifecycle-refine",
+      "version": "0.1.0",
+      "description": "Take one item from Refining to Ready through an evidenced readiness verdict.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 8
+      }
+    },
     "lifecycle-release-outcome": {
       "name": "Release and Outcome",
       "id": "lifecycle-release-outcome",
