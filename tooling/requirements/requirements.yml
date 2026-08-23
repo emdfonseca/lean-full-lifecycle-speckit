@@ -133,6 +133,23 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-SPECKIT-PIN]"
 
+  - id: REQ-PACKAGE-OVERLAY-001
+    statement: >-
+      A project workflow overlay survives bundle update, workflow update, and
+      repeated install, and continues to apply. A product repository does not
+      lose its customization by upgrading.
+    priority: must
+    owner: workflow maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - workflow:lifecycle-story-delivery
+    verified_by:
+      - "tests/sandbox/test_overlays.py::test_overlay_applies_before_any_update"
+      - "tests/sandbox/test_overlays.py::test_overlay_survives_bundle_update"
+      - "tests/sandbox/test_overlays.py::test_overlay_survives_workflow_update"
+      - "tests/sandbox/test_overlays.py::test_overlay_survives_second_bundle_install"
+
   # --- tooling ---------------------------------------------------------------
 
   - id: REQ-TOOLING-SOT-001

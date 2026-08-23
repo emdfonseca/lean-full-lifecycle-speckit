@@ -58,6 +58,7 @@ proving it can fail (`tests/test_check_negatives.py`):
 | Linux and Windows | Only macOS has been exercised. |
 | Hosted catalog install | Only the local `http://localhost` catalog. The published path is P14. |
 | Workflow execution | No workflow has been run past its first gate. |
+| Overlay behaviour beyond update | Overlays are verified across bundle update, workflow update, and reinstall. Conflicting overlays and overlay ordering are untested. |
 
 ## Known defects
 
