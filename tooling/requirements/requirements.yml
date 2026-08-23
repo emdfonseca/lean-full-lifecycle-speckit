@@ -665,6 +665,29 @@ requirements:
       - "tests/test_decompose.py::test_a_duplicate_proposal_is_skipped_not_created"
       - "tests/test_decompose.py::test_the_workflow_gates_before_creating"
 
+  - id: REQ-BACKLOG-TRIAGE-001
+    statement: >-
+      Triage decides what an item is and never when it will be done. It cannot
+      reach Ready, does not convert an observation into work, and records
+      priority only as a recommendation.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-triage
+      - command:speckit.github-lifecycle.triage
+      - script:bundle/components/extensions/github-lifecycle/scripts/triage.py
+    verified_by:
+      - "tests/test_triage.py::test_triage_cannot_target_anything_past_refining"
+      - "tests/test_triage.py::test_refining_is_the_only_permitted_target"
+      - "tests/test_triage.py::test_an_observation_is_not_proposed_as_work"
+      - "tests/test_triage.py::test_a_duplicate_stops_the_proposal"
+      - "tests/test_triage.py::test_the_record_states_that_priority_is_only_a_recommendation"
+      - "tests/test_triage.py::test_the_workflow_only_ever_transitions_to_refining"
+      - "tests/test_triage.py::test_an_untyped_item_cannot_be_assessed_against_a_contract"
+      - "tests/test_triage.py::test_the_proposed_transition_is_never_past_refining"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

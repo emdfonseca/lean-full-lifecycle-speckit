@@ -164,6 +164,24 @@
       "provides": {
         "steps": 19
       }
+    },
+    "lifecycle-triage": {
+      "name": "Triage an Incoming Item",
+      "id": "lifecycle-triage",
+      "version": "0.1.0",
+      "description": "Decide what an incoming item is, whether it already exists, and what should happen next.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 6
+      }
     }
   }
 }

@@ -47,6 +47,8 @@ provides:
     version: 0.1.0
   - id: lifecycle-story-delivery
     version: 0.1.0
+  - id: lifecycle-triage
+    version: 0.1.0
 tags:
 - lean
 - full-lifecycle

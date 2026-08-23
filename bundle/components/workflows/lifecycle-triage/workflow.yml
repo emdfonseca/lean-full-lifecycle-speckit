@@ -1,0 +1,100 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-triage
+  name: Triage an Incoming Item
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Decide what an incoming item is, whether it already exists, and what should happen next.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  triage_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: assess-item
+    command: speckit.github-lifecycle.triage
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Assess {{ inputs.issue_ref }}. Read-only. Write
+        .specify/lifecycle/triage-{{ context.run_id }}.json with the proposed
+        type, candidate duplicates, and missing evidence.
+
+  - id: interpret-assessment
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Interpret the assessment for {{ inputs.issue_ref }} and write
+      .specify/lifecycle/triage-summary-{{ context.run_id }}.md.
+
+
+      Duplicate scores are advisory. Items sharing a naming convention resemble
+      each other, so judge each candidate rather than trusting the number.
+
+
+      If the item lacks the evidence its type requires, say it is a discovery
+      note and recommend it stays in Inbox. Do not invent a reproduction or an
+      outcome to make it qualify.
+
+
+      Label any behaviour taken from code, with nothing agreeing it was wanted,
+      as inferred and unconfirmed. Do not write it as an acceptance criterion.
+
+
+      Record a priority only as a recommendation with its reasoning. This
+      workflow does not commit roadmap dates.
+
+  - id: approve-assessment
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: triage_verdict
+    show_file: .specify/lifecycle/triage-summary-{{ context.run_id }}.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve this assessment. Rejecting writes nothing and leaves the item
+      where it is, which is correct when the item is a duplicate or a note.
+
+  - id: plan-refining-transition
+    command: speckit.github-lifecycle.plan
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Plan issue {{ inputs.issue_ref }} Delivery Status → Refining. Write
+        exactly .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
+        Do not mutate. Triage proposes Refining only; Ready is a separate
+        decision.
+
+  - id: transition-refining
+    command: speckit.github-lifecycle.transition
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Apply approved transition for {{ inputs.issue_ref }}: Delivery Status →
+        Refining; read back. Approved plan:
+        .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report the outcome for {{ inputs.issue_ref }}: its type, whether a
+      duplicate was found, what evidence is missing, and the state read back.
+
+
+      State plainly that no priority has been committed and that the item is
+      not Ready. Refining means somebody may now work out whether it can be
+      started, which is not the same as it being startable.
