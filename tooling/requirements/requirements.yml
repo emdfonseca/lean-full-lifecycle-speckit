@@ -502,6 +502,10 @@ requirements:
       - "tests/test_item_types.py::test_a_well_formed_verdict_validates"
       - "tests/test_item_types.py::test_every_field_is_required"
       - "tests/test_item_types.py::test_an_out_of_vocabulary_value_is_rejected"
+      - "tests/test_readiness.py::test_a_valid_ready_verdict_passes"
+      - "tests/test_readiness.py::test_ready_with_an_open_question_is_a_contradiction"
+      - "tests/test_readiness.py::test_not_ready_without_a_reason_is_refused"
+      - "tests/test_readiness.py::test_a_value_outside_the_vocabulary_is_refused"
 
   - id: REQ-BACKLOG-DERIVED-001
     statement: >-
