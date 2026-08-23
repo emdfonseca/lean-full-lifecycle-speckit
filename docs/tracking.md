@@ -8,6 +8,7 @@ mechanisms this bundle itself prescribes.
 | Repository | https://github.com/emdfonseca/lean-full-lifecycle-speckit (private) |
 | Project board | https://github.com/users/emdfonseca/projects/3 |
 | Phases | one Epic issue per roadmap phase, `P0a` through `P14` |
+| Delivery state | the board's built-in `Status` field, carrying the state machine |
 | Work items | Story issues, linked as native sub-issues of their Epic |
 | Releases | Milestones, one per version in the roadmap's release sequence |
 
@@ -85,18 +86,46 @@ so the board runs the schema's documented fallback:
 `when_issue_fields_unavailable`, with `authoritative_project_count: 1` and
 `allow_status_labels: false`.
 
-Every field the schema names exists as a Project v2 field: Delivery Status,
-Outcome Status, Risk, Severity, Priority, and Capability. The schema is
+Every field the schema names exists on the board: the delivery state in the
+built-in `Status` field, plus Outcome Status, Risk, Severity, Priority, and
+Capability as custom fields. The schema is
 therefore implementable as written, which was previously untested.
 
-Two caveats:
+### The delivery state lives in the built-in field
 
-- These are *Project* fields, not Issue Fields. They apply to items on the board,
-  not to issues repository-wide. Moving to an organization would change the
-  mechanism, not the model.
-- The board also carries Projects' built-in `Status` field. It is unused and
-  should stay unused; `Delivery Status` is authoritative. This is the duplicate
-  hazard `github-schema.yml` warns about under `do_not_create_duplicate`.
+Projects ships a built-in `Status` field with Todo / In Progress / Done. It is
+the field board views group by, and GitHub's own workflows write to it.
+
+Carrying the delivery state in a *separate* custom field, as this board first
+did, has a failure mode that is invisible until someone looks at the board: the
+default view groups by `Status`, GitHub's automation only ever moves items
+Todo → Done, and In Progress is therefore never populated. The board reported
+twenty items Done and nineteen Todo while the authoritative field recorded five
+distinct states.
+
+So the built-in field carries the state machine directly:
+
+```
+Status: Inbox | Refining | Ready | In Progress | Output Done
+```
+
+One field, natively understood by grouping and views, with no mirror to keep in
+sync.
+
+**It cannot be renamed.** `updateProjectV2Field` accepts a new name for the
+built-in field, reports success, and silently keeps `Status`. The name therefore
+differs from `Delivery Status` as `github-schema.yml` calls it; the values are
+what matter, and this is a documented property of the Projects fallback rather
+than a discrepancy to reconcile.
+
+**Losing GitHub's auto-Done is deliberate.** Its built-in workflow sets `Done`
+when an issue closes. With `Done` gone, that automation no longer fires — which
+is what `infer_output_done_from_closed_issue: false` requires. Closure must
+never write a completion state.
+
+One further caveat: these are *Project* fields, not Issue Fields. They apply to
+items on the board, not to issues repository-wide. Moving to an organization
+would change the mechanism, not the model.
 
 ## Outcome fields are deliberately empty
 

@@ -1,0 +1,236 @@
+[
+  {
+    "issue": 1,
+    "title": "P0a \u2014 Substrate reality check",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 2,
+    "title": "P0b \u2014 Conformance fixes and bundle-root relocation",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 3,
+    "title": "P0c \u2014 Catalog harness and artifact pipeline",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 4,
+    "title": "P0d \u2014 Single source of truth and tooling ownership",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 5,
+    "title": "P0e \u2014 Doc truth pass",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 6,
+    "title": "P1 \u2014 Requirements and traceability",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 7,
+    "title": "P2 \u2014 Reproducible environment",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 8,
+    "title": "P3 \u2014 GitHub adapter core",
+    "status": "In Progress",
+    "retired_copy": "In Progress"
+  },
+  {
+    "issue": 9,
+    "title": "P4 \u2014 Vertical slice: lifecycle-refine",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 10,
+    "title": "P5 \u2014 Decompose, relationships, capture, dedupe",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 11,
+    "title": "P6 \u2014 Triage and discover",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 12,
+    "title": "P7 \u2014 Uncertainty resolution",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 13,
+    "title": "P8 \u2014 Outcome review",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 14,
+    "title": "P9 \u2014 Greenfield and brownfield hardening",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 15,
+    "title": "P10 \u2014 Monorepo, worktree, parallel teams",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 16,
+    "title": "P11 \u2014 OpenCode agent bootstrap",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 17,
+    "title": "P12 \u2014 Acceptance suite",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 18,
+    "title": "P13 \u2014 Controlled pilots",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 19,
+    "title": "P14 \u2014 Publish 1.0.0",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 20,
+    "title": "Migrate the test suite to pytest",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 21,
+    "title": "Add negative fixtures proving each check can fail",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 22,
+    "title": "Decide the fate of install_dev.py",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 23,
+    "title": "Remove the GitHub App from the roadmap",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 24,
+    "title": "Correct false claims in the documentation",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 25,
+    "title": "Apply the line-referenced roadmap amendments",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 26,
+    "title": "Author requirements.yml and its schema",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 27,
+    "title": "Implement bidirectional traceability checking",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 28,
+    "title": "Upstream: bundle install cannot install workflows from a catalog",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 29,
+    "title": "Upstream: bundle install does not scaffold extension config",
+    "status": "Inbox",
+    "retired_copy": "Inbox"
+  },
+  {
+    "issue": 30,
+    "title": "Choose Devbox or Make as the source toolchain",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 31,
+    "title": "Prove project workflow overlays survive a bundle update",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 32,
+    "title": "Spike: do workflow overlay priority and preset priority interact?",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 33,
+    "title": "Spike: which GitHub APIs does the deterministic adapter need?",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 34,
+    "title": "Adapter transport: client, auth, retries, rate limits, dry-run",
+    "status": "Output Done",
+    "retired_copy": "Output Done"
+  },
+  {
+    "issue": 35,
+    "title": "Adapter inspect: capability probe and schema resolution",
+    "status": "In Progress",
+    "retired_copy": "In Progress"
+  },
+  {
+    "issue": 36,
+    "title": "Field backend: Projects v2 fallback",
+    "status": "Refining",
+    "retired_copy": "Refining"
+  },
+  {
+    "issue": 37,
+    "title": "Field backend: organization Issue Fields",
+    "status": "Refining",
+    "retired_copy": "Refining"
+  },
+  {
+    "issue": 38,
+    "title": "Adapter transition: plan, approve, mutate one value, read back",
+    "status": "Refining",
+    "retired_copy": "Refining"
+  },
+  {
+    "issue": 39,
+    "title": "State machine has no state for externally blocked work",
+    "status": "Refining",
+    "retired_copy": "Refining"
+  }
+]
