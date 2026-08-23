@@ -466,6 +466,27 @@ requirements:
       - "tests/test_item_types.py::test_severity_scope_agrees_with_github_schema"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
 
+  - id: REQ-BACKLOG-AC-001
+    statement: >-
+      Acceptance criteria state an observable outcome for a stated context and
+      action, and criteria that cannot be verified are reported. Output Done is
+      evidenced by criteria being satisfied, which requires criteria that can
+      be.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:item-types.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
+      - script:scripts/generate_item_templates.py
+    verified_by:
+      - "tests/test_acceptance_lint.py::test_well_formed_criteria_pass"
+      - "tests/test_acceptance_lint.py::test_an_unobservable_phrase_is_reported"
+      - "tests/test_acceptance_lint.py::test_a_set_describing_only_success_is_reported"
+      - "tests/test_acceptance_lint.py::test_an_assertion_without_a_then_clause_is_reported"
+      - "tests/test_acceptance_lint.py::test_the_contract_reaches_the_author_through_the_template"
+
   - id: REQ-BACKLOG-READINESS-001
     statement: >-
       The readiness verdict has a schema. Refining to Ready is evidenced by a

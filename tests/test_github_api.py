@@ -223,6 +223,11 @@ def test_every_call_is_audited(tmp_path):
     ("42", 42),
     ('{"a":1}\n{"b":2}', [{"a": 1}, {"b": 2}]),   # --paginate: one doc per page
     ("", None),
+    # --jq can emit multi-line text, such as an issue body. Splitting it into
+    # lines turned a string into a list and corrupted every consumer of it.
+    ("## Acceptance\n\nGiven a thing\nWhen acted on\nThen observed",
+     "## Acceptance\n\nGiven a thing\nWhen acted on\nThen observed"),
+    ("line one\nline two", "line one\nline two"),
 ])
 def test_output_parsing_survives_what_gh_actually_emits(stdout, expected):
     assert client(fake(stdout)).rest("GET", "x") == expected

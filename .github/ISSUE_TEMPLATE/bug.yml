@@ -13,6 +13,7 @@ body:
   attributes:
     label: Problem
     description: What is wrong or missing, and who feels it. Not the solution.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -20,6 +21,7 @@ body:
   attributes:
     label: Reproduction
     description: The shortest sequence that shows it.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -27,6 +29,7 @@ body:
   attributes:
     label: Expected
     description: What should happen, and what says so.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -34,6 +37,7 @@ body:
   attributes:
     label: Actual
     description: What happens instead. Quote the decisive output, not a log dump.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -41,5 +45,6 @@ body:
   attributes:
     label: Regression test
     description: The test that fails now and passes after. A fix without one is not accepted.
+    placeholder: ''
   validations:
     required: true

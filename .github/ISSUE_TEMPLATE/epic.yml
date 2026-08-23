@@ -13,6 +13,7 @@ body:
   attributes:
     label: Problem
     description: What is wrong or missing, and who feels it. Not the solution.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -20,6 +21,7 @@ body:
   attributes:
     label: What this delivers
     description: The observable difference when this is done.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -27,6 +29,7 @@ body:
   attributes:
     label: Exit condition
     description: How anyone can tell it is finished, without asking the author.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -35,5 +38,6 @@ body:
     label: Intended outcome
     description: The measurable result this is meant to produce, if any. Leave empty for work with no
       user-facing outcome; do not invent one.
+    placeholder: ''
   validations:
     required: false

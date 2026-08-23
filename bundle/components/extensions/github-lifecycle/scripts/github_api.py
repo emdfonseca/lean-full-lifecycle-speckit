@@ -292,17 +292,18 @@ def _parse(stdout: str) -> Any:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # --paginate emits one document per page; --jq can emit a bare scalar such
-    # as `User`, which is not JSON at all.
+    # --paginate emits one JSON document per page, so a multi-document body is
+    # split. Anything else is returned whole: --jq can emit a bare scalar, and
+    # it can emit multi-line text such as an issue body. Splitting that into
+    # lines turned a body into a list and silently corrupted every consumer
+    # that expected a string.
+    lines = [ln for ln in text.splitlines() if ln.strip()]
     docs = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
+    for line in lines:
         try:
             docs.append(json.loads(line))
         except json.JSONDecodeError:
-            docs.append(line)
+            return text          # not a document stream; it is just text
     if not docs:
         return text
     return docs if len(docs) != 1 else docs[0]

@@ -13,6 +13,7 @@ body:
   attributes:
     label: Problem
     description: What is wrong or missing, and who feels it. Not the solution.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -20,13 +21,29 @@ body:
   attributes:
     label: Scope
     description: What is being changed, and where.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
   id: acceptance
   attributes:
     label: Acceptance criteria
-    description: Checkable statements. Each one either holds or does not; "works well" is not a criterion.
+    description: "Given / When / Then, one behaviour each. See acceptance_criteria below for the contract\
+      \ and an example. Include at least one case that is not the happy path.\n\nAC<n> — <short name>\n\
+      \  Given <the context that holds before>\n  When <the single action taken>\n  Then <the outcome\
+      \ an observer can see>\n   And <further observable outcomes>\n\nRules:\n- One behaviour per criterion.\
+      \ Two behaviours are two criteria.\n- The Then clause must name something observable: a value, a\
+      \ message, an exit status, a state. Not an internal condition nobody can inspect.\n- Describe what,\
+      \ never how. A criterion naming a function or a file is describing the implementation, and will\
+      \ need rewriting when the implementation changes for reasons the behaviour did not.\n- At least\
+      \ one criterion must cover a failure, a refusal, or a boundary. A set describing only success does\
+      \ not say what the thing protects against.\n- Each criterion stands alone. If reading it requires\
+      \ the one above, they are one criterion badly split.\n- Written before the work, not after. Criteria\
+      \ written afterwards describe what was built rather than what was wanted.\n\nRejected as unobservable:\
+      \ \"works correctly\", \"works properly\", \"as expected\", \"as appropriate\", \"user-friendly\"\
+      , \"handles gracefully\", \"should be able to\", \"etc\", \"and so on\", \"make sure\"."
+    placeholder: "AC<n> — <short name>\n  Given <the context that holds before>\n  When <the single action\
+      \ taken>\n  Then <the outcome an observer can see>\n   And <further observable outcomes>\n"
   validations:
     required: true
 - type: textarea
@@ -34,6 +51,7 @@ body:
   attributes:
     label: Out of scope
     description: What a reader would reasonably expect to be included and is not.
+    placeholder: ''
   validations:
     required: false
 - type: textarea
@@ -41,5 +59,6 @@ body:
   attributes:
     label: Risk
     description: Low, Medium, or High, and why. The reason matters more than the grade.
+    placeholder: ''
   validations:
     required: true

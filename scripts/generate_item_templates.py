@@ -33,18 +33,35 @@ HEADER = (
 )
 
 
-def build_template(type_id: str, spec: dict, common: list[dict]) -> dict:
+def acceptance_help(policy: dict) -> str:
+    """The contract, shown where criteria are written rather than in a doc."""
+    ac = policy.get("acceptance_criteria") or {}
+    lines = [ac.get("template", "").rstrip(), "", "Rules:"]
+    lines += [f"- {' '.join(r.split())}" for r in ac.get("rules") or []]
+    banned = ", ".join(f'"{b["phrase"]}"' for b in ac.get("banned_phrases") or [])
+    if banned:
+        lines += ["", f"Rejected as unobservable: {banned}."]
+    return "\n".join(lines)
+
+
+def build_template(type_id: str, spec: dict, common: list[dict],
+                   policy: dict | None = None) -> dict:
     body: list[dict] = [{
         "type": "markdown",
         "attributes": {"value": f"**{spec['name']}** — {spec['description']}"},
     }]
     for section in list(common) + list(spec.get("sections") or []):
+        description = section["prompt"].strip()
+        if section["id"] == "acceptance" and policy:
+            description = f"{description}\n\n{acceptance_help(policy)}"
         body.append({
             "type": "textarea",
             "id": section["id"],
             "attributes": {
                 "label": section["label"],
-                "description": section["prompt"].strip(),
+                "description": description,
+                "placeholder": (policy.get("acceptance_criteria", {}).get("template", "")
+                                if section["id"] == "acceptance" and policy else ""),
             },
             "validations": {"required": bool(section.get("required"))},
         })
@@ -91,7 +108,7 @@ def render(policy: dict) -> dict[Path, str]:
     out: dict[Path, str] = {}
     for type_id, spec in policy["types"].items():
         out[TEMPLATE_DIR / f"{type_id}.yml"] = HEADER + dump(
-            build_template(type_id, spec, common)
+            build_template(type_id, spec, common, policy)
         )
     out[TEMPLATE_DIR / "config.yml"] = HEADER + dump({
         # Every item must be one of the defined types; a blank issue has no

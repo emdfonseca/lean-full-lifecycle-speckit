@@ -63,8 +63,9 @@ types:
         label: Acceptance criteria
         required: true
         prompt: >-
-          Checkable statements. Each one either holds or does not; "works well"
-          is not a criterion.
+          Given / When / Then, one behaviour each. See acceptance_criteria
+          below for the contract and an example. Include at least one case
+          that is not the happy path.
       - id: out_of_scope
         label: Out of scope
         required: false
@@ -142,6 +143,69 @@ types:
         label: Time box
         required: true
         prompt: How long before stopping and reporting whatever is known.
+
+# What makes an acceptance criterion acceptable.
+#
+# "Checkable statements" was the whole guidance before, and it produced bullet
+# lists of assertions about the implementation: "the command invokes its
+# script". Those state a fact. They do not say what an observer does, or what
+# they see, so two readers can disagree about whether one holds -- which is the
+# disagreement acceptance criteria exist to prevent.
+#
+# state-machine.yml requires acceptance_criteria_satisfied as evidence for
+# Output Done. Evidence against a vague criterion is a judgement wearing a
+# checkbox.
+acceptance_criteria:
+  form: given_when_then
+  template: |
+    AC<n> — <short name>
+      Given <the context that holds before>
+      When <the single action taken>
+      Then <the outcome an observer can see>
+       And <further observable outcomes>
+
+  rules:
+    - One behaviour per criterion. Two behaviours are two criteria.
+    - >-
+      The Then clause must name something observable: a value, a message, an
+      exit status, a state. Not an internal condition nobody can inspect.
+    - >-
+      Describe what, never how. A criterion naming a function or a file is
+      describing the implementation, and will need rewriting when the
+      implementation changes for reasons the behaviour did not.
+    - >-
+      At least one criterion must cover a failure, a refusal, or a boundary.
+      A set describing only success does not say what the thing protects
+      against.
+    - >-
+      Each criterion stands alone. If reading it requires the one above, they
+      are one criterion badly split.
+    - >-
+      Written before the work, not after. Criteria written afterwards describe
+      what was built rather than what was wanted.
+
+  # Phrases that cannot be observed, and what they usually conceal.
+  banned_phrases:
+    - phrase: works correctly
+      because: names no observable outcome
+    - phrase: works properly
+      because: names no observable outcome
+    - phrase: as expected
+      because: expected by whom, and against what
+    - phrase: as appropriate
+      because: defers the decision the criterion is supposed to make
+    - phrase: user-friendly
+      because: not observable without a stated measure
+    - phrase: handles gracefully
+      because: says nothing about what happens
+    - phrase: should be able to
+      because: describes a capability rather than a behaviour
+    - phrase: etc
+      because: an unenumerated criterion cannot be verified
+    - phrase: and so on
+      because: an unenumerated criterion cannot be verified
+    - phrase: make sure
+      because: an instruction to the author, not an observable outcome
 
 # The evidence `state-machine.yml` requires for Refining -> Ready. Its shape was
 # previously described only in roadmap prose.

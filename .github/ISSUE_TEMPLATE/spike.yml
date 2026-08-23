@@ -13,6 +13,7 @@ body:
   attributes:
     label: Problem
     description: What is wrong or missing, and who feels it. Not the solution.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -20,6 +21,7 @@ body:
   attributes:
     label: Question
     description: The single question. If there are two, there are two spikes.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -28,6 +30,7 @@ body:
     label: What it blocks
     description: What cannot proceed until this is answered. A spike blocking nothing is curiosity, not
       work.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -35,6 +38,7 @@ body:
   attributes:
     label: Permitted scope
     description: What may be touched. Read-only unless stated otherwise.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -42,6 +46,7 @@ body:
   attributes:
     label: Required evidence
     description: What must be shown for the answer to be believed.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -50,6 +55,7 @@ body:
     label: Exit criteria
     description: The stated outcomes that end it, including the one where the answer invalidates the work
       that prompted it.
+    placeholder: ''
   validations:
     required: true
 - type: textarea
@@ -57,5 +63,6 @@ body:
   attributes:
     label: Time box
     description: How long before stopping and reporting whatever is known.
+    placeholder: ''
   validations:
     required: true
