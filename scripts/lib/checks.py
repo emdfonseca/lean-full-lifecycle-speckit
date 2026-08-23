@@ -299,7 +299,7 @@ def no_placeholder(ctx: Ctx) -> Iterator[Finding]:
             continue
         if PLACEHOLDER in text:
             yield ctx.finding("PUB-NO-PLACEHOLDER", str(path.relative_to(ctx.root)),
-                              f"contains {PLACEHOLDER}", severity="warning")
+                              f"contains {PLACEHOLDER}")
 
 
 @check("PUB-CATALOG-ROOT", "Catalogs point at a real published root",
@@ -308,5 +308,4 @@ def catalog_root(ctx: Ctx) -> Iterator[Finding]:
     pub = (ctx.inv.meta.get("publishing", {}) or {})
     if not pub.get("org"):
         yield ctx.finding("PUB-CATALOG-ROOT", "tooling/bundle-meta.yml",
-                          "publishing.org is unset; catalogs emit UNSET download URLs",
-                          severity="warning")
+                          "publishing.org is unset; catalogs emit UNSET download URLs")

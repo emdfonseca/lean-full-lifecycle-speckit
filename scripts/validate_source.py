@@ -27,11 +27,12 @@ from lib.inventory import ROOT, load_inventory, load_yaml  # noqa: E402
 from lib.registry import REGISTRY, Ctx, run_checks  # noqa: E402
 
 
-def build_ctx(strict_publish: bool) -> Ctx:
+def build_ctx(strict_publish: bool, root: Path | None = None) -> Ctx:
+    base = Path(root).resolve() if root else ROOT
     return Ctx(
-        root=ROOT,
-        inv=load_inventory(),
-        invariants=load_yaml(ROOT / "tooling" / "invariants.yml"),
+        root=base,
+        inv=load_inventory(base),
+        invariants=load_yaml(base / "tooling" / "invariants.yml"),
         strict_publish=strict_publish,
     )
 
@@ -44,6 +45,9 @@ def main() -> int:
                     help="Run a single check (used by the negative fixtures).")
     ap.add_argument("--scope", help="Run only checks in this scope.")
     ap.add_argument("--format", choices=["text", "json"], default="text")
+    ap.add_argument("--root", type=Path, default=None,
+                    help="Validate a source tree other than this one "
+                         "(used by the negative fixtures).")
     ap.add_argument("--list-checks", action="store_true",
                     help="Print the registry; requirements cite these ids.")
     args = ap.parse_args()
@@ -65,7 +69,7 @@ def main() -> int:
         print(f"unknown check id: {args.only}", file=sys.stderr)
         return 2
 
-    ctx = build_ctx(args.strict_publish)
+    ctx = build_ctx(args.strict_publish, args.root)
     findings, executed = run_checks(ctx, only=args.only, scope=args.scope)
 
     errors = [f for f in findings if f.severity == "error"]

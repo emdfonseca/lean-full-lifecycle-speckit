@@ -13,7 +13,7 @@ validate: generate-check
 	python scripts/validate_source.py
 
 test:
-	python -m unittest discover -s tests -v
+	python -m pytest
 
 build: validate test
 	python scripts/build_release.py
