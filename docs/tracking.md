@@ -107,11 +107,12 @@ closure is a consequence of it, never evidence for it.
 
 ## Field model
 
-`policy/github-schema.yml` prefers organization-level Issue Fields. This is a
-personal repository, where custom Issue Fields and Issue Types are unavailable,
-so the board runs the schema's documented fallback:
-`when_issue_fields_unavailable`, with `authoritative_project_count: 1` and
-`allow_status_labels: false`.
+`policy/github-schema.yml` defines project-scoped fields as the default
+(ADR 0003). This board runs that default, with `authoritative_project_count: 1`
+and `allow_status_labels: false`. Organization Issue Fields are an opt-in for
+organizations wanting one vocabulary across many repositories, and they apply
+organization-wide, which is a cost rather than an upgrade for a single
+repository.
 
 Every field the schema names exists on the board: the delivery state in the
 built-in `Status` field, plus Outcome Status, Risk, Severity, Priority, and

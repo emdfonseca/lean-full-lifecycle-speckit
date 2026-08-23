@@ -1,4 +1,30 @@
-scope: organization_preferred
+# Two deployment shapes, not a preference and a compromise. See ADR 0003.
+#
+#   project        fields live on one Projects v2 board scoped to the repository.
+#                  Works for users and organizations. The default.
+#   issue_fields   fields live on the organization and apply to every repository
+#                  in it. Opt-in, for organizations wanting one shared
+#                  vocabulary.
+scope: project_scoped_default
+
+backends:
+  project:
+    default: true
+    # Exactly one board is authoritative. More than one candidate is an
+    # ambiguity to refuse, never one to resolve by choosing.
+    authoritative_project_count: 1
+    field_value_addressing: option_id
+  issue_fields:
+    default: false
+    requires: organization
+    # GitHub rejects an option id here: values must be the option name.
+    field_value_addressing: option_name
+    note: >-
+      Applies organization-wide. Adding a field for one repository adds it to
+      every repository in the organization.
+
+# Never, on either backend. A label is not an auditable field value.
+allow_status_labels: false
 
 issue_fields:
   Delivery Status:
@@ -43,7 +69,5 @@ automation:
   infer_output_done_from_closed_issue: false
   status_labels: disabled
 
-fallback:
-  when_issue_fields_unavailable:
-    authoritative_project_count: 1
-    allow_status_labels: false
+# Retained for readers of earlier revisions: what was called a fallback is the
+# `project` backend above, and it is now the default.

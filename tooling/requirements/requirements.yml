@@ -322,7 +322,7 @@ requirements:
     verified_by:
       - "tests/test_inspect.py::test_delivery_state_is_found_in_the_builtin_status_field"
       - "tests/test_inspect.py::test_a_status_field_holding_the_wrong_options_is_not_the_delivery_state"
-      - "tests/test_inspect.py::test_user_owner_falls_back_to_the_project_board"
+      - "tests/test_inspect.py::test_user_owner_uses_the_project_backend"
       - "tests/test_inspect.py::test_organization_issue_fields_win_when_they_carry_the_state"
       - "tests/test_inspect.py::test_multiple_projects_are_an_ambiguity_not_a_choice"
       - "tests/test_inspect.py::test_fields_and_options_resolve_to_ids_not_names"
@@ -352,14 +352,16 @@ requirements:
 
   - id: REQ-GITHUB-ORGFIELDS-001
     statement: >-
-      Where an organization's Issue Fields carry the delivery state, they are
-      used in preference to a project board, through the same interface and
-      with the same read-back guarantee.
-    priority: must
+      Where an organization has opted into Issue Fields carrying the delivery
+      state, they are used through the same interface and with the same
+      read-back guarantee as the project backend.
+    priority: should
     owner: GitHub integration engineer
     release: "0.2.0"
     # implemented, not verified: exercised offline against the documented wire
     # format, but no write has been performed against a real organization.
+    # Deferred by ADR 0003 -- this is an opt-in for organizations, not the
+    # default path, so verification waits until an organization needs it.
     status: implemented
     components:
       - extension:github-lifecycle

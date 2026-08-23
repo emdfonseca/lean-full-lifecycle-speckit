@@ -138,13 +138,14 @@ def test_delivery_states_match_the_policy():
 # --- backend selection --------------------------------------------------------
 
 @pytest.mark.req("REQ-GITHUB-INSPECT-001")
-def test_user_owner_falls_back_to_the_project_board():
+def test_user_owner_uses_the_project_backend():
+    # Not a fallback: project-scoped is the default (ADR 0003).
     r = router(repos__acme__widgets="User", issues="[]",
                projectsV2=[{"number": 3, "title": "R"}], fields=FULL_PROJECT)
     result = it.inspect(client(r), "acme", "widgets")
     assert result.backend == it.BACKEND_PROJECT
     assert result.issue_fields_available is False
-    assert any("organization-only" in n for n in result.notes)
+    assert any("default" in n for n in result.notes)
 
 
 @pytest.mark.req("REQ-GITHUB-INSPECT-001")

@@ -206,9 +206,8 @@ def inspect(gh: GitHub, owner: str, repo: str,
     else:
         if kind != "Organization":
             result.notes.append(
-                "Owner is a user. Issue Fields and Issue Types are "
-                "organization-only, so the Projects v2 fallback applies "
-                "(github-schema.yml: when_issue_fields_unavailable)."
+                "Owner is a user, so the project backend applies. This is the "
+                "default (ADR 0003); Issue Fields are an organization opt-in."
             )
         elif org_fields:
             result.notes.append(
