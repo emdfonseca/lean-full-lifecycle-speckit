@@ -1,19 +1,17 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-08-22T00:00:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/YOUR-ORG/lean-full-lifecycle-speckit/main/catalogs/presets.json",
+  "updated_at": "2026-08-23T00:00:00Z",
+  "catalog_url": "UNSET",
   "presets": {
     "lean-full-lifecycle-governance": {
       "name": "Lean Full-Lifecycle Governance",
       "id": "lean-full-lifecycle-governance",
       "version": "0.1.0",
-      "description": "Additive engineering, security, lifecycle, outcome, and brownfield governance.",
+      "description": "Additive engineering, security, readiness, output, outcome, and brownfield governance for Lean Spec Kit.",
       "author": "Lean Full-Lifecycle Contributors",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
-      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/lean-full-lifecycle-governance-0.1.0.zip",
-      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
-      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/presets/lean-full-lifecycle-governance",
       "license": "MIT",
+      "download_url": "UNSET",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
@@ -29,8 +27,7 @@
         "brownfield",
         "outcomes"
       ],
-      "created_at": "2026-08-22T00:00:00Z",
-      "updated_at": "2026-08-22T00:00:00Z"
+      "verified": false
     }
   }
 }

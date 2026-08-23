@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-08-22T00:00:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/YOUR-ORG/lean-full-lifecycle-speckit/main/catalogs/extensions.json",
+  "updated_at": "2026-08-23T00:00:00Z",
+  "catalog_url": "UNSET",
   "extensions": {
     "github-lifecycle": {
       "name": "GitHub Lifecycle",
@@ -9,14 +9,11 @@
       "version": "0.1.0",
       "description": "Plan and apply audited GitHub Issue Field lifecycle operations.",
       "author": "Lean Full-Lifecycle Contributors",
-      "download_url": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/releases/download/v0.1.0/github-lifecycle-0.1.0.zip",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
-      "homepage": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
-      "documentation": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/tree/v0.1.0/components/extensions/github-lifecycle",
-      "changelog": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit/blob/v0.1.0/CHANGELOG.md",
       "license": "MIT",
       "category": "integration",
       "effect": "read-write",
+      "download_url": "UNSET",
+      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0",
         "tools": [
@@ -32,16 +29,12 @@
       },
       "tags": [
         "github",
+        "integration",
         "issues",
-        "issue-fields",
         "lifecycle",
         "backlog"
       ],
-      "verified": false,
-      "downloads": 0,
-      "stars": 0,
-      "created_at": "2026-08-22T00:00:00Z",
-      "updated_at": "2026-08-22T00:00:00Z"
+      "verified": false
     }
   }
 }

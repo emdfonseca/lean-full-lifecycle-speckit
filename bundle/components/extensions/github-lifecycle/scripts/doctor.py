@@ -36,19 +36,34 @@ def main() -> int:
     project = Path.cwd()
     # Spec Kit scaffolds extension config as <id>-config.yml and reads the
     # .local.yml sibling first; anything else is not preserved across an update.
+    #
+    # The template is a deliberate last resort: `specify bundle install` does
+    # not scaffold extension config (only `specify extension add` does), so a
+    # bundle-installed project legitimately has no scaffolded file yet.
     ext_home = project / ".specify/extensions/github-lifecycle"
     config_candidates = [
         ext_home / "github-lifecycle-config.local.yml",
         ext_home / "github-lifecycle-config.yml",
     ]
+    template = ext_home / "config-template.yml"
+    resolved = next((p for p in config_candidates if p.exists()), None)
     report = {
         "gh_auth": run(["gh", "auth", "status"]),
         "repository": run(["gh", "repo", "view", "--json", "nameWithOwner,url"]),
-        "config": next((str(p) for p in config_candidates if p.exists()), None),
+        "config": str(resolved) if resolved else None,
+        "config_source": (
+            "scaffolded" if resolved
+            else "template-only" if template.exists()
+            else "missing"
+        ),
         "specify_project": (project / ".specify").exists(),
         "notes": [
             "This doctor is read-only.",
             "Use the inspect command for agent-assisted schema inspection.",
+            "config_source=template-only means the extension was installed via "
+            "`specify bundle install`, which does not scaffold config. Run "
+            "`specify extension add github-lifecycle` or copy config-template.yml "
+            "to github-lifecycle-config.yml.",
         ],
     }
     print(json.dumps(report, indent=2))

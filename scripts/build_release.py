@@ -16,10 +16,19 @@ import zipfile
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "bundle"
 DIST = ROOT / "dist"
-VERSION = "0.1.0"
+
+
+def bundle_version() -> str:
+    """Read the version from the manifest so artifact names can never desync."""
+    import yaml
+
+    data = yaml.safe_load((BUNDLE / "bundle.yml").read_text(encoding="utf-8"))
+    return str(data["bundle"]["version"])
 
 
 def zip_dir(source: Path, destination: Path) -> None:
@@ -55,6 +64,7 @@ def main() -> int:
                 path.unlink()
 
     artifacts: list[Path] = []
+    VERSION = bundle_version()
 
     preset = BUNDLE / "components/presets/lean-full-lifecycle-governance"
     preset_zip = DIST / f"lean-full-lifecycle-governance-{VERSION}.zip"
@@ -73,24 +83,16 @@ def main() -> int:
         zip_dir(workflow, destination)
         artifacts.append(destination)
 
-    # Local source artifact for inspection only. Use `specify bundle build`
-    # to create the canonical published bundle artifact.
-    bundle_local = DIST / f"lean-full-lifecycle-local-source-{VERSION}.zip"
-    with zipfile.ZipFile(bundle_local, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(BUNDLE / "bundle.yml", "bundle.yml")
-        archive.write(ROOT / "README.md", "README.md")
-    artifacts.append(bundle_local)
+    from generate_catalogs import write_catalogs
 
-    catalogs = DIST / "catalogs"
-    catalogs.mkdir()
-    for path in (ROOT / "catalogs").glob("*.json"):
-        shutil.copy2(path, catalogs / path.name)
+    write_catalogs(DIST / "catalogs", catalog_root=None)
 
     checksum_lines = [f"{sha256(path)}  {path.name}" for path in artifacts]
     (DIST / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
 
     print(f"Built {len(artifacts)} local artifacts in {DIST}")
     print("Run `specify bundle build --path bundle/ --output dist/` for the canonical bundle ZIP.")
+    print("Component archives above are what a catalog serves; the bundle ZIP is not installable on its own.")
     return 0
 
 
