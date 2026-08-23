@@ -1,0 +1,25 @@
+# Long-running processes, managed by `devbox services`.
+#
+# Devbox provides process-compose natively. Tasks live in the Makefile; only
+# things that must stay running belong here.
+version: "0.5"
+
+processes:
+  catalog:
+    description: >-
+      Serves the built component archives over a local catalog. A bundle
+      artifact is a manifest of references, so installing requires a reachable
+      catalog; this is the one that makes that testable without publishing.
+    command: python scripts/local_catalog.py serve --port 8899
+    working_dir: "."
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 8899
+        path: /catalogs/bundles.json
+      initial_delay_seconds: 2
+      period_seconds: 3
+      failure_threshold: 10
+    availability:
+      restart: on_failure
+      max_restarts: 3

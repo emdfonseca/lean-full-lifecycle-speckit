@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.18.0/.schema/devbox.schema.json",
+  "packages": [
+    "python@3.13",
+    "uv@latest",
+    "gnumake@latest",
+    "gh@latest",
+    "git@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      ". $VENV_DIR/bin/activate",
+      "python -m pip install --quiet --disable-pip-version-check -r requirements-dev.txt",
+      "command -v specify >/dev/null || uv tool install --quiet --from git+https://github.com/github/spec-kit.git@v1.0.1 specify-cli",
+      "export PATH=\"$(uv tool dir)/bin:$PATH\""
+    ],
+    "scripts": {
+      "generate": [
+        "make generate"
+      ],
+      "validate": [
+        "make validate"
+      ],
+      "test": [
+        "make test"
+      ],
+      "build": [
+        "make build"
+      ],
+      "smoke": [
+        "make smoke"
+      ],
+      "official": [
+        "make official"
+      ],
+      "coverage": [
+        "make coverage"
+      ]
+    }
+  },
+  "env": {
+    "VENV_DIR": "$PWD/.devbox-venv"
+  }
+}

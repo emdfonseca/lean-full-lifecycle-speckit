@@ -301,6 +301,23 @@ requirements:
     components:
       - policy:artifact-policy.yml
 
+  - id: REQ-TOOLING-TASKS-001
+    statement: >-
+      Each build task is defined exactly once. Make owns the definitions;
+      Devbox provisions the toolchain and supervises processes, and its scripts
+      may only delegate.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:Makefile
+      - script:devbox.json
+      - script:process-compose.yaml
+    verified_by:
+      - "tests/test_toolchain.py::test_every_devbox_script_only_delegates_to_make"
+      - "tests/test_toolchain.py::test_every_devbox_script_targets_a_real_make_target"
+
   # --- documentation ---------------------------------------------------------
 
   - id: REQ-DOCS-TRUTH-001

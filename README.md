@@ -71,6 +71,30 @@ docs/
 Spec Kit packages the entire bundle directory and honours no ignore file, so
 development tooling is kept outside `bundle/` rather than excluded from it.
 
+## Toolchain
+
+Make owns the task definitions:
+
+```bash
+make generate      # regenerate bundle.yml and the catalogs
+make validate      # invariants + traceability
+make test          # pytest
+make build         # component archives
+make smoke         # full install lifecycle over a local catalog
+```
+
+Devbox is optional and wraps them. It provisions a pinned toolchain and
+supervises long-running processes; its scripts only delegate to Make.
+
+```bash
+devbox run validate           # same as make validate, in a pinned environment
+devbox services up catalog    # serve the local catalog for install testing
+```
+
+Do not confuse this with the *target project's* Devbox requirement: five of the
+seven workflows run `devbox run verify` or `devbox run release-verify`, and the
+product repository must provide those.
+
 ## Prerequisite
 
 Install the approved Spec Kit release. This source targets Spec Kit 1.0.1 or

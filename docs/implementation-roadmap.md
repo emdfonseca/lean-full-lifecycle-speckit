@@ -227,9 +227,19 @@ devbox run smoke
 devbox run verify
 ```
 
-These duplicate `Makefile` one-for-one, and the repository already uses Make
-plus `requirements-dev.txt`. `P2` picks one and deletes the other; two ways to
-run the same four targets is the drift this roadmap exists to prevent.
+**Resolved in `P2`: Make is authoritative.** Make owns the task definitions and
+CI invokes it directly. Devbox is a thin wrapper with two jobs and no task logic
+of its own:
+
+- **bootstrapping** — a pinned toolchain (Python, uv, Spec Kit, `gh`, `git`), so
+  the environment is reproducible;
+- **process management** — long-running services through process-compose, which
+  Devbox supports natively. `process-compose.yaml` declares the local catalog
+  server, the one process that must stay up while an install talks to it.
+
+A `devbox run test` that reimplemented `make test` would be the drift; one that
+shells out to it is not. `tests/test_toolchain.py` enforces that every Devbox
+script is exactly `make <target>`.
 
 Note the two senses of Devbox are separate concerns. As *source tooling* it is
 optional and competes with Make. As a *target-project* dependency it is not

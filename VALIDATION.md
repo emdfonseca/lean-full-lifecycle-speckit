@@ -20,6 +20,12 @@ specify bundle build --path bundle/ --output dist/
 
 python scripts/smoke_test.py
 → 14 checks PASS
+
+devbox run validate / test
+→ toolchain provisioned, delegated to make, PASS
+
+devbox services up catalog
+→ process-compose service Ready, catalog served over http://localhost:8899
 ```
 
 The smoke test is the meaningful one: it installs the bundle into a scratch
@@ -47,7 +53,7 @@ proving it can fail (`tests/test_check_negatives.py`):
 
 | Area | Why |
 |---|---|
-| `devbox run verify` / `release-verify` | Devbox is not installed here. These are commands the *target project* provides; the bundle only calls them. |
+| `devbox run verify` / `release-verify` | Commands the *target project* provides; the bundle only calls them. Devbox itself is verified here, but no product repository has been wired up to exercise these. |
 | OpenCode as a running agent | The integration installs and commands materialize, but no workflow has been executed end to end by an agent. |
 | Linux and Windows | Only macOS has been exercised. |
 | Hosted catalog install | Only the local `http://localhost` catalog. The published path is P14. |
