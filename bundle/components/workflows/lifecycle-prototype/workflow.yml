@@ -1,0 +1,113 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-prototype
+  name: Executable Prototype
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Answer named interaction questions with throwaway code, then decide what becomes of it.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  questions:
+    type: string
+    required: true
+  disposal_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: state-questions
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      State what this prototype must answer for {{ inputs.issue_ref }}, before
+      building anything: {{ inputs.questions }}
+
+
+      Write .specify/lifecycle/prototype-questions-{{ context.run_id }}.md.
+
+
+      Name the journeys you will implement and, explicitly, the ones you will
+      not. A prototype that grows until it looks finished has stopped being a
+      prototype and nobody noticed.
+
+
+      Use fake or local data throughout. Production credentials and production
+      data are out of scope, and no question worth asking requires them.
+
+  - id: build-prototype
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Build only enough to answer the stated questions.
+
+
+      Use the real design system where practical, so what you learn is about
+      the interaction rather than about scaffolding.
+
+
+      Stop when the questions are answered. Answering them badly is a finding;
+      continuing until it feels complete is not.
+
+  - id: record-disposal
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Write .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+      as a fenced yaml record with kind, questions, findings, decision, and
+      artifacts.
+
+
+      Record what you learned, not what you built. "unresolved" is a legitimate
+      finding: a prototype that answered nothing has still told you something.
+
+
+      Choose delete, archive, or promote. Promotion requires an approver and a
+      reason; leaving artifacts in place because removing them needs a reason
+      is how prototype code becomes production code.
+  - id: validate-disposal
+    command: speckit.github-lifecycle.disposal
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Validate .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md.
+        Stop on any blocking finding; the work this informed cannot complete
+        without a decided disposal.
+
+  - id: approve-disposal
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: disposal_verdict
+    show_file: .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve this disposal. Promotion carries the artifacts into production
+      and is the decision the ephemeral classification exists to make
+      deliberate.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report what was asked, what was learned, and what becomes of the
+      artifacts.
+
+
+      Name every artifact affected. If the decision was delete or archive, say
+      plainly that none of them may be promoted later without a new decision.
+
+
+      Reconcile the findings with the spec before anything asserts them. What
+      was learned here is evidence, and evidence is not intent.

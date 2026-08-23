@@ -20,6 +20,52 @@ artifacts:
     authority: ephemeral
     retention: delete_or_archive_after_decision
     promote_only_by_explicit_decision: true
+
+    # promote_only_by_explicit_decision was a stated intention with nothing
+    # enforcing it. This is the record that makes it real: work informed by a
+    # prototype or spike cannot reach Output Done until the disposal is
+    # decided.
+    #
+    # The failure this prevents is quiet. Nobody decides to ship prototype
+    # code; it is left in place because deleting it needs a reason and keeping
+    # it needs none. Requiring the decision inverts that.
+    disposal_record:
+      decisions:
+        delete: the artifacts are removed; nothing survives the learning
+        archive: kept as evidence, outside any build, not importable
+        promote: >-
+          carried into production. Requires an approver and a reason, because
+          this is the decision the ephemeral classification exists to make
+          deliberate.
+      required_fields:
+        - id: kind
+          values: [prototype, spike]
+        - id: questions
+          note: what it set out to answer
+        - id: findings
+          note: >-
+            what was learned. "unresolved" is a legitimate finding; a
+            prototype that answered nothing has still told you something.
+        - id: decision
+          note: one of the decisions above
+        - id: artifacts
+          note: what exists as a result, so disposal can be checked
+      promote_requires: [approver, reason]
+
+      # A spike is bounded before it starts, or it is not a spike.
+      spike_required_fields: [question, permitted_scope, required_evidence,
+                              time_box, exit_criteria]
+
+      rules:
+        - >-
+          Work informed by a prototype or spike cannot reach Output Done until
+          a disposal decision is recorded.
+        - >-
+          Promotion names an approver and a reason. Neither is inferable, and a
+          record missing either is refused rather than defaulted.
+        - >-
+          Deleting or archiving names the artifacts, so a reader can check the
+          disposal happened rather than trusting that it did.
   adr:
     authority: historical
     retention: project_lifetime

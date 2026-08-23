@@ -728,14 +728,30 @@ requirements:
   - id: REQ-UNCERTAINTY-DISPOSAL-001
     statement: >-
       A prototype or spike records its disposal decision before the work it
-      informed can reach Output Done. Throwaway code does not become production
-      code by omission.
+      informed can reach Output Done, and promotion names an approver and a
+      reason. Throwaway code does not become production code by omission.
     priority: must
     owner: workflow maintainer
     release: "0.2.0"
-    status: planned
+    status: verified
     components:
       - policy:artifact-policy.yml
+      - workflow:lifecycle-prototype
+      - workflow:lifecycle-spike
+      - command:speckit.github-lifecycle.disposal
+      - script:bundle/components/extensions/github-lifecycle/scripts/disposal.py
+    verified_by:
+      - "tests/test_disposal.py::test_a_complete_prototype_record_validates"
+      - "tests/test_disposal.py::test_promotion_requires_an_approver_and_a_reason"
+      - "tests/test_disposal.py::test_disposal_must_name_the_artifacts"
+      - "tests/test_disposal.py::test_a_spike_must_state_its_boundary"
+      - "tests/test_disposal.py::test_unresolved_is_a_legitimate_finding"
+      - "tests/test_disposal.py::test_completion_requires_a_disposal_record"
+      - "tests/test_disposal.py::test_an_ordinary_item_is_unaffected"
+      - "tests/test_disposal.py::test_a_present_record_satisfies_the_guard"
+      - "tests/test_disposal.py::test_each_uncertainty_workflow_ends_in_a_disposal_decision"
+      - "tests/test_disposal.py::test_neither_workflow_uses_production_data"
+      - "tests/test_disposal.py::test_the_prototype_workflow_explicitly_excludes_production_data"
 
   - id: REQ-TOOLING-TASKS-001
     statement: >-

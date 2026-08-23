@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Disposal record",
+  "description": "What a prototype or spike learned, and what becomes of it. Generated from policy/artifact-policy.yml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "questions",
+    "findings",
+    "decision",
+    "artifacts"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "prototype",
+        "spike"
+      ]
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "what it set out to answer"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "what was learned. \"unresolved\" is a legitimate finding; a prototype that answered nothing has still told you something."
+    },
+    "decision": {
+      "enum": [
+        "delete",
+        "archive",
+        "promote"
+      ],
+      "description": "one of the decisions above"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "what exists as a result, so disposal can be checked"
+    },
+    "approver": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permitted_scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_evidence": {
+      "type": "string",
+      "minLength": 1
+    },
+    "time_box": {
+      "type": "string",
+      "minLength": 1
+    },
+    "exit_criteria": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

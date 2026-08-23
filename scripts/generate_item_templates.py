@@ -27,6 +27,7 @@ POLICY = ROOT / "policy" / "item-types.yml"
 TEMPLATE_DIR = ROOT / ".github" / "ISSUE_TEMPLATE"
 SCHEMA_PATH = ROOT / "tooling" / "schemas" / "readiness-verdict.schema.json"
 DISCOVERY_SCHEMA = ROOT / "tooling" / "schemas" / "discovery-record.schema.json"
+DISPOSAL_SCHEMA = ROOT / "tooling" / "schemas" / "disposal-record.schema.json"
 ARTIFACT_POLICY = ROOT / "policy" / "artifact-policy.yml"
 
 HEADER = (
@@ -147,6 +148,47 @@ def build_discovery_schema(artifact_policy: dict) -> dict:
     }
 
 
+def build_disposal_schema(artifact_policy: dict) -> dict:
+    """The disposal record, from policy rather than a copy kept here."""
+    contract = artifact_policy["artifacts"]["prototype"]["disposal_record"]
+    decisions = list(contract["decisions"])
+    props: dict[str, dict] = {}
+    required: list[str] = []
+    for entry in contract["required_fields"]:
+        name = entry["id"]
+        if name == "decision":
+            props[name] = {"enum": decisions}
+        elif "values" in entry:
+            props[name] = {"enum": list(entry["values"])}
+        elif name in ("questions", "findings", "artifacts"):
+            props[name] = {"type": "array", "items": {"type": "string", "minLength": 1}}
+        else:
+            props[name] = {"type": "string", "minLength": 1}
+        if entry.get("note"):
+            props[name]["description"] = " ".join(entry["note"].split())
+        required.append(name)
+
+    # Only meaningful when the decision is promote, and checked separately so
+    # the message can say why rather than reporting a bare schema violation.
+    for name in contract["promote_requires"]:
+        props[name] = {"type": "string", "minLength": 1}
+    for name in contract["spike_required_fields"]:
+        props.setdefault(name, {"type": "string", "minLength": 1})
+
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Disposal record",
+        "description": (
+            "What a prototype or spike learned, and what becomes of it. "
+            "Generated from policy/artifact-policy.yml."
+        ),
+        "type": "object",
+        "additionalProperties": False,
+        "required": required,
+        "properties": props,
+    }
+
+
 def render(policy: dict) -> dict[Path, str]:
     common = policy.get("common_sections") or []
     out: dict[Path, str] = {}
@@ -160,8 +202,11 @@ def render(policy: dict) -> dict[Path, str]:
         "blank_issues_enabled": False,
     })
     out[SCHEMA_PATH] = json.dumps(build_schema(policy), indent=2) + "\n"
+    artifact_policy = load_yaml(ARTIFACT_POLICY)
     out[DISCOVERY_SCHEMA] = json.dumps(
-        build_discovery_schema(load_yaml(ARTIFACT_POLICY)), indent=2) + "\n"
+        build_discovery_schema(artifact_policy), indent=2) + "\n"
+    out[DISPOSAL_SCHEMA] = json.dumps(
+        build_disposal_schema(artifact_policy), indent=2) + "\n"
     return out
 
 

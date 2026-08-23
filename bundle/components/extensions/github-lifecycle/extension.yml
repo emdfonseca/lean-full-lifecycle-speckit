@@ -44,6 +44,9 @@ provides:
   - name: speckit.github-lifecycle.discover
     file: commands/discover.md
     description: Validate a bounded discovery record.
+  - name: speckit.github-lifecycle.disposal
+    file: commands/disposal.md
+    description: Validate the disposal decision for a prototype or spike.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.

@@ -133,6 +133,39 @@ def operation_id(issue: str, role: str, observed: str | None, target: str) -> st
 
 TERMINAL_STATE = "Output Done"
 
+# Where a disposal record is expected. Searched rather than configured: a
+# configurable location is one more thing to get wrong on the path that already
+# refuses four ways.
+DISPOSAL_DIR = ".specify/lifecycle/disposal"
+# Markers in an issue that say uncertainty work informed it.
+UNCERTAINTY_MARKERS = ("prototype", "spike")
+
+
+def disposal_required(current_state: str | None, issue_number: int,
+                      inspection: Inspection, gh: GitHub | None,
+                      root: Path | None = None) -> bool:
+    """True when this item was informed by a prototype or spike and has no record.
+
+    Detected from the item's labels rather than inferred from its prose: a
+    label is a decision somebody made, and prose is not.
+    """
+    if gh is None:
+        return False
+    try:
+        issue = gh.rest(
+            "GET", f"repos/{inspection.owner}/{inspection.repo}/issues/{issue_number}"
+        ) or {}
+    except GitHubError:
+        return False
+    labels = {str(lbl.get("name", "")).lower() for lbl in issue.get("labels") or []}
+    if not labels.intersection(UNCERTAINTY_MARKERS):
+        return False
+    base = Path(root) if root else Path.cwd()
+    directory = base / DISPOSAL_DIR
+    if not directory.is_dir():
+        return True
+    return not any(directory.glob(f"*{issue_number}*"))
+
 
 def child_issue_numbers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[int]:
     rows = gh.rest("GET", f"repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
@@ -168,6 +201,16 @@ def build_plan(backend: FieldBackend, inspection: Inspection, machine: dict,
                gh: GitHub | None = None) -> TransitionPlan:
     current = backend.read(issue_number, role)
     edge = find_transition(machine, current.value, target)
+
+    if target == TERMINAL_STATE and disposal_required(current.value, issue_number,
+                                                     inspection, gh):
+        raise PlanError(
+            f"#{issue_number} was informed by a prototype or spike, and no "
+            f"disposal record was found. artifact-policy.yml classes those "
+            f"artifacts ephemeral with promotion only by explicit decision; "
+            f"completing without deciding is how prototype code becomes "
+            f"production code by default. Record a disposal at "
+            f"{DISPOSAL_DIR}/<id>.md.")
 
     if target == TERMINAL_STATE and gh is not None:
         blocking = incomplete_children(gh, backend, inspection, issue_number, role)

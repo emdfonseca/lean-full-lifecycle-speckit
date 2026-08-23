@@ -111,6 +111,24 @@
         "steps": 11
       }
     },
+    "lifecycle-prototype": {
+      "name": "Executable Prototype",
+      "id": "lifecycle-prototype",
+      "version": "0.1.0",
+      "description": "Answer named interaction questions with throwaway code, then decide what becomes of it.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 6
+      }
+    },
     "lifecycle-refine": {
       "name": "Refine to Ready",
       "id": "lifecycle-refine",
@@ -163,6 +181,24 @@
       "url": "UNSET",
       "provides": {
         "steps": 13
+      }
+    },
+    "lifecycle-spike": {
+      "name": "Technical Spike",
+      "id": "lifecycle-spike",
+      "version": "0.1.0",
+      "description": "Answer one bounded technical question within a stated time box, then decide what becomes of it.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 6
       }
     },
     "lifecycle-story-delivery": {

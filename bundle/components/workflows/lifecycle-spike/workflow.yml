@@ -1,0 +1,110 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-spike
+  name: Technical Spike
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Answer one bounded technical question within a stated time box, then decide what becomes of it.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  issue_ref:
+    type: string
+    required: true
+  question:
+    type: string
+    required: true
+  time_box:
+    type: string
+    default: one day
+  disposal_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: bound-the-spike
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Bound this spike for {{ inputs.issue_ref }} before starting.
+
+
+      Write .specify/lifecycle/spike-scope-{{ context.run_id }}.md stating the
+      question ({{ inputs.question }}), the permitted scope, the evidence that
+      would answer it, the time box ({{ inputs.time_box }}), and the exit
+      criteria.
+
+
+      A spike without a boundary is open-ended investigation. The exit criteria
+      must include the case where the answer invalidates the work that prompted
+      it, because that is the outcome most likely to be argued away.
+
+  - id: investigate
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Investigate within the stated scope and time box.
+
+
+      Stop at the time box whether or not you have an answer, and report what
+      is known. An expired spike with a partial answer is a result; a spike
+      that quietly ran long has destroyed the boundary that made it a spike.
+
+  - id: record-disposal
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Write .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+      as a fenced yaml record with kind, question, permitted_scope,
+      required_evidence, time_box, exit_criteria, questions, findings,
+      decision, and artifacts.
+
+
+      Record the answer, or record that there is none. "unresolved" is a
+      legitimate finding and the time box is what makes it an honest one.
+
+
+      Choose delete, archive, or promote for anything the spike produced.
+  - id: validate-disposal
+    command: speckit.github-lifecycle.disposal
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Validate .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md.
+        Stop on any blocking finding; the work this informed cannot complete
+        without a decided disposal.
+
+  - id: approve-disposal
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: disposal_verdict
+    show_file: .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve this disposal. Promotion carries the artifacts into production
+      and is the decision the ephemeral classification exists to make
+      deliberate.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report what was asked, what was learned, and what becomes of the
+      artifacts.
+
+
+      Name every artifact affected. If the decision was delete or archive, say
+      plainly that none of them may be promoted later without a new decision.
+
+
+      Reconcile the findings with the spec before anything asserts them. What
+      was learned here is evidence, and evidence is not intent.
