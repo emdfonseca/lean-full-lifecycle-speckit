@@ -157,7 +157,13 @@ def disposal_required(current_state: str | None, issue_number: int,
         ) or {}
     except GitHubError:
         return False
-    labels = {str(lbl.get("name", "")).lower() for lbl in issue.get("labels") or []}
+    if not isinstance(issue, dict):
+        # A response that is not an issue cannot say the item came from a
+        # prototype. Refusing completion on that basis would block the
+        # transition for a reason unrelated to disposal.
+        return False
+    labels = {str(lbl.get("name", "")).lower()
+              for lbl in issue.get("labels") or [] if isinstance(lbl, dict)}
     if not labels.intersection(UNCERTAINTY_MARKERS):
         return False
     base = Path(root) if root else Path.cwd()
