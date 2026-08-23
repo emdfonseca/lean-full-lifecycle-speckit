@@ -127,6 +127,11 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
+    if getattr(gh, "dry_run", False):
+        # Nothing was created, so there is nothing to read back or link.
+        # Reporting the intent is the whole point of a dry run.
+        return {"number": None, "type": item_type, "parent": parent,
+                "dry_run": True, "title": title}
     if not created or created.get("number") is None:
         raise GitHubError("issue creation returned no number")
     number = int(created["number"])

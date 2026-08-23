@@ -641,6 +641,30 @@ requirements:
       - "tests/test_capture.py::test_an_exact_title_matches"
       - "tests/test_capture.py::test_creation_reads_back_the_type_label"
 
+  - id: REQ-BACKLOG-DECOMPOSE-001
+    statement: >-
+      Decomposition is bounded by a target count of Ready children. Nothing
+      beyond that horizon is created however much is proposed, the surplus is
+      reported as deliberately undecomposed, and new children begin Inbox.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-decompose
+      - command:speckit.github-lifecycle.decompose
+      - script:bundle/components/extensions/github-lifecycle/scripts/decompose.py
+    verified_by:
+      - "tests/test_decompose.py::test_only_ready_children_count_toward_the_horizon"
+      - "tests/test_decompose.py::test_a_met_horizon_asks_for_nothing_more"
+      - "tests/test_decompose.py::test_unrefined_children_are_recommended_before_new_ones"
+      - "tests/test_decompose.py::test_a_rerun_against_a_met_horizon_creates_nothing"
+      - "tests/test_decompose.py::test_nothing_beyond_the_horizon_is_created"
+      - "tests/test_decompose.py::test_created_children_begin_inbox"
+      - "tests/test_decompose.py::test_created_children_are_linked_to_the_epic"
+      - "tests/test_decompose.py::test_a_duplicate_proposal_is_skipped_not_created"
+      - "tests/test_decompose.py::test_the_workflow_gates_before_creating"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

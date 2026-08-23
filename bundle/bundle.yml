@@ -33,6 +33,8 @@ provides:
     version: 0.1.0
   - id: lifecycle-bugfix
     version: 0.1.0
+  - id: lifecycle-decompose
+    version: 0.1.0
   - id: lifecycle-greenfield-bootstrap
     version: 0.1.0
   - id: lifecycle-incident-hotfix

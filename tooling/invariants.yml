@@ -32,6 +32,7 @@ script_backed_commands:
   - readiness
   - capture
   - link
+  - decompose
   - doctor
 
 # Safety keys the extension config template must declare, with required values.

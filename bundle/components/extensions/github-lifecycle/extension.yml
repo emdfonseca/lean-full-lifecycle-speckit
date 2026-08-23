@@ -35,6 +35,9 @@ provides:
   - name: speckit.github-lifecycle.readiness
     file: commands/readiness.md
     description: Validate a readiness verdict before an item may become Ready.
+  - name: speckit.github-lifecycle.decompose
+    file: commands/decompose.md
+    description: Report an Epic's decomposition horizon and create approved children.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.

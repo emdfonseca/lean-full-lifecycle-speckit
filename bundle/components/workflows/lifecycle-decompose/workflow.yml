@@ -1,0 +1,107 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-decompose
+  name: Decompose to the Horizon
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Break an Epic into enough bounded children to meet a target of Ready children, and no more.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  epic_ref:
+    type: string
+    required: true
+  target_ready_count:
+    type: string
+    default: '3'
+  proposal_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: read-horizon
+    command: speckit.github-lifecycle.decompose
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Report the decomposition horizon for {{ inputs.epic_ref }} against a
+        target of {{ inputs.target_ready_count }} Ready children. Read-only.
+        Report which children are Ready, done, and in flight.
+
+  - id: decide-whether-to-decompose
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Decide whether {{ inputs.epic_ref }} needs decomposing at all.
+
+
+      Creating children does not fill the Ready queue; refining them does. If
+      the horizon is short but unrefined children already exist, say so and
+      stop: those should be refined before more are created.
+
+
+      Write .specify/lifecycle/decompose-{{ context.run_id }}.md stating the
+      shortfall, whether existing children can cover it, and your
+      recommendation.
+
+  - id: propose-children
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Propose bounded children for {{ inputs.epic_ref }}, only if the previous
+      step recommended it.
+
+
+      Propose no more than the shortfall. Each must satisfy the content
+      contract for its type in policy/item-types.yml, including acceptance
+      criteria in Given/When/Then form for a Story.
+
+
+      Write .specify/lifecycle/proposals-{{ context.run_id }}.json as
+      {"proposals": [{"title": ..., "body": ..., "type": ...}]}.
+
+
+      Say explicitly what scope you are leaving undecomposed and why. That is a
+      decision a reader must be able to see, not an omission.
+
+  - id: approve-proposals
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: proposal_verdict
+    show_file: .specify/lifecycle/proposals-{{ context.run_id }}.json
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Approve creating these children. Creation is the least reversible
+      operation here, and rejecting creates nothing.
+
+  - id: create-children
+    command: speckit.github-lifecycle.decompose
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Apply the approved proposals at
+        .specify/lifecycle/proposals-{{ context.run_id }}.json for
+        {{ inputs.epic_ref }} against a target of
+        {{ inputs.target_ready_count }} Ready children. Each is searched for
+        duplicates and checked against its content contract, then linked and
+        read back.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report what was created, what was skipped and why, and what was left
+      undecomposed.
+
+
+      New children are Inbox. They are candidates for refinement, not work that
+      is ready to start, and nothing here has moved the Ready count.
