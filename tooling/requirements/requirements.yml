@@ -561,6 +561,42 @@ requirements:
       - "tests/test_workflow_refine.py::test_rejecting_a_gate_aborts_the_run"
       - "tests/test_workflow_refine.py::test_the_workflow_is_registered_by_generation"
 
+  - id: REQ-BACKLOG-BLOCKED-001
+    statement: >-
+      Blocking is recorded as a dependency and never as a delivery state. An
+      item that is Ready while blocked is reported, because it claims to be
+      startable and is not.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:state-machine.yml
+      - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_transition.py::test_blocking_does_not_change_the_delivery_state"
+      - "tests/test_transition.py::test_a_ready_but_blocked_item_is_reported"
+      - "tests/test_transition.py::test_a_blocked_item_elsewhere_in_the_flow_is_not_reported"
+      - "tests/test_transition.py::test_the_state_machine_gains_no_state"
+
+  - id: REQ-BACKLOG-QUEUE-001
+    statement: >-
+      The startable queue counts only items that are Ready and unblocked, and
+      items safe to refine ahead are distinguished from those awaiting
+      decomposition.
+    priority: should
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:state-machine.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_transition.py::test_only_unblocked_ready_items_count_as_startable"
+      - "tests/test_transition.py::test_an_item_with_an_open_blocker_is_not_safe_to_refine_ahead"
+      - "tests/test_transition.py::test_epics_are_separated_from_refinable_items"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

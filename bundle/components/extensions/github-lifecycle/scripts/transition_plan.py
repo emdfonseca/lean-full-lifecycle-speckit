@@ -271,6 +271,16 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                 number,
                 f"closed while delivery state is {value!r}. "
                 f"Closure follows completion; it cannot precede it."))
+        if value == "Ready":
+            blocking = blockers(gh, inspection.owner, inspection.repo, int(number))
+            if blocking:
+                named = ", ".join(
+                    f"{b.get('repository', {}).get('full_name', '?')}#{b['number']}"
+                    for b in blocking)
+                found.append(Inconsistency(
+                    number,
+                    f"is Ready but blocked by {named}. It claims to be "
+                    f"startable and is not."))
         if value == TERMINAL_STATE:
             blocking = incomplete_children(gh, backend, inspection, int(number), role)
             if blocking:
@@ -279,6 +289,82 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                     number,
                     f"is {TERMINAL_STATE} but these children are not: {listed}"))
     return found
+
+
+def blockers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[dict]:
+    """Unresolved issues this one is blocked by, in any repository.
+
+    Dependencies take a global issue id, so a blocker may live in another
+    project. That is the case this exists for: work waiting on a dependency
+    nobody here can schedule.
+    """
+    rows = gh.rest("GET", f"repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by",
+                   paginate=True) or []
+    if isinstance(rows, dict):
+        rows = [rows]
+    return [r for r in rows if r.get("state") != "closed"]
+
+
+@dataclass(frozen=True)
+class QueueEntry:
+    issue: int
+    state: str
+    blocked_by: list[str]
+    item_type: str = "unknown"
+
+    @property
+    def startable(self) -> bool:
+        return self.state == "Ready" and not self.blocked_by
+
+    @property
+    def decomposable(self) -> bool:
+        return self.item_type == "epic"
+
+
+def item_type_of(issue: dict, decomposable: set[str]) -> str:
+    """Type from labels. Item types are labels in the repository-scoped model."""
+    names = {str(lbl.get("name", "")).lower() for lbl in issue.get("labels") or []}
+    for candidate in ("epic", "story", "bug", "spike"):
+        if candidate in names:
+            return candidate
+    return "unknown"
+
+
+def ready_queue(gh: GitHub, backend: FieldBackend, inspection: Inspection,
+                role: str = "delivery_state",
+                decomposable: set[str] | None = None) -> list[QueueEntry]:
+    """Every open item's delivery state and what blocks it.
+
+    Two things are called the Ready queue and only one of them is: items that
+    are Ready, and items that are Ready *and unblocked*. Only the second can
+    be started, and only the second should be counted when deciding whether
+    refinement needs to run further ahead.
+    """
+    issues = gh.rest("GET", f"repos/{inspection.owner}/{inspection.repo}/issues?state=open",
+                     paginate=True) or []
+    if isinstance(issues, dict):
+        issues = [issues]
+
+    entries: list[QueueEntry] = []
+    for issue in issues:
+        number = issue.get("number")
+        if number is None or issue.get("pull_request"):
+            continue
+        try:
+            state = backend.read(int(number), role).value
+        except NotFound:
+            continue
+        if state is None:
+            continue
+        blocking = blockers(gh, inspection.owner, inspection.repo, int(number))
+        entries.append(QueueEntry(
+            issue=int(number),
+            state=state,
+            blocked_by=[f"{b.get('repository', {}).get('full_name', '?')}#{b['number']}"
+                        for b in blocking],
+            item_type=item_type_of(issue, decomposable or {"epic"}),
+        ))
+    return entries
 
 
 def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = False):
@@ -318,6 +404,11 @@ def main() -> int:
 
     sub.add_parser("audit", help="Report board state that contradicts the policy.")
 
+    p_queue = sub.add_parser(
+        "queue", help="Show what is startable now, what is blocked, and what is next.")
+    p_queue.add_argument("--target", type=int, default=3,
+                         help="Desired number of startable items.")
+
     args = ap.parse_args()
     try:
         machine = load_state_machine(args.policy_root)
@@ -341,6 +432,41 @@ def main() -> int:
                 print(item)
             print(f"\n{len(problems)} inconsistencies")
             return 1 if problems else 0
+
+        if args.cmd == "queue":
+            entries = ready_queue(gh, backend, inspection)
+            startable = [e for e in entries if e.startable]
+            blocked = [e for e in entries if e.blocked_by]
+            pending = [e for e in entries
+                       if e.state in ("Inbox", "Refining") and not e.blocked_by]
+            # An Epic is decomposed, not refined to Ready. Listing them
+            # together tells a refiner to do the wrong thing.
+            refinable = [e for e in pending if not e.decomposable]
+            awaiting = [e for e in pending if e.decomposable]
+
+            print(f"Startable now ({len(startable)}):")
+            for e in startable:
+                print(f"  #{e.issue} [{e.item_type}]")
+            print(f"\nBlocked ({len(blocked)}):")
+            for e in blocked:
+                print(f"  #{e.issue} [{e.state}] blocked by {', '.join(e.blocked_by)}")
+            print(f"\nSafe to refine ahead ({len(refinable)}):")
+            for e in refinable:
+                print(f"  #{e.issue} [{e.state}] {e.item_type}")
+            print(f"\nAwaiting decomposition ({len(awaiting)}):")
+            for e in awaiting:
+                print(f"  #{e.issue} [{e.state}] {e.item_type}")
+
+            shortfall = args.target - len(startable)
+            if shortfall > 0:
+                source = ("Refine from the safe list" if refinable
+                          else "Decompose an Epic first; nothing is refinable")
+                print(f"\n{shortfall} short of a startable queue of {args.target}. "
+                      f"{source}. Those items have no open blocker, so nothing "
+                      f"in flight can change their shape.")
+            else:
+                print(f"\nQueue is at target ({args.target}).")
+            return 0
 
         plan = TransitionPlan.from_markdown(args.plan.read_text(encoding="utf-8"))
         evidence = dict(

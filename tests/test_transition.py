@@ -444,3 +444,117 @@ def test_the_audit_writes_nothing():
     tp.audit_board(gh, be, insp)
     assert not any("PATCH" in " ".join(c) for c in gh.audit and [] or [])
     assert all(a.outcome in ("ok", "error") for a in gh.audit)
+
+
+# --- blocking and the ready queue ---------------------------------------------
+
+class QueueBoard(AuditBoard):
+    """Issues with labels and dependencies."""
+
+    def __init__(self, issues, states, blocked=None, labels=None):
+        super().__init__(issues, states)
+        self.blocked = blocked or {}          # number -> [(repo, number, state)]
+        self.labels = labels or {}            # number -> [label]
+
+    def __call__(self, args, stdin):
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        if url.endswith("/blocked_by"):
+            self.calls.append(list(args))
+            n = int(url.split("/issues/")[1].split("/")[0])
+            return self._ok([
+                {"number": num, "state": st, "repository": {"full_name": repo}}
+                for repo, num, st in self.blocked.get(n, [])])
+        if url.endswith("/issues"):
+            self.calls.append(list(args))
+            return self._ok([
+                {"number": n, "state": s,
+                 "labels": [{"name": lbl} for lbl in self.labels.get(n, [])]}
+                for n, s in self.issues.items()])
+        return super().__call__(args, stdin)
+
+
+def queue_setup(issues, states, blocked=None, labels=None):
+    board = QueueBoard(issues, states, blocked, labels)
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    return gh, insp, fb.ProjectFieldBackend(gh, insp)
+
+
+@pytest.mark.req("REQ-BACKLOG-BLOCKED-001")
+def test_blocking_does_not_change_the_delivery_state():
+    gh, insp, be = queue_setup(
+        {1: "open"}, {1: "Ready"},
+        blocked={1: [("github/spec-kit", 4282, "open")]})
+    assert be.read(1, "delivery_state").value == "Ready"
+    entry = tp.ready_queue(gh, be, insp)[0]
+    assert entry.state == "Ready"
+
+
+@pytest.mark.req("REQ-BACKLOG-BLOCKED-001")
+def test_a_ready_but_blocked_item_is_reported():
+    gh, insp, be = queue_setup(
+        {1: "open"}, {1: "Ready"},
+        blocked={1: [("github/spec-kit", 4282, "open")]})
+    problems = tp.audit_board(gh, be, insp)
+    assert problems and "Ready but blocked" in problems[0].problem
+    assert "github/spec-kit#4282" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-BLOCKED-001")
+def test_a_blocked_item_elsewhere_in_the_flow_is_not_reported():
+    # Nothing claimed it was startable, so nothing is misleading.
+    gh, insp, be = queue_setup(
+        {1: "open"}, {1: "Refining"},
+        blocked={1: [("github/spec-kit", 4282, "open")]})
+    assert tp.audit_board(gh, be, insp) == []
+
+
+def test_a_closed_blocker_no_longer_blocks():
+    gh, insp, be = queue_setup(
+        {1: "open"}, {1: "Ready"},
+        blocked={1: [("github/spec-kit", 4282, "closed")]})
+    assert tp.audit_board(gh, be, insp) == []
+    assert tp.ready_queue(gh, be, insp)[0].startable
+
+
+@pytest.mark.req("REQ-BACKLOG-BLOCKED-001")
+def test_the_state_machine_gains_no_state():
+    machine = tp.load_state_machine(ROOT)
+    assert machine["delivery_status"]["values"] == [
+        "Inbox", "Refining", "Ready", "In Progress", "Output Done"]
+    assert machine["blocking"]["changes_delivery_status"] is False
+
+
+# --- refining ahead -----------------------------------------------------------
+
+@pytest.mark.req("REQ-BACKLOG-QUEUE-001")
+def test_only_unblocked_ready_items_count_as_startable():
+    gh, insp, be = queue_setup(
+        {1: "open", 2: "open"}, {1: "Ready", 2: "Ready"},
+        blocked={2: [("other/repo", 9, "open")]})
+    startable = [e for e in tp.ready_queue(gh, be, insp) if e.startable]
+    assert [e.issue for e in startable] == [1]
+
+
+@pytest.mark.req("REQ-BACKLOG-QUEUE-001")
+def test_an_item_with_an_open_blocker_is_not_safe_to_refine_ahead():
+    # Its blocker may change what it means, so refining it now wastes the work.
+    gh, insp, be = queue_setup(
+        {1: "open"}, {1: "Inbox"},
+        blocked={1: [("other/repo", 9, "open")]},
+        labels={1: ["story"]})
+    entry = tp.ready_queue(gh, be, insp)[0]
+    assert entry.blocked_by and not entry.startable
+
+
+@pytest.mark.req("REQ-BACKLOG-QUEUE-001")
+def test_epics_are_separated_from_refinable_items():
+    # An Epic is decomposed, not refined to Ready. Listing them together tells
+    # a refiner to do the wrong thing.
+    gh, insp, be = queue_setup(
+        {1: "open", 2: "open"}, {1: "Inbox", 2: "Inbox"},
+        labels={1: ["epic"], 2: ["story"]})
+    entries = {e.issue: e for e in tp.ready_queue(gh, be, insp)}
+    assert entries[1].decomposable
+    assert not entries[2].decomposable

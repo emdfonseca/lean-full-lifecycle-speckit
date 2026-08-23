@@ -110,7 +110,30 @@ duplicate has not been delivered — enforcing with that evidence would let a
 parent complete over abandoned work. It is the same distinction as
 `infer_output_done_from_closed_issue: false`.
 
-## A gap: nothing represents blocked
+## Refining ahead of implementation
+
+Refinement does not have to wait for the work in flight. An item with no open
+blocker cannot be reshaped by anything currently being built, so it can be
+refined to Ready while other work proceeds — which is what keeps a reviewer
+busy without forcing them to review and implement in lockstep.
+
+An item *with* an open blocker should not be refined ahead: the blocker may
+change what it means, and the refinement would be redone.
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/transition_plan.py \
+  --repo <owner>/<name> --project <n> queue --target 3
+```
+
+Four groups, and the distinction between the last two matters:
+
+- **Startable now** — Ready and unblocked. Only these count toward the target.
+- **Blocked** — whatever their state, with the blocker named.
+- **Safe to refine ahead** — no open blocker, and not an Epic.
+- **Awaiting decomposition** — Epics. An Epic is decomposed, not refined to
+  Ready, and listing it as refinable tells a reviewer to do the wrong thing.
+
+## Blocked is not a state
 
 `policy/state-machine.yml` defines Inbox, Refining, Ready, In Progress, and
 Output Done. None of them describes an item that is understood, agreed, and

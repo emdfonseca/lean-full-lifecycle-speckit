@@ -1,3 +1,19 @@
+# Blocking is deliberately absent from these values. It is a modal attribute,
+# not a phase: an item can be blocked while Refining, Ready, or In Progress, and
+# making it a state destroys the phase it was in. Blocking is recorded as a
+# native issue dependency, which is orthogonal and never changes the delivery
+# state. See ADR 0004.
+blocking:
+  mechanism: native_issue_dependencies
+  changes_delivery_status: false
+  # An item that is Ready while blocked claims to be startable and is not.
+  report_when: ready_and_blocked
+  # Refinement may run ahead of implementation for items with no open blocker,
+  # since nothing in flight can change their shape. An item with an open
+  # blocker should not be refined to Ready: the blocker may change what it
+  # means.
+  refine_ahead_requires: no_open_blocker
+
 delivery_status:
   values:
     - Inbox
