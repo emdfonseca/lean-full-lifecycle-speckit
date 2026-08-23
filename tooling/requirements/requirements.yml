@@ -1771,3 +1771,30 @@ requirements:
     evidence:
       - "Issue #55"
       - "Issue #86"
+
+  - id: REQ-PACKAGE-MECHANICS-001
+    statement: >-
+      The install lifecycle must be verified by its effects, not by exit
+      codes. The official validator runs in the suite and is shown able to
+      fail; an update restores a component that was changed or deleted, so an
+      update that refreshed nothing cannot pass; a reinstall is asserted to
+      have restored the presets, components, and files removal took; the
+      behaviour of installing from a built archive is pinned; and a failed
+      install leaves no partial component and is not recorded as installed.
+    priority: must
+    owner: framework
+    release: "0.9.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - preset:lean-full-lifecycle-governance
+    verified_by:
+      - "tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_runs_and_passes"
+      - "tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_rejects_a_broken_manifest"
+      - "tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_component_that_was_changed"
+      - "tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_deleted_component_file"
+      - "tests/sandbox/test_bundle_mechanics.py::test_reinstall_restores_presets_commands_and_components"
+      - "tests/sandbox/test_bundle_mechanics.py::test_installing_from_a_built_archive_is_recorded"
+      - "tests/sandbox/test_bundle_mechanics.py::test_a_failed_install_leaves_no_partial_component"
+    evidence:
+      - "Issue #83"
