@@ -618,6 +618,29 @@ requirements:
       - "tests/test_transition.py::test_an_item_with_an_open_blocker_is_not_safe_to_refine_ahead"
       - "tests/test_transition.py::test_epics_are_separated_from_refinable_items"
 
+  - id: REQ-BACKLOG-CAPTURE-001
+    statement: >-
+      A finding is searched for duplicates before it is created, including
+      against closed items, and an observation lacking the evidence its type
+      requires is reported rather than filed as work.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.capture
+      - command:speckit.github-lifecycle.link
+      - script:bundle/components/extensions/github-lifecycle/scripts/capture.py
+      - policy:item-types.yml
+    verified_by:
+      - "tests/test_capture.py::test_a_duplicate_is_surfaced_before_creation"
+      - "tests/test_capture.py::test_a_reworded_title_still_matches"
+      - "tests/test_capture.py::test_closed_issues_are_searched_too"
+      - "tests/test_capture.py::test_an_observation_is_not_filed_as_work"
+      - "tests/test_capture.py::test_an_item_created_without_its_type_is_a_failure"
+      - "tests/test_capture.py::test_an_exact_title_matches"
+      - "tests/test_capture.py::test_creation_reads_back_the_type_label"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

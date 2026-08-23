@@ -21,14 +21,17 @@ plan_command: speckit.github-lifecycle.plan
 # calls. Prose leaves the agent to decide how to reach the API, which is the
 # freedom the deterministic adapter exists to remove.
 #
-# capture and link are absent deliberately: they have no implementation behind
-# them yet, and P5 decides whether they are wired or removed. Listing them
-# would demand an implementation to justify a command.
+# Settled in #48: capture and link are kept. Upstream speckit.taskstoissues
+# converts a feature's tasks.md into issues, which is implementation
+# decomposition inside a feature -- a different job from capturing a finding
+# into the backlog, and from managing hierarchy.
 script_backed_commands:
   - inspect
   - plan
   - transition
   - readiness
+  - capture
+  - link
   - doctor
 
 # Safety keys the extension config template must declare, with required values.
