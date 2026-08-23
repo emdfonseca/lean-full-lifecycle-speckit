@@ -16,7 +16,9 @@ requirement
 → release evidence
 ```
 
-The current `0.1.0` source is the frozen baseline.
+The `0.1.0` source is the baseline in *scope*, not in correctness. Phases
+`P0a`-`P0e` changed every manifest, relocated the packaged surface, and raised
+the Spec Kit pin. See `docs/evidence/substrate-1.0.1.md`.
 
 ## Success definition
 
@@ -64,25 +66,43 @@ The target remains:
 1 additive governance preset
 1 GitHub integration extension
 15 lifecycle workflows
+1 source tooling, CI, packaging, and docs layer
 0 replacement runtimes
 0 forks of Spec Kit core
 ```
+
+The tooling layer is not shipped. Spec Kit packages the whole bundle directory
+and honours no ignore file, so everything outside `bundle/` is structurally
+excluded from the artifact rather than filtered out of it.
+
+`lifecycle-agent-bootstrap` is counted among the fifteen, but its packaging form
+is unsettled: the bundle ships `components/` only, so a bootstrap script at the
+repository root has no install path. If a workflow package cannot carry an
+auxiliary script, the inventory is fourteen workflows plus one out-of-band
+script.
 
 ## Release sequence
 
 | Release | Purpose | Exit condition |
 |---|---|---|
-| `0.1.1` | Establish executable traceability and prove official Spec Kit substrate | Official validate/build/install lifecycle passes |
-| `0.2.0` | Complete backlog, uncertainty, and outcome workflows | All lifecycle loops exist and pass sandbox tests |
-| `0.3.0` | Replace routine agent-driven infrastructure mutations | Deterministic GitHub adapter and OpenCode role bootstrap pass |
-| `0.9.0` | Full acceptance and pilot hardening | Greenfield, brownfield, monorepo, and security suites pass |
-| `1.0.0` | Publish supported bundle | Catalog install/update/remove and release governance pass |
+| `0.1.1` | Substrate, tooling, traceability, environment (`P0a`-`P0e`, `P1`, `P2`) | Official validate and build pass; catalog install lifecycle green; every requirement resolves to a passing test |
+| `0.2.0` | Deterministic adapter and every lifecycle loop (`P3`-`P8`) | All lifecycle loops exist and pass sandbox tests |
+| `0.3.0` | Correctness hardening and runtime setup (`P9`-`P11`) | Greenfield, brownfield, monorepo, and OpenCode role suites pass |
+| `0.9.0` | Full acceptance and pilots (`P12`-`P13`) | Every `must` scenario passes; four pilot streams complete |
+| `1.0.0` | Publish supported bundle (`P14`) | Hosted catalog install/update/remove and release governance pass |
+
+The GitHub adapter moved forward and the OpenCode bootstrap moved back relative
+to the original sequence. `P0a` established that the first vertical slice
+depends on the adapter, while `policy/model-routing.yml` is entirely
+unpopulated and its correct role set is unknowable until pilots run.
 
 ---
 
 # Phase 0 — Establish executable completeness control
 
-Do this before adding more features. It is the mechanism that prevents future
+Do this once the substrate is proven and before adding more features. Written
+against an unvalidated substrate, a requirement catalogue encodes the wrong
+requirements. It is the mechanism that prevents future
 omissions.
 
 ## Deliverables
@@ -207,6 +227,15 @@ devbox run smoke
 devbox run verify
 ```
 
+These duplicate `Makefile` one-for-one, and the repository already uses Make
+plus `requirements-dev.txt`. `P2` picks one and deletes the other; two ways to
+run the same four targets is the drift this roadmap exists to prevent.
+
+Note the two senses of Devbox are separate concerns. As *source tooling* it is
+optional and competes with Make. As a *target-project* dependency it is not
+optional: five of the seven workflows run `devbox run verify` or
+`devbox run release-verify`, and the product repository must provide them.
+
 ## Official validation
 
 Run:
@@ -216,11 +245,11 @@ specify bundle validate --path bundle/ --offline
 specify bundle build --path bundle/ --output dist/
 ```
 
-Then test in a clean empty repository:
+Then test in a clean empty repository, **through a catalog**:
 
 ```text
 bundle install
-bundle list
+bundle list          # must report the components the bundle owns
 bundle info
 second install
 bundle update
@@ -228,14 +257,35 @@ bundle remove
 reinstall
 ```
 
+None of this runs against a built ZIP. `specify bundle install` reads only the
+manifest and resolves every component from a catalog or from an asset shipped
+inside Spec Kit; the archive's contents are never used to install anything.
+`scripts/local_catalog.py` serves the component archives over
+`http://localhost` for exactly this reason, and `scripts/smoke_test.py`
+automates the sequence.
+
+Component catalogs must be HTTPS, with a localhost exemption. Only bundle
+catalogs additionally accept `file://`.
+
 Repeat in an existing Spec Kit repository.
 
 ## Verify composition
+
+Priority is **lower-number-wins**, so governance at `10` outranks Lean at `20`.
+That is deliberate and necessary: an appending preset must sort ahead of the one
+it appends to, or it has nothing to layer onto. `P0a` confirmed the chain
+resolves as `[base] lean` then `[append] governance`.
+
+Note that Lean supplies a base for only five of the nine commands governance
+addends. For `clarify`, `checklist`, `analyze`, and `converge` the core Spec Kit
+template is the base and Lean contributes nothing; `specify preset resolve`
+shows only preset layers, so it understates the chain for those four.
 
 Confirm:
 
 - official Lean is installed at priority `20`, strategy `replace`;
 - governance is installed at priority `10`, strategy `append`;
+- `priority` and `strategy` are accepted on `bundle.yml`'s `provides.presets[]`;
 - all intended core commands resolve;
 - all workflows resolve;
 - OpenCode remains the active integration;
@@ -251,7 +301,8 @@ Confirm:
 | OS | Linux, macOS, Windows/PowerShell where supported |
 | Repository | empty, existing Spec Kit, non-Git, monorepo member |
 | Integration | OpenCode primary, Claude Code smoke compatibility |
-| Install source | local directory, built ZIP, hosted catalog ID |
+| Install source | `--dev` directory, local catalog, hosted catalog ID |
+| Spec Kit version | the supported range's floor and its latest release |
 | Lifecycle | install, second install, update, remove, reinstall |
 
 ## Phase 1 exit gate
@@ -447,6 +498,9 @@ uncertainty_mode:
   spike
   threat-analysis
 ```
+
+Spec Kit `1.0.1` requires a `cases` block on workflow `switch` steps. Author the
+branch accordingly; a `switch` without `cases` fails manifest validation.
 
 ## Target Story flow
 
@@ -1074,29 +1128,39 @@ Total:
 No second extension is required. No custom workflow runtime is required. No
 core Spec Kit command is replaced.
 
+Two open items in the existing extension:
+
+- `capture` and `link` ship today and are wired into **zero** workflows. `P5`
+  either wires them or removes them; shipping unused commands in a
+  permission-bearing extension is not neutral.
+- Upstream ships `speckit.taskstoissues`, which overlaps `capture` and `link`.
+  Assess the overlap in `P5` before building more around them. The governance
+  preset addends nine core commands; upstream has ten, and `taskstoissues` is
+  the one it does not address.
+
 ---
 
 # Dependency order
 
 ```mermaid
 flowchart TD
-    R["Requirements + traceability"] --> S["Official Spec Kit validation"]
-    S --> B["Backlog workflows"]
-    S --> U["Uncertainty workflows"]
-    S --> G["Deterministic GitHub adapter"]
-    S --> A["OpenCode role bootstrap"]
+    SUB["Substrate proven against the real CLI"] --> CAT["Catalog harness"]
+    CAT --> TOOL["Single source of truth + CI"]
+    TOOL --> R["Requirements + traceability"]
 
-    B --> H["Greenfield/Brownfield hardening"]
-    U --> H
-    G --> H
-    A --> H
+    R --> G["Deterministic GitHub adapter"]
+    G --> B["Backlog workflows"]
+    B --> U["Uncertainty workflows"]
+    B --> O["Outcome review"]
 
+    U --> H["Greenfield/Brownfield hardening"]
+    O --> H
     H --> M["Monorepo + team tests"]
-    H --> O["Outcome-review completion"]
+    M --> A["OpenCode role bootstrap"]
 
-    M --> P["Pilot acceptance"]
-    O --> P
-    P --> PUB["Catalog publishing + 1.0"]
+    A --> ACC["Acceptance suite"]
+    ACC --> PIL["Pilot acceptance"]
+    PIL --> PUB["Catalog publishing + 1.0"]
 ```
 
 ---
@@ -1149,15 +1213,20 @@ This proves:
 Then implement, in order:
 
 ```text
-lifecycle-decompose
-→ lifecycle-discover
+deterministic GitHub adapter core
+→ lifecycle-refine
+→ lifecycle-decompose + relationships/capture/dedupe
+→ lifecycle-triage / lifecycle-discover
 → lifecycle-prototype / lifecycle-spike
 → lifecycle-outcome-review
-→ lifecycle-triage / capture hardening
+→ greenfield/brownfield and monorepo hardening
 → lifecycle-agent-bootstrap
-→ remaining deterministic GitHub operations
 → full acceptance and publishing
 ```
+
+The adapter comes first because the slice above depends on it. The original
+ordering placed the remaining GitHub operations after `lifecycle-agent-bootstrap`,
+which contradicted its own recommended first slice.
 
 Do not ask an agent to implement the entire roadmap in one change. Use one
 bounded GitHub Story/spec/PR per vertical slice.
@@ -1168,14 +1237,23 @@ bounded GitHub Story/spec/PR per vertical slice.
 
 A practical initial Epic/Story sequence:
 
-## Epic: Make the bundle officially executable
+## Epic: Make the bundle officially executable — complete
 
-1. Add requirements/traceability schemas and validator.
-2. Add Devbox development environment and commands.
-3. Pass official Spec Kit bundle validation.
-4. Pass official bundle build.
-5. Install/update/remove in an empty sandbox.
-6. Prove project overlay preservation.
+Delivered by `P0a`-`P0e`, in a different order than first written. The substrate
+check came first because it was the cheapest thing that could invalidate
+everything after it, and it did: the catalog harness (`P0c`) exists only because
+`P0a` established that a bundle artifact is not a container.
+
+1. ~~Add requirements/traceability schemas and validator.~~ → moved to `P1`,
+   after the substrate was proven.
+2. ~~Add Devbox development environment and commands.~~ → deferred to `P2`,
+   pending the Make-versus-Devbox decision above.
+3. Pass official Spec Kit bundle validation. — `specify bundle validate --path
+   bundle/ --offline`.
+4. Pass official bundle build. — 58 files, no development files.
+5. Install/update/remove in an empty sandbox. — `scripts/smoke_test.py`, 14
+   checks, over a local catalog.
+6. Prove project overlay preservation. — **outstanding**, carried into `P2`.
 
 ## Epic: Complete backlog operations
 
@@ -1218,6 +1296,9 @@ A practical initial Epic/Story sequence:
 
 # Immediate next action
 
-Start Phase 0 by creating the requirement catalog and traceability validator.
-Do not begin another workflow until CI can prove that every agreed requirement
-has an owning component and acceptance test.
+`P0a`-`P0e` are complete. The substrate is proven, the catalog harness exists,
+the component inventory has one source, and the documentation matches reality.
+
+Next is `P1`: the requirement catalogue and its validator. Do not begin another
+workflow until CI can prove that every agreed requirement has an owning
+component and a passing test, checked in both directions.
