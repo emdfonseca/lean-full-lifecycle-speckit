@@ -9,6 +9,38 @@ mechanisms this bundle itself prescribes.
 | Project board | https://github.com/users/emdfonseca/projects/3 |
 | Phases | one Epic issue per roadmap phase, `P0a` through `P14` |
 | Work items | Story issues, linked as native sub-issues of their Epic |
+| Releases | Milestones, one per version in the roadmap's release sequence |
+
+## Milestones are releases, not phases
+
+Phases are already Epics. A milestone per phase would be a second copy of the
+same grouping, which is the failure mode this repository spent P0d removing.
+
+Releases are a genuinely different axis: several phases ship as one version.
+
+| Milestone | Phases | Exit |
+|---|---|---|
+| `0.1.1` | P0a-P0e, P1, P2 | official validate and build pass, catalog install lifecycle green, traceability gate in CI |
+| `0.2.0` | P3-P8 | deterministic GitHub adapter plus all backlog, uncertainty, and outcome workflows |
+| `0.3.0` | P9-P11 | greenfield/brownfield correctness, monorepo targeting, OpenCode roles |
+| `0.9.0` | P12-P13 | every must-level acceptance scenario passes, four pilot streams complete |
+| `1.0.0` | P14 | repository public, catalogs published, hosted-catalog install verified |
+
+Milestones carry no due dates. There are none to state, and inventing them would
+be the same mistake as filling in Outcome Status.
+
+The two upstream tracking issues are deliberately unmilestoned: their timing
+depends on Spec Kit, not on this roadmap.
+
+## Closing versus Output Done
+
+An Epic is closed once its Delivery Status reaches Output Done, which
+`github-schema.yml` permits via `close_completed_after_output_done: true`.
+
+The inverse never holds. `infer_output_done_from_closed_issue` is false: an
+issue closed for any other reason (duplicate, withdrawn, superseded) says
+nothing about whether the work was completed. Delivery Status is authoritative;
+closure is a consequence of it, never evidence for it.
 
 ## Field model
 
