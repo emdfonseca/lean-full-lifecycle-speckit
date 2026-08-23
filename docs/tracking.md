@@ -32,6 +32,41 @@ be the same mistake as filling in Outcome Status.
 The two upstream tracking issues are deliberately unmilestoned: their timing
 depends on Spec Kit, not on this roadmap.
 
+## Delivery Status leads; closure follows
+
+Delivery Status is the record. Closing an issue is a consequence of reaching
+Output Done, never the thing that records it.
+
+That ordering was violated in practice before it was written down here: sixteen
+issues were closed while their Delivery Status still read Inbox, Ready, or
+Refining. The work was done and the commits prove it, but the field that is
+supposed to be authoritative had rotted, and the board would have reported four
+completed phases as untriaged.
+
+The rule, in order:
+
+1. Move the item to Output Done.
+2. Then close it.
+3. An Epic is In Progress while any child is, and Output Done only when its
+   children are.
+
+Reconciling closed issues after the fact is a repair, not the process. If the
+field is being backfilled, the board was not being used to run the work.
+
+## A gap: nothing represents blocked
+
+`policy/state-machine.yml` defines Inbox, Refining, Ready, In Progress, and
+Output Done. None of them describes an item that is understood, agreed, and
+waiting on something outside this project.
+
+#28 and #29 are exactly that: fully specified, worked around, and waiting on
+Spec Kit's maintainers. They currently sit in Inbox, which reads as untriaged
+and is wrong.
+
+This is a real gap in the policy rather than a board problem. Recorded here
+rather than patched, because changing the state machine is a governance decision
+and belongs in an ADR.
+
 ## Closing versus Output Done
 
 An Epic is closed once its Delivery Status reaches Output Done, which
@@ -72,6 +107,22 @@ only half of it had been exercised.
 
 Engineering state is tracked faithfully:
 `Inbox → Refining → Ready → In Progress → Output Done`.
+
+## Epics are the roots
+
+Every issue hangs off a phase Epic. A rootless issue is an exception and needs a
+reason, not an omission.
+
+- **Stories** attach to the Epic whose phase they deliver.
+- **Spikes** attach to whatever they unblock — the Story if one exists, otherwise
+  the Epic. A spike is bounded investigation *for* something, so it inherits that
+  something's parent.
+- **Upstream trackers** attach to the phase whose exit gate they constrain, not
+  the phase that discovered them. #28 and #29 surfaced during P0c but sit under
+  P12, because what they block is claiming the lifecycle is fully verified.
+
+Upstream trackers are also deliberately unmilestoned: their timing belongs to
+another project's maintainers.
 
 ## Decomposition is rolling-wave
 

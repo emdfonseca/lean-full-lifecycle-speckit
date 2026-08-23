@@ -269,6 +269,43 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-TRANSITION-CONTRACT]"
 
+  - id: REQ-GITHUB-ADAPTER-001
+    statement: >-
+      GitHub access goes through one adapter that distinguishes the failures a
+      caller must handle, retries only what is safe to retry, refuses to apply a
+      mutation twice, and can describe a mutation without performing it.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
+    verified_by:
+      - "tests/test_github_api.py::test_failures_are_classified_not_stringly_typed"
+      - "tests/test_github_api.py::test_reads_retry_until_they_succeed"
+      - "tests/test_github_api.py::test_a_mutation_without_an_operation_id_is_never_retried"
+      - "tests/test_github_api.py::test_a_mutation_with_an_operation_id_may_retry"
+      - "tests/test_github_api.py::test_the_same_operation_id_is_not_applied_twice"
+      - "tests/test_github_api.py::test_dry_run_performs_no_mutation_but_reports_it"
+      - "tests/test_github_api.py::test_graphql_errors_in_a_200_body_are_raised"
+
+  - id: REQ-SECURITY-AUDIT-001
+    statement: >-
+      Every GitHub operation is recorded, and no credential reaches the audit
+      trail or an error message.
+    priority: must
+    owner: security reviewer
+    release: "0.2.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
+      - policy:agent-policy.yml
+    verified_by:
+      - "tests/test_github_api.py::test_secrets_never_reach_the_audit_log"
+      - "tests/test_github_api.py::test_the_exception_message_is_redacted_too"
+      - "tests/test_github_api.py::test_every_call_is_audited"
+
   - id: REQ-GITHUB-READBACK-001
     statement: >-
       Every write to GitHub is read back and recorded, and Output Done is never

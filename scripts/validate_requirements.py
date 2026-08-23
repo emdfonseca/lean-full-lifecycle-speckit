@@ -152,8 +152,12 @@ def validate(result: Result) -> dict:
         if status == "withdrawn" and not (req.get("superseded_by") or req.get("rationale")):
             result.error(f"{rid}: withdrawn requires superseded_by or rationale")
 
+        known_fns = {_fn_key(n) for n in nodes}
         for node in verified_by:
-            if node not in nodes:
+            # A parametrised test collects as func[param]; citing the bare
+            # function is correct when every parametrisation verifies the
+            # requirement, and citing one arbitrary parameter would misstate it.
+            if node not in nodes and _fn_key(node) not in known_fns:
                 result.error(f"{rid}: verified_by {node!r} is not a collected test")
                 continue
             # Forward: the named test must claim this requirement back.
