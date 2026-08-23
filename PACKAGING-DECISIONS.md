@@ -52,4 +52,5 @@ The extension owns only:
 - no automatic production deployment;
 - no autonomous organization-schema mutation;
 - no arbitrary shell interpolation;
-- no separate tracker/database.
+- no separate tracker/database;
+- no GitHub App, and no hosted service of any kind (ADR 0002).

@@ -653,8 +653,10 @@ Enforce:
 
 # Phase 6 — Replace routine agent-driven GitHub mutation
 
-Keep one GitHub extension, but move routine infrastructure mutations into
-deterministic, tested scripts or a least-privilege GitHub App.
+Keep one GitHub extension, and move routine infrastructure mutations into
+deterministic, tested scripts.
+
+A GitHub App is explicitly out of scope for `1.0.0`. See ADR 0002.
 
 ## Target structure
 
@@ -742,14 +744,18 @@ Support:
 
 ```text
 local development
-→ gh/fine-grained token
+→ gh with a fine-grained personal access token
 
-organization automation
-→ least-privilege GitHub App
+CI / organization automation
+→ GITHUB_TOKEN, or a fine-grained token held as a secret
 ```
 
 Separate organization schema administration from routine issue-value
-transitions.
+transitions: they are different credentials with different scopes, not the same
+credential used carefully.
+
+A GitHub App is out of scope for `1.0.0` (ADR 0002). Nothing in the acceptance
+suite requires one.
 
 ## Phase 6 exit gate
 
@@ -1101,7 +1107,7 @@ flowchart TD
 |---|---|
 | Bundle maintainer | manifests, catalogs, versions, compatibility |
 | Workflow maintainer | lifecycle behavior, shared fragments, overlays |
-| GitHub integration engineer | deterministic API adapter and GitHub App |
+| GitHub integration engineer | deterministic API adapter and credential scoping |
 | Engineering governance owner | preset, Constitution, quality/risk policy |
 | Agent/runtime owner | OpenCode roles, models, permissions |
 | Product/process owner | readiness, decomposition, outcome semantics |
