@@ -57,14 +57,24 @@ class FieldBackend(ABC):
     def _field(self, role: str):
         return self.inspection.field_for(role)
 
-    def _verify(self, issue_number: int, role: str, intended: str) -> FieldValue:
+    def _verify(self, issue_number: int, role: str, intended: str,
+                skipped: bool = False) -> FieldValue:
         observed = self.read(issue_number, role)
-        if observed.value != intended:
+        if observed.value == intended:
+            return observed
+        if skipped:
+            # The operation id says this already applied, and it did -- but the
+            # value has since moved on. Surfacing that is the point: a caller
+            # replaying an id is asserting an effect that no longer holds.
             raise Conflict(
-                f"read-back mismatch on issue #{issue_number} {role}: "
-                f"wrote {intended!r}, read {observed.value!r}"
+                f"operation already applied to issue #{issue_number} {role}, "
+                f"but the value has since changed: expected {intended!r}, "
+                f"found {observed.value!r}. Use a new operation id to set it again."
             )
-        return observed
+        raise Conflict(
+            f"read-back mismatch on issue #{issue_number} {role}: "
+            f"wrote {intended!r}, read {observed.value!r}"
+        )
 
 
 class ProjectFieldBackend(FieldBackend):
@@ -106,7 +116,10 @@ class ProjectFieldBackend(FieldBackend):
     def read(self, issue_number: int, role: str) -> FieldValue:
         ref = self._field(role)
         item = self.item_id(issue_number)
-        payload = self.gh.rest("GET", f"{self._base}/items/{item}") or {}
+        # A bare item GET returns Title alone; values must be asked for by id.
+        payload = self.gh.rest(
+            "GET", f"{self._base}/items/{item}?fields={ref.id}"
+        ) or {}
         for entry in payload.get("fields") or []:
             if str(entry.get("id")) == ref.id:
                 return FieldValue(role, ref.name, _read_value(entry))
@@ -123,7 +136,13 @@ class ProjectFieldBackend(FieldBackend):
             body={"fields": [{"id": int(ref.id), "value": payload_value}]},
             operation_id=operation_id,
         )
-        return self._verify(issue_number, role, value)
+        outcome = self.gh.last_outcome
+        if outcome == "dry-run":
+            # Nothing was written, so there is nothing to read back. Verifying
+            # here would report a mismatch for a mutation deliberately not made.
+            return FieldValue(role, ref.name, value)
+        return self._verify(issue_number, role, value,
+                            skipped=outcome == "skipped-already-applied")
 
 
 def _read_value(entry: dict) -> str | None:

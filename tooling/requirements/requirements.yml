@@ -328,17 +328,43 @@ requirements:
       - "tests/test_inspect.py::test_fields_and_options_resolve_to_ids_not_names"
       - "tests/test_inspect.py::test_inspection_never_mutates"
 
-  - id: REQ-GITHUB-READBACK-001
+  - id: REQ-GITHUB-FIELDS-001
     statement: >-
-      Every write to GitHub is read back and recorded, and Output Done is never
-      inferred from an issue being closed.
+      Lifecycle field values are read and written through one interface that
+      callers use without knowing which backend answered. Values are addressed
+      by option id rather than display name, and labels are never written.
     priority: must
     owner: GitHub integration engineer
     release: "0.2.0"
-    status: planned
+    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/field_backend.py
+    verified_by:
+      - "tests/test_field_backend.py::test_a_written_value_reads_back_by_name"
+      - "tests/test_field_backend.py::test_writes_send_an_option_id_not_a_display_name"
+      - "tests/test_field_backend.py::test_no_operation_ever_touches_labels"
+      - "tests/test_field_backend.py::test_replaying_an_operation_id_does_not_write_again"
+      - "tests/test_field_backend.py::test_dry_run_reports_the_intent_and_writes_nothing"
+      - "tests/test_field_backend.py::test_an_unset_field_reads_as_none"
+
+  - id: REQ-GITHUB-READBACK-001
+    statement: >-
+      Every write is read back before it is reported as done. A write whose
+      read-back disagrees is a conflict, not a success.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/field_backend.py
+    verified_by:
+      - "tests/test_field_backend.py::test_a_write_that_does_not_stick_raises_conflict"
+      - "tests/test_field_backend.py::test_write_returns_the_value_it_verified"
+      - "tests/test_field_backend.py::test_replaying_an_id_after_the_value_moved_on_is_a_conflict"
 
   - id: REQ-STATE-OUTPUT-001
     statement: >-

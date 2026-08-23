@@ -167,6 +167,11 @@ class GitHub:
     def audit(self) -> list[AuditRecord]:
         return list(self._audit)
 
+    @property
+    def last_outcome(self) -> str | None:
+        """Outcome of the most recent call, so a caller can tell a skip from a write."""
+        return self._audit[-1].outcome if self._audit else None
+
     # -- public surface -----------------------------------------------------
 
     def rest(self, method: str, path: str, *, body: dict | None = None,
