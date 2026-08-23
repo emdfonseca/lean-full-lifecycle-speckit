@@ -54,6 +54,18 @@ The rule, in order:
 Reconciling closed issues after the fact is a repair, not the process. If the
 field is being backfilled, the board was not being used to run the work.
 
+The transition command binds anyone who uses it, but `gh issue close` and the
+project UI both bypass it, and this rule was broken three times that way. Run
+the audit before claiming a phase complete:
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/transition_plan.py \
+  --repo <owner>/<name> --project <n> audit
+```
+
+It reports and does not repair. Repairing silently would hide how the drift
+happened, and the drift is the interesting part.
+
 ## Ready is a gate, not a waypoint
 
 `Refining → In Progress` is not a legal transition. The path is

@@ -228,6 +228,59 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
                          operation_id=plan.operation_id)
 
 
+@dataclass(frozen=True)
+class Inconsistency:
+    issue: int
+    problem: str
+
+    def __str__(self) -> str:
+        return f"#{self.issue}: {self.problem}"
+
+
+def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
+                role: str = "delivery_state") -> list[Inconsistency]:
+    """Board state that contradicts the policy.
+
+    The transition command enforces these for anyone who uses it, but
+    `gh issue close` and the project UI both bypass it. Reports rather than
+    repairs: repairing silently would hide how the drift happened, and the
+    drift is the interesting part.
+    """
+    found: list[Inconsistency] = []
+    issues = gh.rest(
+        "GET", f"repos/{inspection.owner}/{inspection.repo}/issues?state=all",
+        paginate=True,
+    ) or []
+    if isinstance(issues, dict):
+        issues = [issues]
+
+    for issue in issues:
+        number = issue.get("number")
+        if number is None or issue.get("pull_request"):
+            continue
+        try:
+            value = backend.read(int(number), role).value
+        except NotFound:
+            continue                      # not on the board; not this check's concern
+
+        if value is None:
+            found.append(Inconsistency(number, "on the board with no delivery state"))
+            continue
+        if issue.get("state") == "closed" and value != TERMINAL_STATE:
+            found.append(Inconsistency(
+                number,
+                f"closed while delivery state is {value!r}. "
+                f"Closure follows completion; it cannot precede it."))
+        if value == TERMINAL_STATE:
+            blocking = incomplete_children(gh, backend, inspection, int(number), role)
+            if blocking:
+                listed = ", ".join(f"#{n} ({v or 'not on the board'})" for n, v in blocking)
+                found.append(Inconsistency(
+                    number,
+                    f"is {TERMINAL_STATE} but these children are not: {listed}"))
+    return found
+
+
 def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = False):
     owner, _, name = repo.partition("/")
     if not owner or not name:
@@ -263,6 +316,8 @@ def main() -> int:
                          help="Assert one required evidence item. Repeatable.")
     p_apply.add_argument("--dry-run", action="store_true")
 
+    sub.add_parser("audit", help="Report board state that contradicts the policy.")
+
     args = ap.parse_args()
     try:
         machine = load_state_machine(args.policy_root)
@@ -279,6 +334,13 @@ def main() -> int:
             print(f"Write exactly {args.out}")
             print(plan.to_yaml())
             return 0
+
+        if args.cmd == "audit":
+            problems = audit_board(gh, backend, inspection)
+            for item in problems:
+                print(item)
+            print(f"\n{len(problems)} inconsistencies")
+            return 1 if problems else 0
 
         plan = TransitionPlan.from_markdown(args.plan.read_text(encoding="utf-8"))
         evidence = dict(

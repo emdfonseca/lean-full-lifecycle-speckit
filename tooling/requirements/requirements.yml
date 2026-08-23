@@ -480,6 +480,23 @@ requirements:
       - "tests/test_transition.py::test_a_child_absent_from_the_board_blocks_completion"
       - "tests/test_transition.py::test_completion_is_judged_by_delivery_state_not_closure"
 
+  - id: REQ-BACKLOG-AUDIT-001
+    statement: >-
+      Board state that contradicts the policy is detectable. The transition
+      command binds anyone who uses it; closing an issue directly bypasses it,
+      so the resulting drift must be reportable rather than only noticeable.
+    priority: should
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+      - policy:item-types.yml
+    verified_by:
+      - "tests/test_transition.py::test_a_clean_board_reports_nothing"
+      - "tests/test_transition.py::test_closed_while_not_output_done_is_reported"
+      - "tests/test_transition.py::test_output_done_over_an_incomplete_child_is_reported"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

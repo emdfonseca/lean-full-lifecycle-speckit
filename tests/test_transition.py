@@ -231,9 +231,27 @@ def test_the_operation_id_is_stable_for_one_intent():
 def test_no_code_path_leads_from_issue_state_to_a_delivery_state():
     # infer_output_done_from_closed_issue is false. A check that warned would
     # still be a path; there must be none.
-    source = (SCRIPTS / "transition_plan.py").read_text(encoding="utf-8")
-    for token in ("state_reason", "closed_at", '"closed"', "'closed'", "is_closed"):
-        assert token not in source, f"transition reads issue state via {token!r}"
+    import ast
+
+    tree = ast.parse((SCRIPTS / "transition_plan.py").read_text(encoding="utf-8"))
+    ISSUE_STATE = {"state", "state_reason", "closed_at", "closed", "is_closed"}
+
+    # Reading issue state to *report* on it is legitimate; the audit does that.
+    # What must not exist is a function that reads it and also writes a
+    # delivery state, which is what inferring completion would look like.
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        body = ast.dump(node)
+        writes = ".write" in body or "backend.write" in body
+        if not writes:
+            continue
+        literals = {n.value for n in ast.walk(node)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+        overlap = literals & ISSUE_STATE
+        assert not overlap, (
+            f"{node.name} both writes a delivery state and reads issue state "
+            f"via {sorted(overlap)}")
 
 
 @pytest.mark.req("REQ-STATE-OUTPUT-001")
@@ -344,3 +362,85 @@ def test_non_terminal_transitions_do_not_inspect_children():
     be.write(38, "delivery_state", "Ready")
     tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
     assert not any("sub_issues" in " ".join(c) for c in board.calls)
+
+
+# --- board audit --------------------------------------------------------------
+
+class AuditBoard(Board):
+    """A board plus an issue list, so closure and delivery state can disagree."""
+
+    def __init__(self, issues, states, children_of=None):
+        super().__init__(None)
+        self.issues = issues                        # number -> open | closed
+        self.children_of = children_of or {}        # parent -> [child numbers]
+        self.item_of, self.values = {}, {}
+        item = 900
+        for number, st in states.items():
+            self.item_of[number] = item
+            self.values[item] = {"403": OPT[st]} if st else {}
+            item += 1
+
+    def __call__(self, args, stdin):
+        self.calls.append(list(args))
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        if url.endswith("/sub_issues"):
+            parent = int(url.split("/issues/")[1].split("/")[0])
+            return self._ok([{"number": n} for n in self.children_of.get(parent, [])])
+        if url.endswith("/issues"):
+            return self._ok([{"number": n, "state": s} for n, s in self.issues.items()])
+        if url.endswith("/items"):
+            return self._ok([{"id": i, "content": {"number": n}}
+                             for n, i in self.item_of.items()])
+        return super().__call__(args, stdin)
+
+
+def audit_setup(issues, states, children_of=None):
+    board = AuditBoard(issues, states, children_of)
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    return gh, insp, fb.ProjectFieldBackend(gh, insp)
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-001")
+def test_a_clean_board_reports_nothing():
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Output Done"})
+    assert tp.audit_board(gh, be, insp) == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-001")
+def test_closed_while_not_output_done_is_reported():
+    # The failure that happened three times: closed with gh, never transitioned.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"})
+    problems = tp.audit_board(gh, be, insp)
+    assert len(problems) == 1
+    assert "closed while delivery state is 'In Progress'" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-001")
+def test_output_done_over_an_incomplete_child_is_reported():
+    # The transition command refuses to create this; a hand edit can.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "Output Done", 2: "In Progress"},
+        children_of={1: [2]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems and "children are not" in problems[0].problem
+
+
+def test_an_item_with_no_delivery_state_is_reported():
+    gh, insp, be = audit_setup({1: "open"}, {1: None})
+    problems = tp.audit_board(gh, be, insp)
+    assert len(problems) == 1
+    assert "no delivery state" in problems[0].problem
+
+
+def test_an_open_item_mid_flight_is_not_reported():
+    gh, insp, be = audit_setup({1: "open"}, {1: "Refining"})
+    assert tp.audit_board(gh, be, insp) == []
+
+
+def test_the_audit_writes_nothing():
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"})
+    tp.audit_board(gh, be, insp)
+    assert not any("PATCH" in " ".join(c) for c in gh.audit and [] or [])
+    assert all(a.outcome in ("ok", "error") for a in gh.audit)
