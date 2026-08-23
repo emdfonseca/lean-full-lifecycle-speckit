@@ -217,6 +217,17 @@ def test_every_call_is_audited(tmp_path):
 
 # --- shape --------------------------------------------------------------------
 
+@pytest.mark.parametrize("stdout,expected", [
+    ('{"a":1}', {"a": 1}),
+    ("User", "User"),                      # --jq can emit a bare scalar
+    ("42", 42),
+    ('{"a":1}\n{"b":2}', [{"a": 1}, {"b": 2}]),   # --paginate: one doc per page
+    ("", None),
+])
+def test_output_parsing_survives_what_gh_actually_emits(stdout, expected):
+    assert client(fake(stdout)).rest("GET", "x") == expected
+
+
 def test_pagination_is_delegated_to_gh():
     runner = fake("[]")
     client(runner).rest("GET", "repos/o/r/issues", paginate=True)

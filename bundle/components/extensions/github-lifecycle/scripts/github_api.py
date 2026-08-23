@@ -286,9 +286,21 @@ def _parse(stdout: str) -> Any:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # --jq and --paginate can emit concatenated documents or bare scalars.
-        docs = [json.loads(line) for line in text.splitlines() if line.strip()]
-        return docs if len(docs) != 1 else docs[0]
+        pass
+    # --paginate emits one document per page; --jq can emit a bare scalar such
+    # as `User`, which is not JSON at all.
+    docs = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            docs.append(json.loads(line))
+        except json.JSONDecodeError:
+            docs.append(line)
+    if not docs:
+        return text
+    return docs if len(docs) != 1 else docs[0]
 
 
 def _graphql_error(payload: Any) -> str | None:

@@ -306,6 +306,28 @@ requirements:
       - "tests/test_github_api.py::test_the_exception_message_is_redacted_too"
       - "tests/test_github_api.py::test_every_call_is_audited"
 
+  - id: REQ-GITHUB-INSPECT-001
+    statement: >-
+      Inspection probes what a target supports rather than assuming it, selects
+      a field backend, resolves fields and options to stable ids rather than
+      display names, and refuses to proceed when the target is ambiguous.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/inspect_target.py
+    verified_by:
+      - "tests/test_inspect.py::test_delivery_state_is_found_in_the_builtin_status_field"
+      - "tests/test_inspect.py::test_a_status_field_holding_the_wrong_options_is_not_the_delivery_state"
+      - "tests/test_inspect.py::test_user_owner_falls_back_to_the_project_board"
+      - "tests/test_inspect.py::test_organization_issue_fields_win_when_they_carry_the_state"
+      - "tests/test_inspect.py::test_multiple_projects_are_an_ambiguity_not_a_choice"
+      - "tests/test_inspect.py::test_fields_and_options_resolve_to_ids_not_names"
+      - "tests/test_inspect.py::test_inspection_never_mutates"
+
   - id: REQ-GITHUB-READBACK-001
     statement: >-
       Every write to GitHub is read back and recorded, and Output Done is never
