@@ -117,6 +117,7 @@ requirements:
       - script:scripts/build_release.py
     verified_by:
       - "tests/test_packaging.py::test_artifact_contains_no_development_files"
+      - "tests/test_packaging.py::test_no_component_archive_ships_build_residue"
     evidence:
       - "docs/decisions/0001-target-spec-kit-1-0-x.md"
 
