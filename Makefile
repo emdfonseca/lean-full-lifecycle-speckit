@@ -1,4 +1,4 @@
-.PHONY: generate generate-check validate test build smoke official
+.PHONY: generate generate-check validate test build smoke official coverage
 
 generate:
 	python scripts/generate_manifests.py
@@ -11,6 +11,7 @@ generate-check:
 
 validate: generate-check
 	python scripts/validate_source.py
+	python scripts/validate_requirements.py
 
 test:
 	python -m pytest
@@ -26,3 +27,7 @@ official:
 
 smoke:
 	python scripts/smoke_test.py --integration opencode
+
+# Requirement coverage, for the CI step summary.
+coverage:
+	python scripts/validate_requirements.py --report md

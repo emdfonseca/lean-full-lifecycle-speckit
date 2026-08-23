@@ -34,6 +34,7 @@ def test_source_is_valid():
     assert json.loads(r.stdout)["errors"] == []
 
 
+@pytest.mark.req("REQ-TOOLING-CHECKS-001")
 def test_every_registered_check_executes():
     # A check that silently stopped being reached would otherwise look healthy.
     executed = set(json.loads(run_validator("--format", "json").stdout)["executed"])

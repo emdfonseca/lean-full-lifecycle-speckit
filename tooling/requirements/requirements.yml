@@ -1,0 +1,317 @@
+# The requirement catalogue.
+#
+# Every requirement resolves to real components and, once implemented, to real
+# tests. `scripts/validate_requirements.py` checks both directions: a
+# requirement naming a test that does not claim it fails, and a test claiming a
+# requirement that does not name it fails. That reciprocity is the whole point.
+# A catalogue that can drift from the suite is documentation, not traceability.
+#
+# Families are an allowlist. The roadmap names eighteen; nine cover work in
+# flight. Adding one is deliberate.
+schema_version: "1.0"
+
+families:
+  - REQ-CORE        # preserve Spec Kit and official Lean behaviour
+  - REQ-PACKAGE     # build, catalog, install, update, remove
+  - REQ-SECURITY    # injection, credentials, permission boundaries
+  - REQ-STATE       # readiness, Output Done, Outcome Status
+  - REQ-GITHUB      # Issue Fields, hierarchy, deterministic mutation
+  - REQ-TOOLING     # source-tree invariants and single source of truth
+  - REQ-DOCS        # documentation truthfulness
+  - REQ-BACKLOG     # triage, refine, decompose, capture
+  - REQ-UNCERTAINTY # discovery, prototype, spike, threat analysis
+
+gates:
+  - release: "0.9.0"
+    statement: >-
+      Four pilot streams complete with collected evidence, signed off by their
+      named pilot owners.
+    status: pending
+  - release: "1.0.0"
+    statement: >-
+      The repository is public and the published catalogs resolve for a user
+      who is not the author.
+    status: pending
+
+requirements:
+
+  # --- composition -----------------------------------------------------------
+
+  - id: REQ-CORE-COMPOSE-001
+    statement: >-
+      The governance preset composes additively over the official Lean preset.
+      Core command content contributed by Lean, or by Spec Kit where Lean
+      contributes none, survives installation intact.
+    priority: must
+    owner: engineering governance owner
+    release: "0.1.1"
+    status: verified
+    components:
+      - preset:lean-full-lifecycle-governance
+      - check:INV-PRESET-COMPOSITION
+    verified_by:
+      - "tests/sandbox/test_lifecycle.py::test_preset_composition_layers_over_lean"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-PRESET-COMPOSITION]"
+    evidence:
+      - "docs/evidence/substrate-1.0.1.md#h7-composition-is-correct"
+
+  - id: REQ-CORE-COMMANDS-001
+    statement: >-
+      Every command a workflow step invokes is provided by an installed
+      component. A workflow cannot reference a command that will not exist.
+    priority: must
+    owner: workflow maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - check:INV-COMMAND-RESOLVES
+    verified_by:
+      - "tests/test_inventory.py::test_provided_commands_covers_every_workflow_step"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-COMMAND-RESOLVES]"
+
+  # --- packaging -------------------------------------------------------------
+
+  - id: REQ-PACKAGE-CATALOG-001
+    statement: >-
+      The bundle installs into a clean Spec Kit project from a catalog, which is
+      the only path a real user has. A built archive is a manifest of references
+      and installs nothing on its own.
+    priority: must
+    owner: release owner
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:scripts/local_catalog.py
+      - script:scripts/generate_catalogs.py
+    verified_by:
+      - "tests/sandbox/test_lifecycle.py::test_bundle_installs_from_catalog"
+      - "tests/sandbox/test_lifecycle.py::test_all_workflows_installed"
+    evidence:
+      - "docs/evidence/substrate-1.0.1.md#d7-the-artifact-is-not-self-contained"
+
+  - id: REQ-PACKAGE-LIFECYCLE-001
+    statement: >-
+      Install, second install, update, remove, and reinstall each succeed, and a
+      second install changes nothing.
+    priority: must
+    owner: release owner
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:scripts/smoke_test.py
+    verified_by:
+      - "tests/sandbox/test_lifecycle.py::test_second_install_is_idempotent"
+      - "tests/sandbox/test_lifecycle.py::test_bundle_update_succeeds"
+      - "tests/sandbox/test_lifecycle.py::test_remove_then_reinstall"
+
+  - id: REQ-PACKAGE-ARTIFACT-001
+    statement: >-
+      The published artifact contains the bundle and nothing else. Development
+      tooling, tests, build output, and CI configuration are structurally
+      outside the packaged directory rather than filtered out of it.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:scripts/build_release.py
+    verified_by:
+      - "tests/test_packaging.py::test_artifact_contains_no_development_files"
+    evidence:
+      - "docs/decisions/0001-target-spec-kit-1-0-x.md"
+
+  - id: REQ-PACKAGE-PIN-001
+    statement: >-
+      One declared Spec Kit version range governs the bundle, and every manifest
+      and catalog entry states it identically.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - check:INV-SPECKIT-PIN
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-SPECKIT-PIN]"
+
+  # --- tooling ---------------------------------------------------------------
+
+  - id: REQ-TOOLING-SOT-001
+    statement: >-
+      The component manifests are the only inventory. Adding a component means
+      creating one directory; bundle.yml and every catalog derive from it and
+      drift is a build failure.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:scripts/lib/inventory.py
+      - script:scripts/generate_manifests.py
+      - script:scripts/generate_catalogs.py
+    verified_by:
+      - "tests/test_inventory.py::test_finds_every_component_directory"
+      - "tests/test_generated_artifacts.py::test_generated_output_is_current[generate_manifests.py]"
+      - "tests/test_generated_artifacts.py::test_generated_output_is_current[generate_catalogs.py]"
+
+  - id: REQ-TOOLING-CHECKS-001
+    statement: >-
+      Every registered source check can be shown to fail on a violation of the
+      invariant it guards. A check that silently stopped working must not be
+      indistinguishable from one that passes.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:scripts/lib/registry.py
+      - script:scripts/lib/checks.py
+    verified_by:
+      - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+      - "tests/test_validator.py::test_every_registered_check_executes"
+
+  - id: REQ-TOOLING-POLICY-001
+    statement: >-
+      Canonical policy is mirrored byte-identically into the installable preset,
+      so what governs the source is what reaches the user.
+    priority: must
+    owner: engineering governance owner
+    release: "0.1.1"
+    status: verified
+    components:
+      - policy:framework.yml
+      - policy:state-machine.yml
+      - check:INV-POLICY-MIRROR
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-POLICY-MIRROR]"
+
+  # --- security --------------------------------------------------------------
+
+  - id: REQ-SECURITY-SHELL-001
+    statement: >-
+      Workflow shell steps run only allowlisted commands and interpolate
+      nothing. Neither workflow inputs nor agent output can decide what
+      executes.
+    priority: must
+    owner: security reviewer
+    release: "0.1.1"
+    status: verified
+    components:
+      - check:SEC-SHELL-ALLOWLIST
+      - check:SEC-SHELL-NO-INTERPOLATION
+      - policy:agent-policy.yml
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ALLOWLIST]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-NO-INTERPOLATION]"
+
+  - id: REQ-SECURITY-GATE-001
+    statement: >-
+      Every step that mutates external state is preceded by a human approval
+      gate, and every gate can represent an undecided verdict rather than
+      defaulting to approval.
+    priority: must
+    owner: security reviewer
+    release: "0.1.1"
+    status: verified
+    components:
+      - check:SEC-WRITE-BEHIND-GATE
+      - check:INV-GATE-VERDICT
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-WRITE-BEHIND-GATE]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-GATE-VERDICT]"
+
+  - id: REQ-SECURITY-EXTCONFIG-001
+    statement: >-
+      The extension ships safe configuration defaults, and its config target
+      uses a name Spec Kit preserves across updates.
+    priority: must
+    owner: security reviewer
+    release: "0.1.1"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - check:SEC-EXTENSION-CONFIG-SAFETY
+      - check:INV-EXTENSION-CONFIG-NAME
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-EXTENSION-CONFIG-SAFETY]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-EXTENSION-CONFIG-NAME]"
+
+  # --- GitHub and state ------------------------------------------------------
+
+  - id: REQ-GITHUB-TRANSITION-001
+    statement: >-
+      A lifecycle transition applies a change a prior step planned and a human
+      approved. It names the approved plan, and the plan path must match one a
+      previous step actually wrote.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.1.1"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.transition
+      - check:SEC-TRANSITION-CONTRACT
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-TRANSITION-CONTRACT]"
+
+  - id: REQ-GITHUB-READBACK-001
+    statement: >-
+      Every write to GitHub is read back and recorded, and Output Done is never
+      inferred from an issue being closed.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: planned
+    components:
+      - extension:github-lifecycle
+      - policy:github-schema.yml
+
+  - id: REQ-STATE-OUTPUT-001
+    statement: >-
+      Output Done and Outcome Status are independent. Completing engineering
+      work never sets an outcome, and an unvalidated outcome never reopens
+      completed work.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: planned
+    components:
+      - policy:state-machine.yml
+      - policy:outcome-policy.yml
+
+  - id: REQ-BACKLOG-READY-001
+    statement: >-
+      An item reaches Ready only through a schema-valid readiness verdict with
+      no blocking questions, approved by a human. Technical design is not a
+      prerequisite.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: planned
+    components:
+      - policy:state-machine.yml
+
+  - id: REQ-UNCERTAINTY-DISPOSAL-001
+    statement: >-
+      A prototype or spike records its disposal decision before the work it
+      informed can reach Output Done. Throwaway code does not become production
+      code by omission.
+    priority: must
+    owner: workflow maintainer
+    release: "0.2.0"
+    status: planned
+    components:
+      - policy:artifact-policy.yml
+
+  # --- documentation ---------------------------------------------------------
+
+  - id: REQ-DOCS-TRUTH-001
+    statement: >-
+      Published documentation states what has been verified and on what
+      platform, and names what has not. A claim no test backs is not made.
+    priority: should
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: implemented
+    components:
+      - script:VALIDATION.md
+    verified_by:
+      - "tests/test_docs.py::test_validation_states_unverified_areas"

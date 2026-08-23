@@ -19,7 +19,8 @@ jobs:
       - run: python scripts/generate_manifests.py --check
       - run: python scripts/generate_catalogs.py --check
       - run: python scripts/validate_source.py
-      - run: python -m pytest
+      - run: python scripts/validate_requirements.py
+      - run: python -m pytest -m 'not sandbox'
       - uses: astral-sh/setup-uv@v5
       - name: Install pinned Spec Kit
         run: |
@@ -29,3 +30,7 @@ jobs:
         run: |
           specify bundle validate --path bundle/ --offline
           specify bundle build --path bundle/ --output dist/
+      - name: Sandbox lifecycle over a local catalog
+        run: python -m pytest -m sandbox
+      - name: Requirement coverage
+        run: python scripts/validate_requirements.py --report md >> "$GITHUB_STEP_SUMMARY"

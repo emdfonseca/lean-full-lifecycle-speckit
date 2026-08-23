@@ -15,6 +15,7 @@ from lib.inventory import ROOT
 
 
 @pytest.mark.parametrize("script", ["generate_manifests.py", "generate_catalogs.py"])
+@pytest.mark.req("REQ-TOOLING-SOT-001")
 def test_generated_output_is_current(script):
     r = subprocess.run(
         [sys.executable, f"scripts/{script}", "--check"],

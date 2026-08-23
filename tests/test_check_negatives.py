@@ -207,6 +207,7 @@ CURRENTLY_VIOLATED = {
 }
 
 
+@pytest.mark.req("REQ-TOOLING-CHECKS-001")
 def test_every_check_has_a_negative_case():
     missing = set(REGISTRY) - set(MUTATORS)
     assert not missing, f"checks with no negative fixture: {sorted(missing)}"
@@ -214,6 +215,14 @@ def test_every_check_has_a_negative_case():
 
 
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
+@pytest.mark.req("REQ-CORE-COMPOSE-001")
+@pytest.mark.req("REQ-CORE-COMMANDS-001")
+@pytest.mark.req("REQ-PACKAGE-PIN-001")
+@pytest.mark.req("REQ-TOOLING-POLICY-001")
+@pytest.mark.req("REQ-SECURITY-SHELL-001")
+@pytest.mark.req("REQ-SECURITY-GATE-001")
+@pytest.mark.req("REQ-SECURITY-EXTCONFIG-001")
+@pytest.mark.req("REQ-GITHUB-TRANSITION-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

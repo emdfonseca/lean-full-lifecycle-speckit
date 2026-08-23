@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 
+@pytest.mark.req("REQ-TOOLING-SOT-001")
 def test_finds_every_component_directory(inv, root):
     on_disk = {
         d.name
@@ -38,6 +39,7 @@ def test_exactly_one_owned_preset_and_extension(inv):
     assert inv.extension.id
 
 
+@pytest.mark.req("REQ-CORE-COMMANDS-001")
 def test_provided_commands_covers_every_workflow_step(inv):
     referenced = {
         step["command"]
