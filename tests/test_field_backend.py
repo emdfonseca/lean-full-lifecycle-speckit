@@ -228,12 +228,6 @@ def test_an_unusable_inspection_is_refused():
         fb.for_inspection(gh_api.GitHub(runner=FakeBoard()), bad)
 
 
-def test_the_issue_fields_backend_is_not_silently_substituted():
-    org = inspection(backend=it.BACKEND_ISSUE_FIELDS, owner_type="Organization")
-    with pytest.raises(NotImplementedError):
-        fb.for_inspection(gh_api.GitHub(runner=FakeBoard()), org)
-
-
 def test_a_project_backend_requires_a_selected_project():
     with pytest.raises(ValueError):
         fb.ProjectFieldBackend(gh_api.GitHub(runner=FakeBoard()),
@@ -277,3 +271,124 @@ def test_dry_run_reports_the_intent_and_writes_nothing():
     assert be.write(36, "delivery_state", "Ready").value == "Ready"
     assert not any("PATCH" in c for c in board.calls)
     assert board.values[900] == {}
+
+
+# --- organization Issue Fields backend ----------------------------------------
+
+class FakeOrgIssues:
+    """Issues carrying `issue_field_values`, as the REST API returns them."""
+
+    def __init__(self, fields=None):
+        self.fields = fields or {"501": {"name": "Delivery Status"}}
+        self.values: dict[int, dict[str, str | None]] = {19: {}, 20: {}}
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args, stdin):
+        self.calls.append(list(args))
+        method = args[args.index("--method") + 1] if "--method" in args else "GET"
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        number = int(url.rsplit("/", 1)[-1])
+        if number not in self.values:
+            return subprocess.CompletedProcess([], 1, "", "gh: Not Found (HTTP 404)")
+        if method == "PATCH":
+            for entry in json.loads(stdin or "{}").get("issue_field_values", []):
+                self.values[number][str(entry["field_id"])] = entry["value"]
+        rendered = [{"field_id": int(f), "value": v}
+                    for f, v in self.values[number].items()]
+        return subprocess.CompletedProcess(
+            [], 0, json.dumps({"number": number, "issue_field_values": rendered}), "")
+
+
+def org_inspection(**over):
+    base = dict(
+        owner="acme", repo="widgets", owner_type="Organization",
+        backend=it.BACKEND_ISSUE_FIELDS, issue_fields_available=True,
+        issue_types_available=True, sub_issues_available=True,
+        dependencies_available=True,
+        fields={"Delivery Status": it.FieldRef(
+            "Delivery Status", "501", "single_select",
+            options={s: f"o{i}" for i, s in enumerate(STATES)})},
+        roles={"delivery_state": "Delivery Status"},
+    )
+    base.update(over)
+    return it.Inspection(**base)
+
+
+def org_backend(board=None):
+    board = board or FakeOrgIssues()
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    return fb.IssueFieldBackend(gh, org_inspection()), board
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_org_backend_round_trips_a_value():
+    be, _ = org_backend()
+    assert be.read(19, "delivery_state").value is None
+    assert be.write(19, "delivery_state", "Ready").value == "Ready"
+    assert be.read(19, "delivery_state").value == "Ready"
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_org_backend_sends_the_option_name_not_its_id():
+    # GitHub rejects an option id here outright: "must be a string option name".
+    # This is the opposite of Projects v2 and is the asymmetry worth pinning.
+    be, board = org_backend()
+    be.write(19, "delivery_state", "In Progress")
+    assert board.values[19]["501"] == "In Progress"
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_org_backend_uses_field_id_not_id_in_the_payload():
+    be, board = org_backend()
+    be.write(19, "delivery_state", "Ready")
+    patch = next(c for c in board.calls if "PATCH" in c)
+    assert "/issues/19" in " ".join(patch)
+    # The board only stores what it parsed from `field_id`; an `id` key would
+    # have raised a KeyError above.
+    assert board.values[19] == {"501": "Ready"}
+
+
+def test_org_backend_refuses_an_unknown_option_before_writing():
+    be, board = org_backend()
+    with pytest.raises(gh_api.NotFound):
+        be.write(19, "delivery_state", "Shipped")
+    assert not any("PATCH" in c for c in board.calls)
+
+
+def test_org_backend_reads_back_and_conflicts_on_mismatch():
+    board = FakeOrgIssues()
+    original = board.__call__
+
+    def sabotage(args, stdin):
+        result = original(args, stdin)
+        if "--method" in args and args[args.index("--method") + 1] == "PATCH":
+            board.values[19].clear()
+        return result
+
+    gh = gh_api.GitHub(runner=sabotage, sleep=lambda _: None, max_attempts=1)
+    be = fb.IssueFieldBackend(gh, org_inspection())
+    with pytest.raises(gh_api.Conflict):
+        be.write(19, "delivery_state", "Ready")
+
+
+def test_org_backend_never_touches_a_project():
+    be, board = org_backend()
+    be.write(19, "delivery_state", "Ready")
+    assert not any("projectsV2" in " ".join(c) for c in board.calls)
+
+
+@pytest.mark.req("REQ-GITHUB-FIELDS-001")
+def test_selection_returns_the_backend_the_inspection_chose():
+    gh = gh_api.GitHub(runner=FakeOrgIssues())
+    assert isinstance(fb.for_inspection(gh, org_inspection()), fb.IssueFieldBackend)
+    assert isinstance(fb.for_inspection(gh_api.GitHub(runner=FakeBoard()), inspection()),
+                      fb.ProjectFieldBackend)
+
+
+def test_both_backends_expose_the_same_interface():
+    # Callers ask for a role; they must never need to know which answered.
+    for cls in (fb.ProjectFieldBackend, fb.IssueFieldBackend):
+        assert issubclass(cls, fb.FieldBackend)
+        for method in ("read", "write"):
+            assert callable(getattr(cls, method))

@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from github_api import Conflict, GitHub, NotFound  # noqa: E402
-from inspect_target import BACKEND_PROJECT, Inspection  # noqa: E402
+from inspect_target import BACKEND_ISSUE_FIELDS, BACKEND_PROJECT, Inspection  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -161,6 +161,53 @@ def _read_value(entry: dict) -> str | None:
     return str(value)
 
 
+class IssueFieldBackend(FieldBackend):
+    """Organization Issue Fields, the preferred backend.
+
+    Values live on the issue itself, under `issue_field_values`, so there is no
+    project item to resolve.
+
+    Note the wire format differs from Projects v2 in both keys: the member is
+    `field_id` rather than `id`, and a single-select value must be the option
+    **name**, not its id -- GitHub rejects an id outright with "must be a string
+    option name". Resolution still goes through the id-keyed inspection, so an
+    unknown option is refused before any request is made; only the transmitted
+    form differs.
+    """
+
+    def __init__(self, gh: GitHub, inspection: Inspection) -> None:
+        super().__init__(gh, inspection)
+        if inspection.backend != BACKEND_ISSUE_FIELDS:
+            raise ValueError(f"inspection selected {inspection.backend!r}")
+        self._base = f"repos/{inspection.owner}/{inspection.repo}/issues"
+
+    def read(self, issue_number: int, role: str) -> FieldValue:
+        ref = self._field(role)
+        payload = self.gh.rest("GET", f"{self._base}/{issue_number}") or {}
+        for entry in payload.get("issue_field_values") or []:
+            if str(entry.get("field_id", entry.get("id"))) == ref.id:
+                return FieldValue(role, ref.name, _read_value(entry))
+        return FieldValue(role, ref.name, None)
+
+    def write(self, issue_number: int, role: str, value: str, *,
+              operation_id: str | None = None) -> FieldValue:
+        ref = self._field(role)
+        if ref.options:
+            # Validate against the resolved options before sending, even though
+            # the name is what travels.
+            ref.option_id(value)
+        self.gh.rest(
+            "PATCH", f"{self._base}/{issue_number}",
+            body={"issue_field_values": [{"field_id": int(ref.id), "value": value}]},
+            operation_id=operation_id,
+        )
+        outcome = self.gh.last_outcome
+        if outcome == "dry-run":
+            return FieldValue(role, ref.name, value)
+        return self._verify(issue_number, role, value,
+                            skipped=outcome == "skipped-already-applied")
+
+
 def for_inspection(gh: GitHub, inspection: Inspection) -> FieldBackend:
     """The backend `inspect_target` selected."""
     if not inspection.usable:
@@ -170,6 +217,8 @@ def for_inspection(gh: GitHub, inspection: Inspection) -> FieldBackend:
         )
     if inspection.backend == BACKEND_PROJECT:
         return ProjectFieldBackend(gh, inspection)
+    if inspection.backend == BACKEND_ISSUE_FIELDS:
+        return IssueFieldBackend(gh, inspection)
     raise NotImplementedError(
-        f"backend {inspection.backend!r} is not implemented yet"
+        f"backend {inspection.backend!r} is not implemented"
     )
