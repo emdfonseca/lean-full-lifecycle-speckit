@@ -256,3 +256,91 @@ def test_a_missing_policy_is_an_error_not_a_default(tmp_path):
     with pytest.raises(tp.PlanError) as exc:
         tp.load_state_machine(tmp_path)
     assert "governance preset" in str(exc.value)
+
+
+# --- derived completion -------------------------------------------------------
+
+class BoardWithChildren(Board):
+    """A board where issues have sub-issues and their own delivery states."""
+
+    def __init__(self, parent_state="In Progress", children=None):
+        super().__init__(parent_state)
+        # issue number -> (item id, delivery state)
+        self.children = children if children is not None else {}
+        self.item_of = {38: 900}
+        next_item = 901
+        for number in self.children:
+            self.item_of[number] = next_item
+            self.values[next_item] = {"403": OPT[self.children[number]]} \
+                if self.children[number] else {}
+            next_item += 1
+
+    def __call__(self, args, stdin):
+        self.calls.append(list(args))
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        if url.endswith("/sub_issues"):
+            number = int(url.split("/issues/")[1].split("/")[0])
+            if number != 38:
+                return self._ok([])
+            return self._ok([{"number": n} for n in self.children])
+        if url.endswith("/items"):
+            return self._ok([{"id": i, "content": {"number": n}}
+                             for n, i in self.item_of.items()])
+        return super().__call__(args, stdin)
+
+
+def parent_setup(children):
+    board = BoardWithChildren(children=children)
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    return gh, insp, fb.ProjectFieldBackend(gh, insp), board
+
+
+@pytest.mark.req("REQ-BACKLOG-DERIVED-001")
+def test_a_parent_cannot_complete_while_a_child_is_open():
+    gh, insp, be, _ = parent_setup({101: "Output Done", 102: "In Progress"})
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "Output Done", gh=gh)
+    assert "#102" in str(exc.value)
+    assert "#101" not in str(exc.value)      # names only what blocks
+
+
+@pytest.mark.req("REQ-BACKLOG-DERIVED-001")
+def test_a_parent_completes_once_every_child_is_done():
+    gh, insp, be, _ = parent_setup({101: "Output Done", 102: "Output Done"})
+    plan = tp.build_plan(be, insp, MACHINE, 38, "Output Done", gh=gh)
+    assert plan.target == "Output Done"
+
+
+@pytest.mark.req("REQ-BACKLOG-DERIVED-001")
+def test_a_child_absent_from_the_board_blocks_completion():
+    # No delivery state means it cannot be shown delivered.
+    gh, insp, be, _ = parent_setup({101: None})
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "Output Done", gh=gh)
+    assert "not on the board" in str(exc.value)
+
+
+def test_a_childless_item_is_unaffected():
+    gh, insp, be, _ = parent_setup({})
+    assert tp.build_plan(be, insp, MACHINE, 38, "Output Done", gh=gh).target == "Output Done"
+
+
+@pytest.mark.req("REQ-BACKLOG-DERIVED-001")
+def test_completion_is_judged_by_delivery_state_not_closure():
+    # A child closed as a duplicate has not been delivered. The check must not
+    # consult sub_issues_summary, which counts closures.
+    source = (SCRIPTS / "transition_plan.py").read_text(encoding="utf-8")
+    # Mentioned in a comment explaining why it is not used; what must not
+    # appear is an actual read of it.
+    for access in ('["sub_issues_summary"]', '.get("sub_issues_summary"',
+                   '["percent_completed"]', '.get("percent_completed"'):
+        assert access not in source, f"completion judged via {access}"
+
+
+def test_non_terminal_transitions_do_not_inspect_children():
+    gh, insp, be, board = parent_setup({101: "In Progress"})
+    be.write(38, "delivery_state", "Ready")
+    tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert not any("sub_issues" in " ".join(c) for c in board.calls)

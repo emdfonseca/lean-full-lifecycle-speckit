@@ -179,5 +179,12 @@ rules:
   - Technical design is not a prerequisite for Ready.
   - A verdict with blocking questions leaves the item in Refining.
   - Only Epics are decomposed. A Story that needs splitting is two Stories.
+  - >-
+    A decomposable item may not reach Output Done while any child is in another
+    delivery state. Its progress is derived from its children, so completing it
+    independently of them makes the derivation decorative.
+  - >-
+    Child completion is judged by delivery state, never by whether the child's
+    issue is closed. A child closed as a duplicate has not been delivered.
   - Severity applies to Bugs alone, matching github-schema.yml.
   - Outcome fields stay empty for work with no user-facing result.

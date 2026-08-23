@@ -81,6 +81,23 @@ The sequence:
    as the one who starts the work.
 3. Assign an owner, then move to In Progress.
 
+## Derived completion is enforced, not merely stated
+
+An Epic's progress derives from its children, so it cannot reach Output Done
+while any child is in another delivery state. `transition_plan.py` refuses the
+transition and names the children that block it.
+
+This was prose in the roadmap for a long time and was violated in P3: Epic #8
+was closed while #37 was still open beneath it. Review caught it; nothing else
+would have. A rule that depends on the diligence of whoever presses the button
+is not a rule.
+
+Children are judged by **delivery state**, never by whether their issue is
+closed. GitHub's `sub_issues_summary` counts closures, and a child closed as a
+duplicate has not been delivered — enforcing with that evidence would let a
+parent complete over abandoned work. It is the same distinction as
+`infer_output_done_from_closed_issue: false`.
+
 ## A gap: nothing represents blocked
 
 `policy/state-machine.yml` defines Inbox, Refining, Ready, In Progress, and

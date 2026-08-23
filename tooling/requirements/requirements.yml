@@ -462,6 +462,24 @@ requirements:
       - "tests/test_item_types.py::test_every_field_is_required"
       - "tests/test_item_types.py::test_an_out_of_vocabulary_value_is_rejected"
 
+  - id: REQ-BACKLOG-DERIVED-001
+    statement: >-
+      A decomposable item cannot reach Output Done while any child is in
+      another delivery state. Completion is judged by delivery state, never by
+      whether a child's issue is closed.
+    priority: must
+    owner: product/process owner
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:item-types.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_transition.py::test_a_parent_cannot_complete_while_a_child_is_open"
+      - "tests/test_transition.py::test_a_parent_completes_once_every_child_is_done"
+      - "tests/test_transition.py::test_a_child_absent_from_the_board_blocks_completion"
+      - "tests/test_transition.py::test_completion_is_judged_by_delivery_state_not_closure"
+
   - id: REQ-BACKLOG-READY-001
     statement: >-
       An item reaches Ready only through a schema-valid readiness verdict with

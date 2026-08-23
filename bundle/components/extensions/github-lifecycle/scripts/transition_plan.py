@@ -131,10 +131,52 @@ def operation_id(issue: str, role: str, observed: str | None, target: str) -> st
     return f"tr-{digest[:16]}"
 
 
+TERMINAL_STATE = "Output Done"
+
+
+def child_issue_numbers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[int]:
+    rows = gh.rest("GET", f"repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+                   paginate=True) or []
+    if isinstance(rows, dict):
+        rows = [rows]
+    return [int(r["number"]) for r in rows if r.get("number") is not None]
+
+
+def incomplete_children(gh: GitHub, backend: FieldBackend, inspection: Inspection,
+                        issue_number: int, role: str) -> list[tuple[int, str | None]]:
+    """Children not yet in the terminal delivery state.
+
+    Judged by delivery state, never by whether the child's issue is closed.
+    GitHub's sub_issues_summary counts closures, and a child closed as a
+    duplicate has not been delivered -- enforcing the rule with that evidence
+    would let a parent complete over abandoned work.
+    """
+    out: list[tuple[int, str | None]] = []
+    for number in child_issue_numbers(gh, inspection.owner, inspection.repo, issue_number):
+        try:
+            value = backend.read(number, role).value
+        except NotFound:
+            # Not on the board: it has no delivery state, so it cannot be done.
+            value = None
+        if value != TERMINAL_STATE:
+            out.append((number, value))
+    return out
+
+
 def build_plan(backend: FieldBackend, inspection: Inspection, machine: dict,
-               issue_number: int, target: str, role: str = "delivery_state") -> TransitionPlan:
+               issue_number: int, target: str, role: str = "delivery_state",
+               gh: GitHub | None = None) -> TransitionPlan:
     current = backend.read(issue_number, role)
     edge = find_transition(machine, current.value, target)
+
+    if target == TERMINAL_STATE and gh is not None:
+        blocking = incomplete_children(gh, backend, inspection, issue_number, role)
+        if blocking:
+            listed = ", ".join(f"#{n} ({v or 'not on the board'})" for n, v in blocking)
+            raise PlanError(
+                f"cannot complete #{issue_number}: its progress derives from its "
+                f"children, and these are not {TERMINAL_STATE}: {listed}"
+            )
     issue = f"{inspection.owner}/{inspection.repo}#{issue_number}"
     # Fail here rather than at apply time if the target is not a real option.
     inspection.field_for(role).option_id(target)
@@ -230,7 +272,8 @@ def main() -> int:
         )
 
         if args.cmd == "plan":
-            plan = build_plan(backend, inspection, machine, args.issue, args.to, args.role)
+            plan = build_plan(backend, inspection, machine, args.issue,
+                              args.to, args.role, gh=gh)
             args.out.parent.mkdir(parents=True, exist_ok=True)
             args.out.write_text(plan.to_markdown(), encoding="utf-8")
             print(f"Write exactly {args.out}")
