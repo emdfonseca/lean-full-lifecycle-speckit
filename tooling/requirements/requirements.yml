@@ -414,6 +414,27 @@ requirements:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
 
+  - id: REQ-GITHUB-RELATIONSHIPS-001
+    statement: >-
+      Hierarchy and dependency links are created idempotently and read back,
+      and any link that would make an item its own ancestor is refused before
+      it is written.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - script:bundle/components/extensions/github-lifecycle/scripts/relationships.py
+    verified_by:
+      - "tests/test_relationships.py::test_a_child_is_linked_and_read_back"
+      - "tests/test_relationships.py::test_a_link_that_does_not_take_is_a_conflict"
+      - "tests/test_relationships.py::test_linking_twice_writes_once"
+      - "tests/test_relationships.py::test_an_item_cannot_parent_itself"
+      - "tests/test_relationships.py::test_a_direct_cycle_is_refused_before_any_write"
+      - "tests/test_relationships.py::test_an_indirect_cycle_is_refused"
+      - "tests/test_relationships.py::test_a_dependency_may_cross_repositories"
+
   - id: REQ-GITHUB-READBACK-001
     statement: >-
       Every write is read back before it is reported as done. A write whose
