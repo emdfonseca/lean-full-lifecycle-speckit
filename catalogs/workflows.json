@@ -10,16 +10,16 @@
       "description": "Adopt Spec Kit through scoped discovery, intent reconciliation, and a quality ratchet.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 8
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-bugfix": {
       "name": "Bugfix",
@@ -28,16 +28,16 @@
       "description": "Reproduce, regression-specify, fix, verify, converge, and close a bounded defect.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 14
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-greenfield-bootstrap": {
       "name": "Greenfield Bootstrap",
@@ -46,16 +46,16 @@
       "description": "Plan, approve, and validate a greenfield Spec Kit foundation and first Ready queue.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 8
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-incident-hotfix": {
       "name": "Incident Hotfix",
@@ -64,16 +64,16 @@
       "description": "Contain, remediate, verify, and reconcile an emergency production change.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 11
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-release-outcome": {
       "name": "Release and Outcome",
@@ -82,16 +82,16 @@
       "description": "Prepare release readiness, progressive rollout, and evidence-backed outcome measurement.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 9
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-retirement": {
       "name": "Deprecation and Retirement",
@@ -100,16 +100,16 @@
       "description": "Plan and deliver controlled deprecation, migration, shutdown, and evidence archival.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 13
-      },
-      "tags": [],
-      "verified": false
+      }
     },
     "lifecycle-story-delivery": {
       "name": "Story Delivery",
@@ -118,16 +118,16 @@
       "description": "Run a bounded Story through core Spec Kit, verification, convergence, and Output Done.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
       },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
       "provides": {
         "steps": 19
-      },
-      "tags": [],
-      "verified": false
+      }
     }
   }
 }

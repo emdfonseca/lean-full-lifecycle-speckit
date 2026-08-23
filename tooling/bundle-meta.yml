@@ -1,0 +1,55 @@
+# Authored bundle metadata. Everything not derivable from a component manifest
+# lives here, and bundle.yml plus the four catalogs are generated from it.
+#
+# Adding a component means creating its directory under bundle/components/ and
+# running `make generate`. No list in this file enumerates components.
+schema_version: "1.0"
+
+bundle:
+  id: lean-full-lifecycle
+  name: Lean Full-Lifecycle for Spec Kit
+  version: 0.1.0
+  role: developer
+  description: >-
+    Lean Spec Kit extended across product, secure delivery, release, outcomes,
+    and brownfield adoption.
+  author: Lean Full-Lifecycle Contributors
+  license: MIT
+
+# The single declaration of the supported Spec Kit range. Propagated into
+# bundle.yml, every component manifest, and every catalog entry.
+requires:
+  speckit_version: ">=1.0.1,<2.0.0"
+  tools: []
+  mcp: []
+
+# Presets the bundle composes but does not ship. Priority is lower-wins, so the
+# governance preset at 10 layers on top of official lean at 20.
+external_presets:
+  - id: lean
+    version: "1.0.0"
+    priority: 20
+    strategy: replace
+
+# Applied to the preset this bundle does ship.
+owned_preset:
+  priority: 10
+  strategy: append
+
+publishing:
+  # Unset until the bundle is published. Generators emit UNSET rather than a
+  # placeholder string, so an unpublished catalog cannot masquerade as a real
+  # one. Set org and the URLs follow.
+  org: null
+  repo: lean-full-lifecycle-speckit
+  host: https://github.com
+
+tags:
+  - lean
+  - full-lifecycle
+  - pdlc
+  - ssdlc
+  - github
+  - brownfield
+  - tdd
+  - outcomes

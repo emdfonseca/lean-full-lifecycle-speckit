@@ -1,0 +1,36 @@
+# Invariants this bundle chooses to hold, as data rather than literals buried
+# in the validator. Adding a workflow must not mean editing Python.
+schema_version: "1.0"
+
+# The only shell commands a workflow step may run. Workflows call fixed
+# verification entry points in the target project; anything else would let a
+# workflow define arbitrary execution.
+allowed_shell:
+  - devbox run verify
+  - devbox run release-verify
+
+# Commands that mutate GitHub state. Each must be preceded by a plan step and a
+# human gate, and must name the approved plan it is applying.
+write_effect_commands:
+  - speckit.github-lifecycle.transition
+  - speckit.github-lifecycle.capture
+  - speckit.github-lifecycle.link
+plan_command: speckit.github-lifecycle.plan
+
+# Safety keys the extension config template must declare, with required values.
+# These are the defaults a user inherits; relaxing one is a deliberate act, not
+# an accident of editing the template.
+extension_config_safety:
+  # No GitHub write without an approved plan, and every write is read back.
+  require_approved_plan_for_write: true
+  require_read_back: true
+  # Organization schema administration is a separate, privileged operation from
+  # routine issue-value transitions.
+  allow_organization_schema_mutation: false
+  # Output Done is an explicit engineering verdict. Closing an issue by any
+  # other route must never be taken to mean the work is done.
+  infer_output_done_from_closed_issue: false
+
+# Standalone workflows that must stay semantically parallel to a branch
+# embedded in another workflow. Populated in P7.
+parity: []

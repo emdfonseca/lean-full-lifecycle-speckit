@@ -10,10 +10,7 @@
       "description": "Plan and apply audited GitHub Issue Field lifecycle operations.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "category": "integration",
-      "effect": "read-write",
-      "download_url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0",
         "tools": [
@@ -23,10 +20,6 @@
           }
         ]
       },
-      "provides": {
-        "commands": 6,
-        "hooks": 0
-      },
       "tags": [
         "github",
         "integration",
@@ -34,7 +27,14 @@
         "lifecycle",
         "backlog"
       ],
-      "verified": false
+      "verified": false,
+      "category": "integration",
+      "effect": "read-write",
+      "download_url": "UNSET",
+      "provides": {
+        "commands": 6,
+        "hooks": 0
+      }
     }
   }
 }

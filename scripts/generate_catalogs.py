@@ -20,31 +20,21 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-BUNDLE = ROOT / "bundle"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from lib.inventory import ROOT, load_inventory  # noqa: E402
 
 # Kept in sync with the published release-tag layout.
 RELEASE_PATH = "releases/download/v{version}/{filename}"
 
 
-def _load(path: Path) -> dict:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
-
-
-def _components() -> dict:
-    """Read every component manifest. The manifests are the single source of truth."""
-    preset_dir = BUNDLE / "components/presets/lean-full-lifecycle-governance"
-    ext_dir = BUNDLE / "components/extensions/github-lifecycle"
-    return {
-        "bundle": _load(BUNDLE / "bundle.yml"),
-        "preset": (preset_dir, _load(preset_dir / "preset.yml")),
-        "extension": (ext_dir, _load(ext_dir / "extension.yml")),
-        "workflows": [
-            (d, _load(d / "workflow.yml"))
-            for d in sorted((BUNDLE / "components/workflows").iterdir())
-            if (d / "workflow.yml").exists()
-        ],
-    }
+def published_root(meta: dict) -> str | None:
+    """The published catalog root, or None while the bundle is unpublished."""
+    pub = meta.get("publishing", {}) or {}
+    org = pub.get("org")
+    if not org:
+        return None
+    return f"{pub['host'].rstrip('/')}/{org}/{pub['repo']}"
 
 
 def default_layout(catalog_root: str | None) -> str:
@@ -76,10 +66,13 @@ def _catalog_url(catalog_root: str | None, name: str) -> str:
 def build_catalogs(
     catalog_root: str | None, updated_at: str, layout: str | None = None
 ) -> dict[str, dict]:
+    inv = load_inventory()
+    if catalog_root is None:
+        catalog_root = published_root(inv.meta)
     layout = layout or default_layout(catalog_root)
-    c = _components()
-    bundle = c["bundle"]["bundle"]
-    version = str(bundle["version"])
+    version = inv.version
+    repo = published_root(inv.meta) or "UNSET"
+    requires = dict(inv.meta["requires"])
 
     def envelope(name: str, key: str, entries: dict) -> dict:
         return {
@@ -89,105 +82,86 @@ def build_catalogs(
             key: entries,
         }
 
-    preset_dir, preset = c["preset"]
-    pmeta = preset["preset"]
-    presets = {
-        pmeta["id"]: {
-            "name": pmeta["name"],
-            "id": pmeta["id"],
-            "version": str(pmeta["version"]),
-            "description": pmeta["description"],
-            "author": pmeta.get("author", ""),
-            "license": pmeta.get("license", "MIT"),
-            "download_url": _download_url(
-                catalog_root, version, f"{pmeta['id']}-{pmeta['version']}.zip", layout
-            ),
-            "repository": pmeta.get("repository", "UNSET"),
-            "requires": preset.get("requires", {}),
-            "provides": {
-                "templates": sum(
-                    1 for t in preset.get("provides", {}).get("templates", [])
-                    if t.get("type") == "template"
-                ),
-                "commands": sum(
-                    1 for t in preset.get("provides", {}).get("templates", [])
-                    if t.get("type") == "command"
-                ),
-            },
-            "tags": preset.get("tags", []),
+    def archive(component_id: str, component_version: str) -> str:
+        return _download_url(
+            catalog_root, version, f"{component_id}-{component_version}.zip", layout
+        )
+
+    def common(comp) -> dict:
+        meta = comp.meta
+        return {
+            "name": meta["name"],
+            "id": comp.id,
+            "version": comp.version,
+            "description": meta["description"],
+            "author": meta.get("author", ""),
+            "license": meta.get("license", "MIT"),
+            "repository": repo,
+            "requires": comp.manifest.get("requires", requires),
+            "tags": comp.manifest.get("tags", []),
             "verified": False,
+        }
+
+    preset = inv.preset
+    templates = preset.manifest.get("provides", {}).get("templates", []) or []
+    presets = {
+        preset.id: {
+            **common(preset),
+            "download_url": archive(preset.id, preset.version),
+            "provides": {
+                "templates": sum(1 for t in templates if t.get("type") == "template"),
+                "commands": sum(1 for t in templates if t.get("type") == "command"),
+            },
         }
     }
 
-    ext_dir, extension = c["extension"]
-    emeta = extension["extension"]
+    ext = inv.extension
+    ext_provides = ext.manifest.get("provides", {}) or {}
     extensions = {
-        emeta["id"]: {
-            "name": emeta["name"],
-            "id": emeta["id"],
-            "version": str(emeta["version"]),
-            "description": emeta["description"],
-            "author": emeta.get("author", ""),
-            "license": emeta.get("license", "MIT"),
-            "category": emeta.get("category", "integration"),
-            "effect": emeta.get("effect", "read-write"),
-            "download_url": _download_url(
-                catalog_root, version, f"{emeta['id']}-{emeta['version']}.zip", layout
-            ),
-            "repository": emeta.get("repository", "UNSET"),
-            "requires": extension.get("requires", {}),
+        ext.id: {
+            **common(ext),
+            "category": ext.meta.get("category", "integration"),
+            "effect": ext.meta.get("effect", "read-write"),
+            "download_url": archive(ext.id, ext.version),
             "provides": {
-                "commands": len(extension.get("provides", {}).get("commands", [])),
-                "hooks": len(extension.get("provides", {}).get("hooks", [])),
+                "commands": len(ext_provides.get("commands", []) or []),
+                "hooks": len(ext_provides.get("hooks", []) or []),
             },
-            "tags": extension.get("tags", []),
-            "verified": False,
         }
     }
 
     workflows = {}
-    for wdir, wf in c["workflows"]:
-        wmeta = wf["workflow"]
-        workflows[wmeta["id"]] = {
-            "name": wmeta["name"],
-            "id": wmeta["id"],
-            "version": str(wmeta["version"]),
-            "description": wmeta["description"],
-            "author": wmeta.get("author", ""),
-            "license": wmeta.get("license", "MIT"),
+    for comp in inv.by_kind("workflow"):
+        workflows[comp.id] = {
+            **common(comp),
             # Workflow entries key the archive as "url"; presets, extensions,
-            # and bundles all use "download_url". Not interchangeable.
-            "url": _download_url(
-                catalog_root, version, f"{wmeta['id']}-{wmeta['version']}.zip", layout
-            ),
-            "repository": bundle.get("repository", "UNSET"),
-            "requires": wf.get("requires", {}),
-            "provides": {"steps": len(wf.get("steps", []))},
-            "tags": wf.get("tags", []),
-            "verified": False,
+            # and bundles all use "download_url". Not interchangeable: a
+            # workflow with download_url lists and searches fine and fails only
+            # at install with "does not have an install URL in the catalog".
+            "url": archive(comp.id, comp.version),
+            "provides": {"steps": len(comp.manifest.get("steps", []) or [])},
         }
 
+    bmeta = inv.meta["bundle"]
     bundles = {
-        bundle["id"]: {
-            "name": bundle["name"],
-            "id": bundle["id"],
+        bmeta["id"]: {
+            "name": bmeta["name"],
+            "id": bmeta["id"],
             "version": version,
-            "role": bundle.get("role", "developer"),
-            "description": bundle["description"],
-            "author": bundle.get("author", ""),
-            "license": bundle.get("license", "MIT"),
-            "download_url": _download_url(
-                catalog_root, version, f"{bundle['id']}-{version}.zip", layout
-            ),
-            "repository": bundle.get("repository", "UNSET"),
-            "requires": c["bundle"].get("requires", {}),
+            "role": bmeta.get("role", "developer"),
+            "description": bmeta["description"],
+            "author": bmeta.get("author", ""),
+            "license": bmeta.get("license", "MIT"),
+            "download_url": archive(bmeta["id"], version),
+            "repository": repo,
+            "requires": requires,
             "provides": {
-                "extensions": len(c["bundle"]["provides"].get("extensions", [])),
-                "presets": len(c["bundle"]["provides"].get("presets", [])),
-                "steps": len(c["bundle"]["provides"].get("steps", [])),
-                "workflows": len(c["bundle"]["provides"].get("workflows", [])),
+                "extensions": len(inv.by_kind("extension")),
+                "presets": len(inv.by_kind("preset")) + len(inv.external_preset_refs()),
+                "steps": 0,
+                "workflows": len(inv.by_kind("workflow")),
             },
-            "tags": c["bundle"].get("tags", []),
+            "tags": list(inv.meta.get("tags", [])),
             "verified": False,
         }
     }

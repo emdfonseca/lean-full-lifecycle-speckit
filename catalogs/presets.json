@@ -10,14 +10,9 @@
       "description": "Additive engineering, security, readiness, output, outcome, and brownfield governance for Lean Spec Kit.",
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
-      "download_url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0"
-      },
-      "provides": {
-        "templates": 4,
-        "commands": 9
       },
       "tags": [
         "lean",
@@ -27,7 +22,12 @@
         "brownfield",
         "outcomes"
       ],
-      "verified": false
+      "verified": false,
+      "download_url": "UNSET",
+      "provides": {
+        "templates": 4,
+        "commands": 9
+      }
     }
   }
 }

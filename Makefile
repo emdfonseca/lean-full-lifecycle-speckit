@@ -1,6 +1,15 @@
-.PHONY: validate test build smoke official
+.PHONY: generate generate-check validate test build smoke official
 
-validate:
+generate:
+	python scripts/generate_manifests.py
+	python scripts/generate_catalogs.py
+
+# Generated files must match the manifests; CI runs this so a hand-edit fails.
+generate-check:
+	python scripts/generate_manifests.py --check
+	python scripts/generate_catalogs.py --check
+
+validate: generate-check
 	python scripts/validate_source.py
 
 test:

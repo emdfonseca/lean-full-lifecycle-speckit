@@ -12,7 +12,7 @@
       "author": "Lean Full-Lifecycle Contributors",
       "license": "MIT",
       "download_url": "UNSET",
-      "repository": "https://github.com/YOUR-ORG/lean-full-lifecycle-speckit",
+      "repository": "UNSET",
       "requires": {
         "speckit_version": ">=1.0.1,<2.0.0",
         "tools": [],
