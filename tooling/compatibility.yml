@@ -1,0 +1,63 @@
+# What has actually been exercised under each agent integration.
+#
+# Declared here and verified against the suite, not scraped from it. A scanner
+# reading `--integration "opencode"` out of the test source would already be
+# wrong: tests/sandbox/test_claude_install.py passes a variable, so the claude
+# runs would not be counted. Node ids are resolved the same way
+# requirements.yml resolves `verified_by`, so a claim naming a test that does
+# not exist fails validation.
+#
+# An integration with no claims is rendered untested rather than omitted. The
+# reader needs to tell "we tried it and it works" from "nobody has tried".
+
+schema_version: "1.0"
+
+# What a row can claim. Each is a capability a reader would want per agent.
+capabilities:
+  install: the bundle installs from a catalog
+  commands: every declared command lands where the integration reads it
+  workflows: the installed workflows resolve
+  overlays: a project overlay survives update, reinstall, and removal
+  monorepo: two members of one repository stay independent
+
+integrations:
+  opencode:
+    install:
+      - tests/sandbox/test_lifecycle.py::test_bundle_installs_from_catalog
+      - tests/sandbox/test_lifecycle.py::test_second_install_is_idempotent
+      - tests/sandbox/test_claude_install.py::test_the_component_count_matches_the_opencode_case
+    commands:
+      - tests/sandbox/test_claude_install.py::test_the_opencode_layout_still_receives_its_commands
+    workflows:
+      - tests/sandbox/test_lifecycle.py::test_all_workflows_installed
+    overlays:
+      - tests/sandbox/test_overlays.py::test_overlay_applies_before_any_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_bundle_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_workflow_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_second_bundle_install
+      - tests/sandbox/test_overlays.py::test_overlay_outlives_bundle_removal
+    monorepo:
+      - tests/sandbox/test_monorepo.py::test_each_member_resolves_to_its_own_root
+      - tests/sandbox/test_monorepo_overlays.py::test_updating_one_member_does_not_disturb_the_other
+
+  claude:
+    install:
+      - tests/sandbox/test_claude_install.py::test_the_bundle_installs_into_a_claude_project
+      - tests/sandbox/test_claude_install.py::test_the_component_count_matches_the_opencode_case
+    commands:
+      - tests/sandbox/test_claude_install.py::test_every_declared_command_is_present_in_the_claude_layout
+      - tests/sandbox/test_claude_install.py::test_each_command_is_a_directory_holding_a_skill_file
+      - tests/sandbox/test_claude_install.py::test_a_command_that_did_not_land_is_named
+    workflows:
+      - tests/sandbox/test_claude_install.py::test_a_workflow_resolves_under_claude
+      - tests/sandbox/test_claude_install.py::test_the_workflows_are_listed_under_claude
+    # overlays and monorepo are deliberately absent: nothing has exercised
+    # either under this integration, and an empty row says so.
+
+# Running a workflow end to end under any integration is not claimed by
+# anyone. It needs a live model and a person at each gate, and it is tracked as
+# #79 rather than quietly implied by the rows above.
+not_claimed_by_anyone:
+  workflow_execution: >-
+    No integration has had a workflow run end to end in the suite. Every row
+    above is installation, layout, or resolution.

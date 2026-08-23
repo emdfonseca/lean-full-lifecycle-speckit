@@ -42,7 +42,7 @@ project containing the manifest, so it cannot pass from a source checkout. Use
 
 ```bash
 cd /absolute/path/to/my-product
-specify init --here --integration opencode --script py
+specify init --here --integration <your agent> --script py
 ```
 
 ## 5. Install the bundle

@@ -255,3 +255,48 @@ def test_the_workflow_reads_the_horizon_before_proposing():
     ids = [s["id"] for s in wf.manifest["steps"]]
     assert ids.index("read-horizon") < ids.index("propose-children")
     assert ids.index("decide-whether-to-decompose") < ids.index("propose-children")
+
+
+# --- the second wave, which nothing exercised --------------------------------
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_second_wave_creates_only_what_the_horizon_still_needs():
+    # Every existing case decomposed once. The roadmap asks for first *and*
+    # second waves, and the horizon is only interesting on the second: the
+    # first wave's children are what it now has to count.
+    board = Board(children=[], states={})
+    gh, insp, be = setup(board)
+
+    first = dec.apply_proposals(gh, be, insp, epic=1, target=2,
+                                proposals=[proposal("Alpha"), proposal("Beta")])
+    assert len(first["created"]) == 2
+
+    # Those two are Inbox, not Ready, so the horizon is still unmet.
+    gh, insp, be = setup(board)
+    second = dec.apply_proposals(gh, be, insp, epic=1, target=2,
+                                 proposals=[proposal("Gamma")])
+    assert second["action"] != "none"
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_second_wave_stops_once_the_horizon_is_met():
+    board = Board(children=[10], states={10: "Ready"})
+    gh, insp, be = setup(board)
+
+    first = dec.apply_proposals(gh, be, insp, epic=1, target=2,
+                                proposals=[proposal("Alpha")])
+    assert len(first["created"]) == 1
+
+    # Mark every child the epic now has as Ready, however the fake numbered
+    # them, so the horizon is genuinely met rather than met by assumption.
+    for number in board.children:
+        board.states[number] = "Ready"
+
+    # A second wave is a second run. The backend caches its item map, so
+    # reusing the first run's would hide the children the first wave created --
+    # which is what a fresh process would never do.
+    gh, insp, be = setup(board)
+    second = dec.apply_proposals(gh, be, insp, epic=1, target=2,
+                                 proposals=[proposal("Beta")])
+    assert second["action"] == "none"
+    assert "Beta" not in [c.get("title") for c in second.get("created", [])]

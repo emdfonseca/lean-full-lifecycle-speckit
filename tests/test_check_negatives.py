@@ -72,6 +72,31 @@ def break_speckit_pin(tmp):
                lambda d: d["requires"].__setitem__("speckit_version", ">=0.0.1"))
 
 
+def break_integration_default(tmp):
+    # Naming a specific agent is how fifteen workflows shipped: a project
+    # initialized with any other integration still dispatched to this one.
+    _edit_yaml(_first_workflow(tmp),
+               lambda d: d["inputs"]["integration"].__setitem__(
+                   "default", "opencode"))
+
+
+def break_compat_claim(tmp):
+    # A public claim about what works under which agent, naming a test nobody
+    # wrote. It reads as evidence and is not.
+    _edit_yaml(tmp / "tooling/compatibility.yml",
+               lambda d: d["integrations"]["claude"]["install"].append(
+                   "tests/sandbox/test_claude_install.py::test_that_does_not_exist"))
+
+
+def break_script_flavour(tmp):
+    # The manifest stops declaring the interpreter every command invokes,
+    # which is how the extension shipped until #80.
+    _edit_yaml(tmp / EXT / "extension.yml",
+               lambda d: d["requires"].__setitem__(
+                   "tools", [t for t in d["requires"]["tools"]
+                             if t["name"] not in ("python", "python3")]))
+
+
 def break_policy_mirror(tmp):
     target = sorted((tmp / PRESET / "policy").glob("*.yml"))[0]
     target.write_text(target.read_text(encoding="utf-8") + "\n# drift\n", encoding="utf-8")
@@ -207,6 +232,9 @@ MUTATORS = {
     "SEC-SHELL-NO-INTERPOLATION": break_shell_interpolation,
     "INV-GATE-VERDICT": break_gate_verdict,
     "INV-GATE-SHAPE": break_gate_shape,
+    "INV-INTEGRATION-DEFAULT": break_integration_default,
+    "PUB-COMPAT-CLAIM": break_compat_claim,
+    "INV-SCRIPT-FLAVOUR": break_script_flavour,
     "INV-COMMAND-RESOLVES": break_command_resolves,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,

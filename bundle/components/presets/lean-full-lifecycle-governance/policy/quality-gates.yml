@@ -29,3 +29,42 @@ conditional:
 flaky_tests:
   policy: defect
   dispositions: [fix, quarantine_with_owner_and_expiry, remove_if_invalid]
+
+# "Do not make it worse" needs a referent. Without a recorded baseline per
+# gate, a ratchet is a word.
+ratchet:
+  baseline_file: .specify/lifecycle/ratchet-baselines.yml
+
+  # Only a gate that produces a number can ratchet. Declaring one here without
+  # a measure is refused rather than skipped: a gate that silently opts out of
+  # the ratchet is the one that regresses.
+  gates:
+    lint_or_static_analysis:
+      measure: violations
+      direction: lower_is_better
+    type_or_compile_check_when_supported:
+      measure: errors
+      direction: lower_is_better
+    secret_detection:
+      measure: findings
+      direction: lower_is_better
+    deterministic_change_appropriate_tests:
+      measure: coverage_percent
+      direction: higher_is_better
+
+  # What a baseline entry must carry. `produced_by` is what makes an improved
+  # baseline reviewable: a number with no provenance cannot be argued with.
+  baseline_fields: [value, recorded_at, produced_by]
+
+  first_run:
+    # A first run that reports a pass makes every later comparison meaningless,
+    # because the baseline it silently recorded was never reviewed.
+    action: establish_baseline
+    reports: baseline_established
+    is_not_a_pass: true
+
+  loosening:
+    # The ratchet turns one way on its own. Turning it back is a decision
+    # somebody signs, which is what the exception mechanism already records.
+    requires_exception: true
+    exception_must_name_gate: true

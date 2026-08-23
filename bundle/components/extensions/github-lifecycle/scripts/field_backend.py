@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from github_api import Conflict, GitHub, NotFound  # noqa: E402
+from github_api import Conflict, GitHub, GitHubError, NotFound  # noqa: E402
 from inspect_target import BACKEND_ISSUE_FIELDS, BACKEND_PROJECT, Inspection  # noqa: E402
 
 
@@ -112,6 +112,43 @@ class ProjectFieldBackend(FieldBackend):
                 f"issue #{issue_number} is not on project "
                 f"#{self.inspection.project_number}"
             ) from None
+
+    def place(self, issue_number: int, issue_id: int, *,
+              operation_id: str | None = None) -> int:
+        """Put an issue on the board, and return its item id.
+
+        Idempotent: an issue already present returns its existing id rather
+        than creating a second row.
+        """
+        try:
+            return self.item_id(issue_number)
+        except NotFound:
+            pass
+        created = self.gh.rest(
+            "POST", f"{self._base}/items",
+            body={"type": "Issue", "id": int(issue_id)},
+            operation_id=operation_id,
+        )
+        if self.gh.last_outcome == "dry-run":
+            return -1
+        if not created or created.get("id") is None:
+            raise GitHubError(
+                f"placing #{issue_number} returned no item id")
+        item = int(created["id"])
+
+        # Read the item back directly rather than re-listing. The listing lags
+        # a moment behind a fresh POST -- a live run created the item and then
+        # failed to find it in the very next request -- and a read-back that
+        # can report a successful write as a failure is worse than none.
+        row = self.gh.rest("GET", f"{self._base}/items/{item}") or {}
+        number = (row.get("content") or {}).get("number")
+        if number is None or int(number) != issue_number:
+            raise GitHubError(
+                f"placed #{issue_number} but item {item} reads back as "
+                f"{number!r}")
+        if self._items is not None:
+            self._items[issue_number] = item
+        return item
 
     def read(self, issue_number: int, role: str) -> FieldValue:
         ref = self._field(role)

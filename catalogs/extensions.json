@@ -17,6 +17,10 @@
           {
             "name": "gh",
             "required": true
+          },
+          {
+            "name": "python3",
+            "required": true
           }
         ]
       },
@@ -32,7 +36,7 @@
       "effect": "read-write",
       "download_url": "UNSET",
       "provides": {
-        "commands": 11,
+        "commands": 21,
         "hooks": 0
       }
     }

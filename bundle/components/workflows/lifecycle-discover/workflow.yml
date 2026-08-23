@@ -10,7 +10,7 @@ requires:
 inputs:
   integration:
     type: string
-    default: opencode
+    default: auto
   target:
     type: string
     required: true

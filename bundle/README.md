@@ -19,7 +19,9 @@ Where Lean contributes no template, the core Spec Kit template is the base inste
 ## Requirements
 
 - Spec Kit `>=1.0.1,<2.0.0`
-- an active integration (`opencode` is the reference target)
+- an active Spec Kit integration. The workflows follow whichever one the
+  project was initialized with; they do not name an agent. `opencode` is
+  the reference target, meaning the one under test, not the one required.
 - `gh` for the GitHub extension
 - `devbox run verify` / `devbox run release-verify` in the target project, used by
   the workflows' verification steps

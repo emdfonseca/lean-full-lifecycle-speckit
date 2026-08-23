@@ -18,7 +18,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 8
+        "steps": 11
       }
     },
     "lifecycle-bugfix": {
@@ -36,7 +36,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 14
+        "steps": 15
       }
     },
     "lifecycle-decompose": {
@@ -90,7 +90,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 8
+        "steps": 12
       }
     },
     "lifecycle-incident-hotfix": {
@@ -109,6 +109,24 @@
       "url": "UNSET",
       "provides": {
         "steps": 11
+      }
+    },
+    "lifecycle-outcome-review": {
+      "name": "Outcome Review",
+      "id": "lifecycle-outcome-review",
+      "version": "0.1.0",
+      "description": "Close the loop between work being finished and the result being known, without letting either verdict disturb the other.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 4
       }
     },
     "lifecycle-prototype": {
@@ -216,7 +234,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 21
+        "steps": 22
       }
     },
     "lifecycle-triage": {

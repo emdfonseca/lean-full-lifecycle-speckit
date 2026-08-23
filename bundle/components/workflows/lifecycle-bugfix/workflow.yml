@@ -10,7 +10,7 @@ requires:
 inputs:
   integration:
     type: string
-    default: opencode
+    default: auto
   issue_ref:
     type: string
     required: true
@@ -94,6 +94,15 @@ steps:
 - id: verify
   type: shell
   run: devbox run verify
+- id: check-quality-ratchet
+  command: speckit.github-lifecycle.ratchet
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Run the ratchet for every gate quality-gates.yml declares ratcheted, with
+      the number this verification produced and --produced-by naming the commit. Report
+      baseline_established as a baseline and never as a pass: a first run that reports
+      a pass makes every later comparison meaningless. On a refusal, report the gate,
+      the baseline, and the measurement, and do not re-run hoping for a different number.'
 - id: converge
   command: speckit.converge
   integration: '{{ inputs.integration }}'

@@ -29,5 +29,7 @@ def root():
 
 
 def pytest_runtest_setup(item):
+    if item.get_closest_marker("requires_opencode") and not shutil.which("opencode"):
+        pytest.skip("opencode CLI not on PATH")
     if item.get_closest_marker("requires_specify") and not shutil.which("specify"):
         pytest.skip("specify CLI not on PATH")

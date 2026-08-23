@@ -48,6 +48,10 @@ class FakeBoard:
         }
         # item id -> {field id -> stored value}
         self.values: dict[int, dict[str, object]] = {i: {} for i in self.items.values()}
+        # The real POST takes the issue's id, not its number. A fake keyed on
+        # number would let a caller pass the wrong one and still pass here.
+        self.issue_ids = {36: 3600, 37: 3700, 42: 4200}
+        self.next_item = 950
         self.calls: list[list[str]] = []
 
     def __call__(self, args, stdin):
@@ -59,6 +63,20 @@ class FakeBoard:
         if query.startswith("fields="):
             requested = {q for q in query[len("fields="):].split(",") if q}
 
+        if url.endswith("/items") and method == "POST":
+            body = json.loads(stdin or "{}")
+            if body.get("type") != "Issue" or "id" not in body:
+                return self._err("gh: Validation Failed (HTTP 422)")
+            number = next((n for n, i in self.issue_ids.items()
+                           if i == int(body["id"])), None)
+            if number is None:
+                return self._err("gh: Not Found (HTTP 404)")
+            item = self.next_item
+            self.next_item += 1
+            self.items[number] = item
+            self.values[item] = {}
+            return self._ok({"id": item, "content": {"number": number}})
+
         if url.endswith("/items"):
             rows = [{"id": iid, "content": {"number": num}}
                     for num, iid in self.items.items()]
@@ -68,6 +86,13 @@ class FakeBoard:
             item = int(url.rsplit("/", 1)[-1])
             if item not in self.values:
                 return self._err("gh: Not Found (HTTP 404)")
+            if method == "GET" and requested is None:
+                # A bare GET carries the content. This is what a placement
+                # reads back, and the listing lags behind a fresh POST.
+                number = next((n for n, i in self.items.items() if i == item),
+                              None)
+                return self._ok({"id": item, "content": {"number": number},
+                                 "content_type": "Issue"})
             if method == "PATCH":
                 body = json.loads(stdin or "{}")
                 for entry in body.get("fields", []):
@@ -392,3 +417,92 @@ def test_both_backends_expose_the_same_interface():
         assert issubclass(cls, fb.FieldBackend)
         for method in ("read", "write"):
             assert callable(getattr(cls, method))
+
+
+# --- placing an issue on the board --------------------------------------------
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_an_issue_can_be_placed_on_the_board():
+    be, board = backend()
+    item = be.place(42, board.issue_ids[42])
+    assert item == 950
+    assert be.read(42, "delivery_state").value is None
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_placing_an_issue_already_present_is_idempotent():
+    be, board = backend()
+    first = be.place(36, board.issue_ids[36])
+    second = be.place(36, board.issue_ids[36])
+    assert first == second == 900
+    assert not [c for c in board.calls if "POST" in c], \
+        "a second placement would create a duplicate row"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_placing_takes_the_issue_id_not_its_number():
+    # The real API takes the id. Passing a number would create nothing, and
+    # the caller would never learn.
+    be, _ = backend()
+    with pytest.raises(gh_api.NotFound):
+        be.place(42, 42)
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_a_placed_issue_is_readable_and_writable():
+    be, board = backend()
+    be.place(42, board.issue_ids[42])
+    be.write(42, "delivery_state", STATES[0])
+    assert be.read(42, "delivery_state").value == STATES[0]
+
+
+class LaggingBoard(FakeBoard):
+    """A board whose item listing trails a fresh POST.
+
+    Not hypothetical: a live run created an item and failed to find it in the
+    very next request. A read-back that can report a successful write as a
+    failure is worse than none.
+    """
+
+    def __call__(self, args, stdin):
+        method = args[args.index("--method") + 1] if "--method" in args else "GET"
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).partition("?")[0]
+        if url.endswith("/items") and method == "GET":
+            rows = [{"id": iid, "content": {"number": num}}
+                    for num, iid in self.items.items() if iid < self.next_item]
+            self.calls.append(list(args))
+            return self._ok([r for r in rows if r["id"] < 950])
+        return super().__call__(args, stdin)
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_placement_survives_a_listing_that_lags_behind_the_write():
+    be, board = backend(LaggingBoard())
+    item = be.place(42, board.issue_ids[42])
+    assert item == 950
+
+
+class MisreportingBoard(FakeBoard):
+    """A board whose fresh item reads back as a different issue.
+
+    Trusting the POST response alone would record a placement that put some
+    other issue on the board, and nothing downstream would notice.
+    """
+
+    def __call__(self, args, stdin):
+        method = args[args.index("--method") + 1] if "--method" in args else "GET"
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).partition("?")[0]
+        if "/items/" in url and method == "GET":
+            self.calls.append(list(args))
+            return self._ok({"id": int(url.rsplit("/", 1)[-1]),
+                             "content": {"number": 999}})
+        return super().__call__(args, stdin)
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_placement_refuses_when_the_item_reads_back_as_another_issue():
+    be, board = backend(MisreportingBoard())
+    with pytest.raises(gh_api.GitHubError):
+        be.place(42, board.issue_ids[42])

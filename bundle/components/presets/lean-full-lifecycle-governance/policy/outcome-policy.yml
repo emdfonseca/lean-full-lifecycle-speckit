@@ -24,3 +24,66 @@ agent_may:
 
 agent_may_not:
   - mark_outcome_validated_without_authority
+
+# What a measurement means. These are judgements, written down so they are
+# argued with once rather than relitigated per outcome.
+assessment:
+  statuses:
+    not_applicable: no outcome was claimed for this work
+    not_yet_measurable: shipped, but the window has not started
+    measuring: the window is open, or the evidence is not yet sufficient
+    validated: target met, guardrails intact, decided by an authority
+    missed_or_inconclusive: >-
+      target not met, or evidence insufficient to say, or a guardrail
+      regressed
+
+  # What the measurer concluded, before anyone judges what it means. The board
+  # carries one option for the last two -- the field is named "Missed /
+  # Inconclusive" -- but they are different findings and the report must say
+  # which.
+  result_values:
+    met: the target was reached
+    not_met: the target was not reached, and the data says so
+    inconclusive: >-
+      the measurement did not settle the question. The window elapsed and the
+      sample was large enough, and the result still does not distinguish
+      success from failure.
+
+  rules:
+    - >-
+      Not met and inconclusive are different findings. A missed target is a
+      result somebody can act on; an inconclusive one means the question is
+      still open and the next step is a better measurement, not a
+      post-mortem. Reporting the second as the first tells a team its work
+      failed on evidence that says no such thing.
+    - >-
+      A regressed guardrail defeats a met target. Guardrails exist to name the
+      harm a success is not permitted to cause, so a success that caused it is
+      not one.
+    - >-
+      Insufficient evidence is not failure. An unelapsed window or an
+      undersized sample leaves the item Measuring; recording it as missed
+      invents a result the data does not support.
+    - >-
+      An unreadable data source blocks rather than concludes. Absent data is
+      not evidence of absence.
+    - >-
+      Only a validation authority may record Validated. The agent summarises,
+      identifies data-quality gaps, and recommends.
+    - >-
+      Outcome Status never changes Delivery Status. Work that was finished
+      stays finished whatever the measurement says; conflating the two makes
+      teams reluctant to measure honestly.
+
+  # Required alongside the fields above, for a record to be assessable at all.
+  evidence_fields:
+    - id: sample_size
+      note: how many observations the result rests on
+    - id: minimum_sample
+      note: below which the result is not conclusive
+    - id: window_elapsed
+      note: whether the observation window has completed
+    - id: guardrail_results
+      note: each guardrail with its measured value and whether it held
+    - id: measured_value
+      note: the target metric as measured

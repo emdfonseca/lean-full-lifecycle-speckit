@@ -37,23 +37,20 @@ __all__ = [
 WRITE_METHODS = frozenset({"POST", "PATCH", "PUT", "DELETE"})
 
 # Token shapes GitHub issues, plus anything that announces itself as a secret.
-_SECRET_PATTERNS = (
-    re.compile(r"gh[pousr]_[A-Za-z0-9]{16,}"),
-    re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
-    re.compile(r"(?i)\b(authorization|bearer|token|secret|password)\b\s*[:=]\s*\S+"),
-)
-REDACTED = "[redacted]"
+import sensitive
+
+REDACTED = sensitive.FALLBACK_MARKER
 
 
 def redact(text: str) -> str:
-    """Strip anything token-shaped. Applied to everything that reaches the audit log."""
-    for pattern in _SECRET_PATTERNS:
-        text = pattern.sub(
-            lambda m: (m.group(0).split(":")[0] + ": " + REDACTED)
-            if ":" in m.group(0) else REDACTED,
-            text,
-        )
-    return text
+    """Strip anything credential-shaped. Applied to everything reaching the audit log.
+
+    The shapes live in `sensitive-data.yml`, not here. Two lists of what a
+    credential looks like drift, and the copy that drifts is the one nobody is
+    testing. `sensitive.compile_patterns` falls back to a conservative built-in
+    set when policy is unreachable, and says so rather than pretending.
+    """
+    return sensitive.redact(text)
 
 
 class GitHubError(Exception):

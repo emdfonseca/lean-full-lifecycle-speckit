@@ -41,6 +41,8 @@ provides:
     version: 0.1.0
   - id: lifecycle-incident-hotfix
     version: 0.1.0
+  - id: lifecycle-outcome-review
+    version: 0.1.0
   - id: lifecycle-prototype
     version: 0.1.0
   - id: lifecycle-refine

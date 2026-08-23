@@ -31,6 +31,20 @@ The script refuses to create when a candidate duplicate exists, or when the
 body lacks what the type requires. Both refusals are findings to report, not
 obstacles to work around by raising the threshold.
 
+## Creating also places the item on the board
+
+Pass `--project <n>`. Delivery state lives on the board, and every transition,
+the audit, and the refinement queue read it from there. An item created off the
+board exists and cannot be moved, which is worse than not creating it: it looks
+filed.
+
+If placement fails the result says `on_board: false` with the reason. Report
+that. A creation that reads as clean while the item cannot be transitioned is
+the failure this reporting exists to prevent.
+
+Organization Issue Fields carry state on the issue itself, so there is no board
+to be off. That case is reported too, and is not a failure.
+
 ## Distinct from `speckit.taskstoissues`
 
 That command converts a feature's `tasks.md` into dependency-ordered issues:

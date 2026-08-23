@@ -63,7 +63,8 @@ class Repo:
             number = self.next_number
             self.next_number += 1
             labels = [] if self.drop_label else [{"name": l} for l in body.get("labels", [])]
-            self.issues.append({"number": number, "title": body["title"],
+            self.issues.append({"number": number, "id": 10000 + number,
+                                "title": body["title"],
                                 "state": "open", "labels": labels})
             return self._ok({"number": number})
         if url.endswith("/issues"):
@@ -176,3 +177,103 @@ def test_an_item_created_without_its_type_is_a_failure():
     with pytest.raises(gh_api.GitHubError) as exc:
         cap.create_item(client(repo), "o/r", "A new finding", "body", "story")
     assert "type label" in str(exc.value)
+
+
+# --- placement on the board ---------------------------------------------------
+
+class StubBackend:
+    """A backend that records placements, standing in for a real board."""
+
+    def __init__(self, fail=None):
+        self.placed: list[tuple[int, int]] = []
+        self.fail = fail
+
+    def place(self, number, issue_id, operation_id=None):
+        if self.fail:
+            raise self.fail
+        self.placed.append((number, issue_id))
+        return 900 + number
+
+
+class NoBoardBackend:
+    """The organization Issue Fields backend, which has no board at all."""
+
+
+def _wire(monkeypatch, backend):
+    import field_backend
+    import inspect_target
+
+    stub_inspection = type("I", (), {"backend": "organization issue fields"})()
+    monkeypatch.setattr(inspect_target, "inspect",
+                        lambda gh, o, n, p=None: stub_inspection)
+    monkeypatch.setattr(field_backend, "for_inspection",
+                        lambda gh, insp: backend)
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_a_captured_item_is_placed_on_the_board(monkeypatch):
+    # Every transition, the audit, and the refinement queue read delivery state
+    # from the project. An item created off the board cannot be moved.
+    stub = StubBackend()
+    _wire(monkeypatch, stub)
+    repo = Repo()
+    result = cap.create_item(client(repo), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt",
+                             "bug", project=3)
+    assert result["on_board"] is True
+    assert stub.placed and stub.placed[0][0] == result["number"]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_placement_uses_the_issue_id_from_the_read_back(monkeypatch):
+    stub = StubBackend()
+    _wire(monkeypatch, stub)
+    repo = Repo()
+    result = cap.create_item(client(repo), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt",
+                             "bug", project=3)
+    number = result["number"]
+    issue = next(i for i in repo.issues if i["number"] == number)
+    assert stub.placed[0][1] == issue["id"]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_a_capture_that_cannot_place_says_so(monkeypatch):
+    # Returning a clean creation would hand back an item nobody can transition
+    # and let the caller believe otherwise.
+    _wire(monkeypatch, StubBackend(fail=RuntimeError("no project selected")))
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt",
+                             "bug", project=None)
+    assert result["on_board"] is False
+    assert "no transition can be planned" in result["board_note"]
+    assert result["number"] is not None, "the issue was still created"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_a_backend_without_a_board_is_not_reported_as_a_failure(monkeypatch):
+    # Organization Issue Fields carry state on the issue itself. There is no
+    # board to be off.
+    _wire(monkeypatch, NoBoardBackend())
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt", "bug")
+    assert result["on_board"] is False
+    assert "no board" in result["board_note"]
+    assert "could not place" not in result["board_note"]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-001")
+def test_a_dry_run_places_nothing(monkeypatch):
+    stub = StubBackend()
+    _wire(monkeypatch, stub)
+    gh = gh_api.GitHub(runner=Repo(), sleep=lambda _: None, max_attempts=1,
+                       dry_run=True)
+    result = cap.create_item(gh, "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt", "bug")
+    assert result.get("dry_run") is True
+    assert stub.placed == []

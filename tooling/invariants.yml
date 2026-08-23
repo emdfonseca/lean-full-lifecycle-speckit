@@ -15,6 +15,16 @@ write_effect_commands:
   - speckit.github-lifecycle.transition
   - speckit.github-lifecycle.capture
   - speckit.github-lifecycle.link
+# A write-effect command invoked in a mode that cannot write. `capture.py`
+# creates only with `--create`; the search reports candidate duplicates and
+# writes nothing. Gating it would gate the production of the very evidence the
+# gate exists to weigh. Each exemption names a single step, so adding one is a
+# reviewed decision rather than a widened rule.
+read_only_invocations:
+  - workflow: lifecycle-outcome-review
+    step: search-for-an-existing-finding
+    command: speckit.github-lifecycle.capture
+
 plan_command: speckit.github-lifecycle.plan
 
 # Commands that reach GitHub must invoke a script rather than describe the
@@ -36,6 +46,16 @@ script_backed_commands:
   - triage
   - discover
   - disposal
+  - mismatch
+  - claude-config
+  - opencode-config
+  - opencode-layout
+  - models
+  - ratchet
+  - sensitive
+  - exception
+  - verify-bootstrap
+  - outcome
   - doctor
 
 # Safety keys the extension config template must declare, with required values.
@@ -78,3 +98,8 @@ parity:
     embedded_in: lifecycle-story-delivery
     case: spike
     standalone_trailing_steps: 1
+
+# A workflow must not name an agent. Spec Kit resolves `auto` to the project's
+# configured integration at run time; a specific default means a project
+# initialized with another agent still dispatches to this one.
+integration_default: auto

@@ -143,7 +143,8 @@ def apply_proposals(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                             "reason": f"a {proposal.type} needs {missing}"})
             continue
         item = capture_mod.create_item(gh, repo, proposal.title, proposal.body,
-                                       proposal.type)
+                                       proposal.type,
+                                       project=inspection.project_number)
         if item.get("dry_run"):
             created.append(item)
             continue

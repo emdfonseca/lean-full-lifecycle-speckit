@@ -28,6 +28,8 @@ TEMPLATE_DIR = ROOT / ".github" / "ISSUE_TEMPLATE"
 SCHEMA_PATH = ROOT / "tooling" / "schemas" / "readiness-verdict.schema.json"
 DISCOVERY_SCHEMA = ROOT / "tooling" / "schemas" / "discovery-record.schema.json"
 DISPOSAL_SCHEMA = ROOT / "tooling" / "schemas" / "disposal-record.schema.json"
+OUTCOME_SCHEMA = ROOT / "tooling" / "schemas" / "outcome-record.schema.json"
+OUTCOME_POLICY = ROOT / "policy" / "outcome-policy.yml"
 ARTIFACT_POLICY = ROOT / "policy" / "artifact-policy.yml"
 
 HEADER = (
@@ -189,6 +191,72 @@ def build_disposal_schema(artifact_policy: dict) -> dict:
     }
 
 
+def build_outcome_schema(outcome_policy: dict) -> dict:
+    """The outcome record, from policy rather than a copy kept here."""
+    assessment = outcome_policy["assessment"]
+    props: dict[str, dict] = {}
+    required: list[str] = []
+
+    enumerated = assessment.get("result_values") or {}
+    for name in outcome_policy["required"]:
+        if name == "result" and enumerated:
+            # Enumerated, because free text here is how an open question became
+            # a verdict: anything that was not "met" fell to the missed branch,
+            # and "inconclusive" was reported to a product owner as a failure.
+            props[name] = {"enum": sorted(enumerated)}
+        else:
+            props[name] = {"type": "string", "minLength": 1}
+        required.append(name)
+    # guardrails is a list of names; guardrail_results carries what happened.
+    props["guardrails"] = {"type": "array", "items": {"type": "string"}}
+
+    for entry in assessment["evidence_fields"]:
+        name = entry["id"]
+        if name in ("sample_size", "minimum_sample"):
+            props[name] = {"type": "integer", "minimum": 0}
+        elif name == "window_elapsed":
+            props[name] = {"type": "boolean"}
+        elif name == "guardrail_results":
+            props[name] = {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["name", "held"],
+                    "additionalProperties": False,
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        # The whole rule turns on this: a false here defeats a
+                        # met target.
+                        "held": {"type": "boolean"},
+                        "measured": {"type": ["string", "number", "null"]},
+                    },
+                },
+            }
+        else:
+            props[name] = {"type": ["string", "number"]}
+        if entry.get("note"):
+            if "description" not in props[name]:
+                props[name]["description"] = " ".join(entry["note"].split())
+        required.append(name)
+
+    props["validated_by"] = {
+        "type": "string",
+        "description": "the authority who decided; required before Validated",
+    }
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Outcome record",
+        "description": (
+            "Evidence that work produced the result it claimed. "
+            "Generated from policy/outcome-policy.yml."
+        ),
+        "type": "object",
+        "additionalProperties": False,
+        "required": sorted(set(required)),
+        "properties": props,
+    }
+
+
 def render(policy: dict) -> dict[Path, str]:
     common = policy.get("common_sections") or []
     out: dict[Path, str] = {}
@@ -207,6 +275,8 @@ def render(policy: dict) -> dict[Path, str]:
         build_discovery_schema(artifact_policy), indent=2) + "\n"
     out[DISPOSAL_SCHEMA] = json.dumps(
         build_disposal_schema(artifact_policy), indent=2) + "\n"
+    out[OUTCOME_SCHEMA] = json.dumps(
+        build_outcome_schema(load_yaml(OUTCOME_POLICY)), indent=2) + "\n"
     return out
 
 

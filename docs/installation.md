@@ -44,7 +44,7 @@ After component archives and catalogs are hosted, run the catalog commands in
 the target project, then:
 
 ```bash
-specify bundle install lean-full-lifecycle --integration opencode
+specify bundle install lean-full-lifecycle
 ```
 
 The source repository remains separate.

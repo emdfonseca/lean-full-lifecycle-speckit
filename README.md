@@ -132,9 +132,9 @@ remains separate from the product repository.
 Inside the target project:
 
 ```bash
-specify workflow run lifecycle-greenfield-bootstrap   -i integration=opencode   -i mode=product   -i product_context="Build ..."
+specify workflow run lifecycle-greenfield-bootstrap   -i mode=product   -i product_context="Build ..."
 
-specify workflow run lifecycle-story-delivery   -i integration=opencode   -i issue_ref="#142"   -i intent="Allow users to pause subscriptions"
+specify workflow run lifecycle-story-delivery   -i issue_ref="#142"   -i intent="Allow users to pause subscriptions"
 ```
 
 See [Workflow guide](docs/workflows.md).
@@ -153,7 +153,7 @@ specify workflow catalog add <workflow-catalog-url>   --name lean-full-lifecycle
 
 specify bundle catalog add <bundle-catalog-url>   --id lean-full-lifecycle   --policy install-allowed
 
-specify bundle install lean-full-lifecycle   --integration opencode
+specify bundle install lean-full-lifecycle
 ```
 
 A built bundle ZIP still needs its non-default component references to resolve
@@ -172,7 +172,7 @@ When `specify` is installed:
 ```bash
 specify bundle validate --path bundle/ --offline
 specify bundle build --path bundle/ --output dist/
-python scripts/smoke_test.py --integration opencode
+python scripts/smoke_test.py --integration opencode   # any Spec Kit integration
 ```
 
 The included validator checks source structure and safety invariants. It is not

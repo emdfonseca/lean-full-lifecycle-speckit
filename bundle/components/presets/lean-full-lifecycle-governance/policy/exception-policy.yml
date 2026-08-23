@@ -22,3 +22,38 @@ dispositions:
   - expired
   - superseded
   - accepted_permanently_by_authority
+
+# What each forbidden shape looks like in a record. Named here rather than
+# inferred, so widening the rule is an edit somebody reviews.
+detection:
+  blanket_legacy_exception:
+    # A scope naming no particular thing. "the legacy code" is not a scope.
+    whole_repository_scopes: ["*", "**", ".", "./**", "/", "all", "everything"]
+    # A tree this shallow is a blanket whatever it is called. `legacy/**` is
+    # one directory from the root; `src/legacy/parser/**` is a place.
+    minimum_path_segments: 2
+    # A rule that names a family instead of a rule.
+    rule_wildcards: ["*", "all", "any"]
+
+  ownerless_exception:
+    # Present but empty is absent. A placeholder owner is how an exception
+    # survives with nobody to answer for it.
+    placeholder_values: ["", "-", "n/a", "na", "none", "tbd", "unknown", "team"]
+
+  permanent_exception_without_explicit_approval:
+    disposition: accepted_permanently_by_authority
+    requires: [approver, reason]
+
+  exception_hiding_new_violations:
+    # An exception over a glob cannot tell an existing violation from one added
+    # tomorrow unless it records what existed when it was written. Without a
+    # baseline it silently widens every time somebody commits.
+    requires_baseline_when_scope_is_a_glob: true
+    baseline_field: baseline
+
+expiry:
+  # An expired exception is reported, not deleted. It stops suppressing its
+  # rule, which is the whole mechanism: an exception that outlives its review
+  # is how a codebase stops improving while every gate still reports green.
+  suppresses_rule_while: [active]
+  on_expiry: report_and_stop_suppressing

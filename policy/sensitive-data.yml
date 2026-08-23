@@ -1,0 +1,70 @@
+# What the framework may read, and what may end up in the evidence it writes.
+#
+# Coverage was scattered: agent-policy denies production access, quality-gates
+# requires secret detection, risk-policy escalates regulated data. The only
+# implemented redaction covered the GitHub adapter's audit trail. Nothing
+# covered the records the workflows themselves write -- discovery, disposal,
+# outcome, plans -- which is where production data actually lands during a
+# brownfield adoption.
+
+production_data:
+  # Denied by default. An agent reading production data is a decision a person
+  # makes, once, in the open.
+  default: deny
+  rule_id: SENSITIVE-PROD-001
+  rule: >-
+    Production data is denied to the agent unless a named human has authorized
+    that specific read. Denial is the default because the alternative is an
+    agent deciding for itself what it may see.
+
+  # Authorization is a record, not a claim. "The user said it was fine" is not
+  # one.
+  authorization:
+    required_fields: [authorized_by, source, scope, expires_at]
+    authorities: [data_owner, security_owner]
+
+  denied_sources:
+    - production_database
+    - production_logs
+    - production_backups
+    - production_exports
+    - customer_records
+    - payment_records
+
+redaction:
+  # Visible, so a reader can tell something was removed. A silent redaction
+  # leaves evidence that reads as complete and is not.
+  marker: "[redacted]"
+  visible: true
+  # Redaction happens after the read. It cannot make an unauthorized read
+  # authorized, and treating it that way is what makes a denial policy
+  # decorative.
+  is_not_authorization: true
+
+credential_shapes:
+  # Named shapes, matched against the evidence records the framework writes.
+  # A finding names the record and the field. It never quotes the value: a
+  # report that repeats the secret has copied it somewhere new.
+  - id: github_token
+    pattern: "gh[pousr]_[A-Za-z0-9]{16,}"
+  - id: github_pat
+    pattern: "github_pat_[A-Za-z0-9_]{20,}"
+  - id: labelled_secret
+    pattern: "(?i)\\b(authorization|bearer|token|secret|password|api[_-]?key)\\b\\s*[:=]\\s*\\S+"
+  - id: aws_access_key
+    pattern: "AKIA[0-9A-Z]{16}"
+  - id: private_key_block
+    pattern: "-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----"
+  - id: connection_string
+    pattern: "(?i)\\b(?:postgres|postgresql|mysql|mongodb|redis|amqp)://[^\\s/@]+:[^\\s/@]+@"
+  - id: jwt
+    pattern: "eyJ[A-Za-z0-9_-]{10,}\\.eyJ[A-Za-z0-9_-]{10,}\\."
+
+scanned_records:
+  # Every record the framework writes and a person later reads.
+  - discovery_record
+  - disposal_record
+  - outcome_record
+  - transition_plan
+  - readiness_verdict
+  - exception_record

@@ -7,6 +7,8 @@ which is why the verdict is checked rather than read.
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 
 import pytest
@@ -88,3 +90,57 @@ def test_the_schema_comes_from_installed_policy():
     source = (SCRIPTS / "readiness.py").read_text(encoding="utf-8")
     assert "readiness-verdict.schema.json" in source
     assert '"enum"' not in source
+
+
+# --- the path that was never executed ----------------------------------------
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_not_ready_verdict_exits_non_zero(tmp_path):
+    # `main()`'s `return 0 if readiness == "ready" else 1` had never run with
+    # a not-ready verdict, so an item could pass Refining to Ready with the
+    # gate reporting success.
+    verdict = tmp_path / "verdict.json"
+    verdict.write_text(json.dumps({
+        "readiness": "not_ready",
+        "blocking_questions": ["Which of the two APIs is authoritative?"],
+        "risk": "medium", "spec_impact": "update",
+        "material_uncertainty": "discovery",
+        "next_engineering_action": "Answer the blocking question first."}),
+        encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS / "readiness.py"), "--verdict",
+         str(verdict)],
+        cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode != 0, result.stdout
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_ready_verdict_exits_zero(tmp_path):
+    verdict = tmp_path / "verdict.json"
+    verdict.write_text(json.dumps({
+        "readiness": "ready", "blocking_questions": [], "risk": "low",
+        "spec_impact": "none", "material_uncertainty": "none",
+        "next_engineering_action": "Write the failing test first."}),
+        encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS / "readiness.py"), "--verdict",
+         str(verdict)],
+        cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_not_ready_verdict_with_no_blocking_question_is_still_not_ready(
+        tmp_path):
+    # Not-ready is the verdict, not a consequence of having questions.
+    verdict = tmp_path / "verdict.json"
+    verdict.write_text(json.dumps({
+        "readiness": "not_ready", "blocking_questions": [], "risk": "low",
+        "spec_impact": "none", "material_uncertainty": "none",
+        "next_engineering_action": "Split it; it is two stories."}),
+        encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS / "readiness.py"), "--verdict",
+         str(verdict)],
+        cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode != 0

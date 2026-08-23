@@ -8,6 +8,14 @@ blocking:
   changes_delivery_status: false
   # An item that is Ready while blocked claims to be startable and is not.
   report_when: ready_and_blocked
+  # And it is refused rather than only reported. With teams working in
+  # parallel, that ordering is the only thing keeping one from building on
+  # something that has not landed.
+  refuses_transition_to: In Progress
+  # A blocker here is judged by delivery state, the same way a child is: an
+  # issue closed as a duplicate has not been delivered. A blocker in another
+  # repository has no delivery state we can read, so closure is the only
+  # signal, and the refusal says which of the two answered.
   # Refinement may run ahead of implementation for items with no open blocker,
   # since nothing in flight can change their shape. An item with an open
   # blocker should not be refined to Ready: the blocker may change what it

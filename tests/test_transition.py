@@ -293,6 +293,8 @@ class BoardWithChildren(Board):
                 if self.children[number] else {}
             next_item += 1
 
+    blocked_by: list = []
+
     def __call__(self, args, stdin):
         self.calls.append(list(args))
         url = (args[args.index("--method") + 2] if "--method" in args
@@ -302,6 +304,11 @@ class BoardWithChildren(Board):
             if number != 38:
                 return self._ok([])
             return self._ok([{"number": n} for n in self.children])
+        if url.endswith("/blocked_by"):
+            # The real endpoint returns a list. The fake used to fall through
+            # to a bare "User" string, which is not a shape the caller could
+            # ever see from GitHub.
+            return self._ok(list(self.blocked_by))
         if url.endswith("/items"):
             return self._ok([{"id": i, "content": {"number": n}}
                              for n, i in self.item_of.items()])
@@ -558,3 +565,196 @@ def test_epics_are_separated_from_refinable_items():
     entries = {e.issue: e for e in tp.ready_queue(gh, be, insp)}
     assert entries[1].decomposable
     assert not entries[2].decomposable
+
+
+# --- starting work that waits on something else -------------------------------
+
+class BlockedBoard(BoardWithChildren):
+    """A board plus a dependency list, so blockers can be given per issue."""
+
+    def __init__(self, blockers, states=None):
+        super().__init__(children=states or {})
+        self._blockers = blockers
+
+    def __call__(self, args, stdin):
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        if url.endswith("/blocked_by"):
+            self.calls.append(list(args))
+            number = int(url.split("/issues/")[1].split("/")[0])
+            return self._ok(list(self._blockers.get(number, [])))
+        return super().__call__(args, stdin)
+
+
+class UnreadableDependencies(BoardWithChildren):
+    """A board whose dependency list cannot be read."""
+
+    def __call__(self, args, stdin):
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).split("?")[0]
+        if url.endswith("/blocked_by"):
+            self.calls.append(list(args))
+            return self._ok(None)
+        return super().__call__(args, stdin)
+
+
+HERE = "acme/widgets"
+
+
+def blocker(number, state="open", repo=HERE):
+    return {"number": number, "state": state,
+            "repository": {"full_name": repo}}
+
+
+def blocked_setup(blockers, states):
+    board = BlockedBoard(blockers, states)
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    return gh, insp, fb.ProjectFieldBackend(gh, insp), board
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_blocked_item_cannot_start():
+    gh, insp, be, _ = blocked_setup({38: [blocker(101)]},
+                                    {101: "In Progress"})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert "blocked by" in str(exc.value)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_the_refusal_names_each_blocker_and_its_state():
+    gh, insp, be, _ = blocked_setup({38: [blocker(101), blocker(102)]},
+                                    {101: "In Progress", 102: "Ready"})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    message = str(exc.value)
+    assert "#101 (In Progress)" in message
+    assert "#102 (Ready)" in message
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_delivered_blocker_does_not_block():
+    gh, insp, be, _ = blocked_setup({38: [blocker(101)]},
+                                    {101: "Output Done"})
+    be.write(38, "delivery_state", "Ready")
+    plan = tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert plan.target == "In Progress"
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_an_item_with_no_blockers_starts():
+    gh, insp, be, _ = blocked_setup({}, {})
+    be.write(38, "delivery_state", "Ready")
+    assert tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_blocker_closed_as_a_duplicate_has_not_been_delivered():
+    # Judged by delivery state, not by closure: the same rule the parent check
+    # uses, for the same reason. A blocker still returned by the endpoint while
+    # short of Output Done has not landed.
+    gh, insp, be, _ = blocked_setup({38: [blocker(101)]}, {101: "Refining"})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert "#101 (Refining)" in str(exc.value)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_blocker_in_another_repository_still_blocks():
+    gh, insp, be, _ = blocked_setup(
+        {38: [blocker(4282, repo="github/spec-kit")]}, {})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    message = str(exc.value)
+    assert "github/spec-kit#4282" in message
+    # A reader who does not know which signal answered cannot tell what would
+    # clear it.
+    assert "not ours to read" in message
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_blocker_not_on_the_board_blocks():
+    gh, insp, be, _ = blocked_setup({38: [blocker(999)]}, {})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert "not on the board" in str(exc.value)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_an_unreadable_dependency_list_refuses_rather_than_permits():
+    board = UnreadableDependencies(children={})
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    be = fb.ProjectFieldBackend(gh, insp)
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError) as exc:
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert "could not be determined" in str(exc.value)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_blocking_does_not_change_delivery_status():
+    # ADR 0004: blocking is a dependency, never a state. This adds a refusal,
+    # not a sixth delivery status.
+    gh, insp, be, _ = blocked_setup({38: [blocker(101)]}, {101: "Ready"})
+    be.write(38, "delivery_state", "Ready")
+    with pytest.raises(tp.PlanError):
+        tp.build_plan(be, insp, MACHINE, 38, "In Progress", gh=gh)
+    assert be.read(38, "delivery_state").value == "Ready"
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_a_blocked_item_may_still_be_refined():
+    # Only starting is refused. An item can be corrected while it waits.
+    gh, insp, be, _ = blocked_setup({38: [blocker(101)]}, {101: "Ready"})
+    be.write(38, "delivery_state", "Inbox")
+    assert tp.build_plan(be, insp, MACHINE, 38, "Refining", gh=gh)
+
+
+@pytest.mark.req("REQ-TEAM-BLOCKED-001")
+def test_the_blocker_check_does_not_run_for_other_targets():
+    board = UnreadableDependencies(children={})
+    gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
+    insp = inspection()
+    be = fb.ProjectFieldBackend(gh, insp)
+    be.write(38, "delivery_state", "Inbox")
+    # An unreadable dependency list would refuse if it were consulted.
+    assert tp.build_plan(be, insp, MACHINE, 38, "Refining", gh=gh)
+
+
+# --- the edge every existing case skipped over -------------------------------
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_refining_to_ready_requires_the_readiness_evidence():
+    # Every transition test targeted In Progress or Output Done, so the one
+    # edge a readiness verdict guards was never exercised.
+    gh, insp, be, _ = blocked_setup({}, {})
+    be.write(38, "delivery_state", "Refining")
+    plan = tp.build_plan(be, insp, MACHINE, 38, "Ready", gh=gh)
+    assert plan.target == "Ready"
+    assert "readiness_verdict_ready" in plan.evidence_required
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_ready_is_refused_without_that_evidence():
+    gh, insp, be, _ = blocked_setup({}, {})
+    be.write(38, "delivery_state", "Refining")
+    plan = tp.build_plan(be, insp, MACHINE, 38, "Ready", gh=gh)
+    with pytest.raises(tp.Forbidden):
+        tp.apply_plan(be, insp, plan, {}, machine=MACHINE)
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_ready_is_applied_once_the_evidence_is_asserted():
+    gh, insp, be, _ = blocked_setup({}, {})
+    be.write(38, "delivery_state", "Refining")
+    plan = tp.build_plan(be, insp, MACHINE, 38, "Ready", gh=gh)
+    tp.apply_plan(be, insp, plan, {"readiness_verdict_ready": "true"},
+                  machine=MACHINE)
+    assert be.read(38, "delivery_state").value == "Ready"

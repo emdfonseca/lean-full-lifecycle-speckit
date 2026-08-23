@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Outcome record",
+  "description": "Evidence that work produced the result it claimed. Generated from policy/outcome-policy.yml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "baseline",
+    "data_source",
+    "decision",
+    "decision_date",
+    "guardrail_results",
+    "guardrails",
+    "hypothesis",
+    "measured_value",
+    "minimum_sample",
+    "observation_window",
+    "owner",
+    "result",
+    "sample_size",
+    "target",
+    "window_elapsed"
+  ],
+  "properties": {
+    "hypothesis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data_source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observation_window": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision_date": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "enum": [
+        "inconclusive",
+        "met",
+        "not_met"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sample_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "how many observations the result rests on"
+    },
+    "minimum_sample": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "below which the result is not conclusive"
+    },
+    "window_elapsed": {
+      "type": "boolean",
+      "description": "whether the observation window has completed"
+    },
+    "guardrail_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "held"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "measured": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "description": "each guardrail with its measured value and whether it held"
+    },
+    "measured_value": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "description": "the target metric as measured"
+    },
+    "validated_by": {
+      "type": "string",
+      "description": "the authority who decided; required before Validated"
+    }
+  }
+}

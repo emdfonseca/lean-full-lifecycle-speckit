@@ -31,7 +31,21 @@ roles:
     fallbacks: []
     constraints: {approved_for_security_context: true}
 
+# Which providers a resolved model may come from. `require_approved_provider`
+# was true with nothing to check against, so it approved everything.
+approved_providers: []
+
 resolution:
   require_approved_provider: true
+  # How the installed inventory is read. Asking the CLI is the only authority
+  # on whether a model id is real; a list maintained here would be a second
+  # copy that drifts.
+  inventory_command: [opencode, models]
+  # Where a resolved mapping is written. `record_resolved_mapping: true` above
+  # described an intention with no destination.
+  record_path: .specify/lifecycle/model-routing-resolved.yml
+  # A resolution is only as current as its evaluation date. How long one stays
+  # current is a decision somebody makes; recording refuses to invent it.
+  expiry_required: true
   refresh_available_models: true
   record_resolved_mapping: true

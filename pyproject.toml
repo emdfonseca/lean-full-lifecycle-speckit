@@ -16,8 +16,10 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "requires_specify: needs the specify CLI on PATH",
+    "requires_opencode: needs the opencode CLI on PATH",
     "sandbox: installs into a scratch project; slow",
     "req(id): the requirement id this test verifies (P1 traceability)",
+    "wording: asserts a workflow's prose, not its behaviour; fails on deletion, not on regression",
 ]
 
 [tool.ruff]

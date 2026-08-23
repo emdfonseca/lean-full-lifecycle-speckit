@@ -1,0 +1,303 @@
+# What must be true before a bootstrap writes anything.
+#
+# Greenfield bootstrap assumes an empty repository. Run against a real
+# codebase it scaffolds over somebody's product, which is destructive and easy
+# to miss until later. This file states how "already has a product" is decided.
+
+mismatch:
+  # The question is intent, and the roadmap is explicit that counts cannot
+  # answer it: a repository of forty config files is empty, and one with a
+  # single domain module is not. So classification is by path and kind, and a
+  # count never appears in a verdict.
+  decides_on: named_files
+  counts_never_decide: true
+
+  # Scaffolding whatever it contains. A directory here is scaffolding all the
+  # way down.
+  scaffolding_paths:
+    - .git/**
+    - .github/**
+    - .specify/**
+    - .devbox/**
+    - .venv/**
+    - node_modules/**
+    - vendor/**
+    - dist/**
+    - build/**
+    - docs/**
+    - .vscode/**
+    - .idea/**
+
+  # Scaffolding by name, wherever they sit. These are how a project is
+  # configured, not what it does.
+  scaffolding_files:
+    - README.md
+    - LICENSE
+    - CONTRIBUTING.md
+    - .gitignore
+    - .editorconfig
+    - .env.example
+    - Makefile
+    - Dockerfile
+    - docker-compose.yml
+    - devbox.json
+    - devbox.lock
+    - pyproject.toml
+    - setup.py
+    - setup.cfg
+    - conftest.py
+    - noxfile.py
+    - tox.ini
+    - package.json
+    - package-lock.json
+    - tsconfig.json
+    - vite.config.ts
+    - webpack.config.js
+    - go.mod
+    - go.sum
+    - Cargo.toml
+    - Cargo.lock
+    - pom.xml
+    - build.gradle
+
+  # A file with one of these suffixes, outside the scaffolding above, carries
+  # application or domain logic.
+  code_suffixes:
+    - .py
+    - .ts
+    - .tsx
+    - .js
+    - .jsx
+    - .go
+    - .rs
+    - .java
+    - .kt
+    - .rb
+    - .cs
+    - .php
+    - .swift
+    - .scala
+    - .ex
+    - .exs
+
+  # Configuration written in a programming language. The suffix says code and
+  # the name says configuration; the name wins.
+  configuration_suffixes:
+    - .config.js
+    - .config.ts
+    - .config.mjs
+    - .rc.js
+
+  # Tests count as application code. A test suite is evidence of a product to
+  # test, and treating it as scaffolding is how a repository with a full suite
+  # and one thin module reads as empty.
+  tests_are_application_code: true
+
+  on_unreadable:
+    # A repository that cannot be enumerated must not come back as empty. Here
+    # the safe-looking default is the destructive one.
+    verdict: blocked
+    reason: >-
+      The repository could not be read. Absent evidence is not evidence of an
+      empty repository, and greenfield bootstrap writes.
+
+  handoff:
+    to: lifecycle-brownfield-adoption
+    requires_human_gate: true
+
+verification_commands:
+  # The only two shell commands the framework permits. A project that defines
+  # neither will fail at its first delivery, several steps into real work.
+  required:
+    - devbox run verify
+  release:
+    - devbox run release-verify
+  # Where a command is defined. `devbox run verify` exists when devbox.json
+  # declares a `verify` script; nothing else makes it exist.
+  definition_source:
+    file: devbox.json
+    scripts_at: [shell, scripts]
+
+  resolution:
+    - generate_minimal_script_when_stack_decided
+    - overlay_to_an_allowed_command
+
+  generation:
+    # A minimal verification script has to run something, and what to run is a
+    # stack decision. Generating one without it means inventing the project's
+    # toolchain and calling it a default.
+    requires_stack_decision: true
+    stack_decision_sources:
+      - .specify/memory/constitution.md
+      - .specify/lifecycle/stack-decision.md
+
+  overlay:
+    # The overlay names which framework command it satisfies. Letting it name
+    # any command would route around allowed_shell, which is the framework's
+    # only restriction on what a workflow may execute.
+    file: .specify/lifecycle/verification-overlay.yml
+    framework_command_must_be_declared: true
+    # The project side is whatever the project already runs. It is arbitrary by
+    # nature, which is why it reaches a human gate rather than a list.
+    project_command_requires_gate: true
+
+# Where an agent integration keeps its project files. Declared rather than
+# hardcoded, because these are somebody else's paths and they move.
+integrations:
+  opencode:
+    folder: .opencode
+    # Spec Kit writes commands to the current directory and reads the legacy
+    # one. Both are live: a project initialized by an older CLI has the second,
+    # and writing into the wrong one produces a project where the commands are
+    # present and the agent cannot see them.
+    commands_dirs:
+      current: .opencode/commands
+      legacy: .opencode/command
+    config_files:
+      - opencode.json
+      - opencode.jsonc
+    command_layout: file_per_command
+    command_name_separator: "."
+
+    # agent-policy runtime rule -> the OpenCode config key that expresses it.
+    # Declared here because it is a claim about somebody else's schema, and a
+    # claim like that belongs where it can be reviewed against their docs.
+    permission_mapping:
+      shell_default: permission.bash
+      web_default: permission.webfetch
+      external_directory_default: permission.external_directory
+      sharing: share
+
+    # Rules with no primitive of their own, expressible only as bash patterns.
+    # A pattern is a weaker instrument than a permission key -- it matches
+    # commands, not intents -- so each names what it is trying to catch.
+    bash_pattern_rules:
+      protected_push:
+        patterns: ["git push --force*", "git push -f*", "git push * main*",
+                   "git push * master*", "git push * release*"]
+      production_deploy:
+        patterns: ["kubectl apply*", "terraform apply*", "*deploy prod*"]
+      destructive_operations:
+        patterns: ["rm -rf*", "git reset --hard*", "git clean -fd*",
+                   "*drop database*", "*drop table*"]
+
+    # Rules OpenCode cannot express at all. Named so the generator can report
+    # them rather than emit a config that looks stricter than it is.
+    unenforceable:
+      plugin_default:
+        why: >-
+          OpenCode has no plugin permission key. The config carries a `plugin`
+          allowlist, which decides what loads, not what is refused.
+        compensated_by: >-
+          The generated config declares an exact plugin list, and the policy
+          already requires source review and an exact version pin before any
+          extension is added.
+      mcp_default:
+        why: >-
+          OpenCode has no MCP permission key. `mcp` is a map of servers with an
+          `enabled` flag each, so an unlisted server is absent rather than
+          denied.
+        compensated_by: >-
+          The generated config declares the MCP servers explicitly, and
+          agent-policy already forbids untrusted input from authorizing an MCP
+          installation.
+      provider_allowlist_required:
+        why: >-
+          OpenCode does not restrict which provider a model may come from.
+        compensated_by: >-
+          The models command refuses a model outside `approved_providers`
+          before a config is ever generated.
+      cost_and_runtime_limits:
+        why: >-
+          The config schema has no cost, token, or runtime ceiling. `maxSteps`
+          bounds a loop; it does not bound spend.
+        compensated_by: >-
+          Nothing in the configuration. This one is a genuine gap and is
+          reported as such rather than compensated.
+
+  claude:
+    folder: .claude
+    commands_dirs:
+      current: .claude/skills
+    config_files:
+      - .claude/settings.json
+    # Claude Code writes a directory per command, each holding a SKILL.md,
+    # where OpenCode writes one file per command. Same idea, different shape.
+    command_layout: directory_per_command
+    # Claude Code flattens `speckit.github-lifecycle.refine` to
+    # `speckit-github-lifecycle-refine`; OpenCode keeps the dots. The layouts
+    # differ in naming as well as in shape.
+    command_name_separator: "-"
+
+    # Its permission model is shaped differently from OpenCode's: rule strings
+    # sorted into allow/deny/ask lists plus a default mode, rather than a key
+    # per capability. So the mapping is per rule, not per key.
+    permission_mapping:
+      web_default:
+        rules: [WebFetch, WebSearch]
+      protected_push:
+        rules: ["Bash(git push:*)"]
+      production_deploy:
+        rules: ["Bash(kubectl apply:*)", "Bash(terraform apply:*)"]
+      destructive_operations:
+        rules: ["Bash(rm -rf:*)", "Bash(git reset --hard:*)",
+                "Bash(git clean:*)"]
+
+    # Rules Claude Code expresses outside the permission lists.
+    settings_mapping:
+      # No key, and none needed: Claude Code confines itself to the project
+      # directory unless additionalDirectories names others. Declaring none is
+      # the denial.
+      external_directory_default:
+        key: additionalDirectories
+        value_when_deny: []
+      # Better than OpenCode, which had no primitive for either of these.
+      mcp_default:
+        key: enableAllProjectMcpServers
+        value_when_deny: false
+      plugin_default:
+        key: enabledPlugins
+        value_when_deny: {}
+      shell_default:
+        key: permissions.defaultMode
+        value_when_ask: default
+
+    unenforceable:
+      sharing:
+        why: >-
+          Claude Code has no session-sharing setting to disable, because it has
+          no session sharing to enable.
+        compensated_by: >-
+          Nothing is needed. The rule describes a capability this agent does
+          not have.
+      provider_allowlist_required:
+        why: >-
+          Claude Code does not select a model provider, so there is no provider
+          to restrict.
+        compensated_by: >-
+          Nothing is needed. The rule applies to integrations that route
+          between providers.
+      cost_and_runtime_limits:
+        why: >-
+          Settings carry no cost, token, or runtime ceiling.
+        compensated_by: >-
+          Nothing in the configuration. This one is a genuine gap and is
+          reported as such rather than compensated.
+
+    # A read-only role is an agent whose tool list omits the writing tools.
+    agent_tools:
+      read_only: [Read, Grep, Glob, Bash]
+
+# `specify init --script py|sh` records the project's choice in
+# .specify/init-options.json, and Spec Kit installs both flavours of its own
+# scripts regardless. This extension provides one, and says so rather than
+# shipping a shell reimplementation that would drift from the tested copy.
+script_flavours:
+  provided: [py]
+  project_choice_file: .specify/init-options.json
+  project_choice_key: script
+  on_mismatch: >-
+    Report it. The scripts are installed and run wherever python3 is
+    available; what a mismatch means is that this project asked for shell and
+    nothing here honours that, which the operator should learn before a
+    command fails rather than during one.

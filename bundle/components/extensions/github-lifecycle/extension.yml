@@ -15,6 +15,12 @@ requires:
   tools:
   - name: gh
     required: true
+  # Every command in this extension invokes a Python script. Declaring it is
+  # the honest alternative to shipping shell variants: `transition_plan.py`
+  # alone does schema validation, read-back verification, and dependency
+  # resolution, and a second implementation in shell would be one nobody tests.
+  - name: python3
+    required: true
 provides:
   commands:
   - name: speckit.github-lifecycle.inspect
@@ -47,6 +53,36 @@ provides:
   - name: speckit.github-lifecycle.disposal
     file: commands/disposal.md
     description: Validate the disposal decision for a prototype or spike.
+  - name: speckit.github-lifecycle.claude-config
+    file: commands/claude-config.md
+    description: Generate Claude Code settings from policy, and report what does not map.
+  - name: speckit.github-lifecycle.opencode-config
+    file: commands/opencode-config.md
+    description: Generate the OpenCode configuration from policy, and report what it cannot enforce.
+  - name: speckit.github-lifecycle.opencode-layout
+    file: commands/opencode-layout.md
+    description: Detect which OpenCode layout a project uses before writing near it.
+  - name: speckit.github-lifecycle.models
+    file: commands/models.md
+    description: Verify every role's model against the installed OpenCode inventory.
+  - name: speckit.github-lifecycle.ratchet
+    file: commands/ratchet.md
+    description: Hold each measurable gate to the best it has ever done.
+  - name: speckit.github-lifecycle.sensitive
+    file: commands/sensitive.md
+    description: Refuse unauthorized production data, and keep credentials out of framework evidence.
+  - name: speckit.github-lifecycle.exception
+    file: commands/exception.md
+    description: Validate an exception against the exception policy.
+  - name: speckit.github-lifecycle.verify-bootstrap
+    file: commands/verify-bootstrap.md
+    description: Check at bootstrap that the project defines the verification commands the workflows run.
+  - name: speckit.github-lifecycle.mismatch
+    file: commands/mismatch.md
+    description: Decide whether a repository already contains a product before greenfield bootstrap writes anything.
+  - name: speckit.github-lifecycle.outcome
+    file: commands/outcome.md
+    description: Assess an outcome record and recommend a status.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.

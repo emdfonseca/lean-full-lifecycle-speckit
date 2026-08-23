@@ -4,6 +4,7 @@ generate:
 	python scripts/generate_manifests.py
 	python scripts/generate_catalogs.py
 	python scripts/generate_item_templates.py
+	python scripts/generate_compat_matrix.py
 
 # Generated files must match the manifests; CI runs this so a hand-edit fails.
 generate-check:

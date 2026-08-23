@@ -40,6 +40,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import project_root  # noqa: E402
 import yaml  # noqa: E402
 
 from field_backend import FieldBackend, for_inspection  # noqa: E402
@@ -218,6 +219,17 @@ def build_plan(backend: FieldBackend, inspection: Inspection, machine: dict,
             f"production code by default. Record a disposal at "
             f"{DISPOSAL_DIR}/<id>.md.")
 
+    if target == START_STATE and gh is not None:
+        waiting = unfinished_blockers(gh, backend, inspection, issue_number, role)
+        if waiting:
+            listed = ", ".join(f"{name} ({state})" for name, state in waiting)
+            raise PlanError(
+                f"cannot start #{issue_number}: it is blocked by {listed}. "
+                f"state-machine.yml already says an item Ready and blocked "
+                f"claims to be startable and is not; with teams working in "
+                f"parallel that ordering is what keeps one from building on "
+                f"something that has not landed.")
+
     if target == TERMINAL_STATE and gh is not None:
         blocking = incomplete_children(gh, backend, inspection, issue_number, role)
         if blocking:
@@ -348,10 +360,51 @@ def blockers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[dict]
     nobody here can schedule.
     """
     rows = gh.rest("GET", f"repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by",
-                   paginate=True) or []
+                   paginate=True)
+    if rows is None:
+        # An empty list means no blockers; nothing means we could not look.
+        # Treating the second as the first is how this check quietly stops
+        # working, and it is the exact failure P9 hit five times.
+        raise PlanError(
+            f"the blockers of #{issue_number} could not be determined. Nothing "
+            f"is permitted to start on an unread dependency list.")
     if isinstance(rows, dict):
         rows = [rows]
     return [r for r in rows if r.get("state") != "closed"]
+
+
+START_STATE = "In Progress"
+
+
+def unfinished_blockers(gh: GitHub, backend: FieldBackend,
+                        inspection: Inspection, issue_number: int,
+                        role: str = "delivery_state") -> list[tuple[str, str]]:
+    """Blockers that have not been delivered, named with why they still block.
+
+    A blocker in this repository is judged by delivery state, the same way a
+    child is: an issue closed as a duplicate has not been delivered, and one at
+    Output Done has been whether or not somebody has closed it yet.
+
+    A blocker in another repository has no delivery state we can read -- its
+    board is not ours -- so closure is the only signal available. The refusal
+    says which of the two answered, because a reader who does not know that
+    cannot tell what would clear it.
+    """
+    out: list[tuple[str, str]] = []
+    here = f"{inspection.owner}/{inspection.repo}"
+    for row in blockers(gh, inspection.owner, inspection.repo, issue_number):
+        full = (row.get("repository") or {}).get("full_name") or here
+        number = int(row["number"])
+        if full != here:
+            out.append((f"{full}#{number}", "open (its board is not ours to read)"))
+            continue
+        try:
+            value = backend.read(number, role).value
+        except NotFound:
+            value = None
+        if value != TERMINAL_STATE:
+            out.append((f"#{number}", value or "not on the board"))
+    return out
 
 
 @dataclass(frozen=True)
@@ -435,7 +488,8 @@ def main() -> int:
     ap.add_argument("--repo", required=True, help="owner/name")
     ap.add_argument("--project", type=int, default=None)
     ap.add_argument("--audit", type=Path, default=None)
-    ap.add_argument("--policy-root", type=Path, default=Path.cwd())
+    ap.add_argument("--policy-root", type=Path, default=None,
+                    help="Spec Kit project root. Defaults to SPECIFY_INIT_DIR, then the nearest ancestor with a .specify/ directory.")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_plan = sub.add_parser("plan", help="Write a transition plan. Reads only.")
@@ -460,6 +514,12 @@ def main() -> int:
 
     args = ap.parse_args()
     try:
+        args.policy_root = project_root.resolve(
+            args.policy_root, required=False) or Path.cwd()
+    except project_root.ProjectRootError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    try:
         machine = load_state_machine(args.policy_root)
         gh, inspection, backend = _setup(
             args.repo, args.project, args.audit,
@@ -469,9 +529,10 @@ def main() -> int:
         if args.cmd == "plan":
             plan = build_plan(backend, inspection, machine, args.issue,
                               args.to, args.role, gh=gh)
-            args.out.parent.mkdir(parents=True, exist_ok=True)
-            args.out.write_text(plan.to_markdown(), encoding="utf-8")
-            print(f"Write exactly {args.out}")
+            out = project_root.ensure_within(args.policy_root, args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(plan.to_markdown(), encoding="utf-8")
+            print(f"Write exactly {out}")
             print(plan.to_yaml())
             return 0
 
@@ -530,7 +591,8 @@ def main() -> int:
             "audit": [a.outcome for a in gh.audit],
         }, indent=2))
         return 0
-    except (PlanError, NotFound, Conflict, Forbidden) as exc:
+    except (PlanError, NotFound, Conflict, Forbidden,
+            project_root.OutsideProjectError) as exc:
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 

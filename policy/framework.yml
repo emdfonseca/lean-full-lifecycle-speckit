@@ -8,7 +8,12 @@ environment:
 
 spec_kit:
   minimum_version: "1.0.1"
-  integration: opencode
+  # The workflows follow the project's own integration rather than naming one.
+  # `auto` is Spec Kit's runtime sentinel for exactly that.
+  integration: auto
+  # The integration this bundle is exercised against. Under test is not the
+  # same as required, and a reader has to be able to tell them apart.
+  reference_integration: opencode
   preset_stack:
     - id: lean
       priority: 20

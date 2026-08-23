@@ -123,7 +123,8 @@ def has_evidence(body: str, item_type: str) -> list[str]:
 
 
 def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
-                parent: int | None = None, operation_id: str | None = None) -> dict:
+                parent: int | None = None, operation_id: str | None = None,
+                project: int | None = None) -> dict:
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
@@ -148,7 +149,49 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
         import relationships
 
         relationships.link_child(gh, repo, parent, number)
-    return {"number": number, "type": item_type, "parent": parent}
+
+    result = {"number": number, "type": item_type, "parent": parent}
+    result.update(place_on_board(gh, repo, number, check, project,
+                                 operation_id=operation_id))
+    return result
+
+
+def place_on_board(gh: GitHub, repo: str, number: int, issue: dict,
+                   project: int | None,
+                   operation_id: str | None = None) -> dict:
+    """Put the new item on the board, because that is where its state lives.
+
+    Every transition, the audit, and the refinement queue read delivery state
+    from the project. An item created off the board exists and cannot be moved,
+    which is a worse outcome than not creating it: it looks done.
+
+    A capture that cannot place the item reports that plainly. Returning a
+    clean creation would hand back an item nobody can transition and let the
+    caller believe otherwise.
+    """
+    import inspect_target
+    import field_backend
+
+    owner, _, name = repo.partition("/")
+    try:
+        inspection = inspect_target.inspect(gh, owner, name, project)
+        backend = field_backend.for_inspection(gh, inspection)
+        place = getattr(backend, "place", None)
+        if place is None:
+            return {"on_board": False,
+                    "board_note": f"the {inspection.backend} backend has no "
+                                  f"board; delivery state is carried on the "
+                                  f"issue itself"}
+        item = place(number, int(issue["id"]), operation_id=operation_id)
+        return {"on_board": True, "project_item_id": item}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "on_board": False,
+            "board_note": (
+                f"created #{number} but could not place it on the board "
+                f"({exc.__class__.__name__}: {exc}). It has no delivery state, "
+                f"so no transition can be planned for it until it is added."),
+        }
 
 
 def main() -> int:
@@ -158,6 +201,9 @@ def main() -> int:
     ap.add_argument("--body", default="")
     ap.add_argument("--type", dest="item_type", choices=["story", "bug", "spike", "epic"])
     ap.add_argument("--parent", type=int, default=None)
+    ap.add_argument("--project", type=int, default=None,
+                    help="Project to place the item on. Omit to let inspection choose,\n"
+                         "which fails when the owner has more than one.")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     ap.add_argument("--create", action="store_true",
                     help="Create the item. Without this, only searches.")
@@ -200,7 +246,8 @@ def main() -> int:
             return 1
 
         report.update(create_item(gh, args.repo, args.title, args.body,
-                                  args.item_type, args.parent))
+                                  args.item_type, args.parent,
+                                  project=args.project))
         report["action"] = "created"
         print(json.dumps(report, indent=2))
         return 0

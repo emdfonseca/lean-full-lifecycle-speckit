@@ -1,0 +1,52 @@
+---
+description: Refuse unauthorized production data, and keep credentials out of framework evidence.
+---
+
+# GitHub Lifecycle Sensitive
+
+Two checks, both against `sensitive-data.yml`.
+
+**Before reading a data source:**
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+  --source production_database --authorization .specify/lifecycle/auth-<id>.yml
+```
+
+**Before committing a record the framework wrote:**
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+  --record .specify/lifecycle/brownfield-discovery.md --format json
+```
+
+Scan every discovery, disposal, outcome, plan, verdict, and exception record.
+Those are where production data lands during a brownfield adoption, and they are
+read by people long after the run.
+
+## What a finding says
+
+The record and the field. Never the value. A report that quotes the secret has
+copied it somewhere new — into an issue, a log, a transcript — which is the harm
+the scan exists to prevent. If you need to see the value, open the file; do not
+paste it into a report, a comment, or a commit message.
+
+## Redaction is visible, and it is not authorization
+
+The marker stays in place so a reader can tell something was removed. Evidence
+that was silently cleaned reads as complete and is not.
+
+Redaction happens after the read. It cannot make an unauthorized read
+authorized. If a step lacks authorization for a source, it is refused whether or
+not the result would have been redacted — treating redaction as permission is
+what makes a denial policy decorative.
+
+## Never
+
+- Report a refusal generically. Cite the rule id and text, so the reader knows
+  which rule they met and who can lift it.
+- Widen a source name, split a read into smaller reads, or summarize production
+  data to get past a denial. Each is the same read.
+- Continue when the patterns did not come from policy. `patterns_from_policy:
+  false` means the governance preset is not installed, and a conservative
+  fallback ran instead. Say so.

@@ -1,0 +1,313 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-outcome-review
+  name: Outcome Review
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Close the loop between work being finished and the result being known, without letting either verdict disturb the other.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: auto
+  issue_ref:
+    type: string
+    required: true
+  record_path:
+    type: string
+    required: true
+  assessed_status:
+    type: string
+    default: measuring
+    enum:
+      - measuring
+      - validated
+      - missed
+      - inconclusive
+  outcome_verdict:
+    type: string
+    default: ''
+    enum: &verdict
+      - ''
+      - approve
+      - reject
+  finding_verdict:
+    type: string
+    default: ''
+    enum: *verdict
+steps:
+  - id: assess-the-record
+    command: speckit.github-lifecycle.outcome
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Assess {{ inputs.record_path }} for {{ inputs.issue_ref }}.
+
+        Report the recommended status, every blocking finding, and the reasons
+        verbatim. The command recommends; it does not decide, and your report
+        must say so rather than leaving a reader to infer it.
+
+        Set assessed_status from the recommendation. Do not set it from what
+        the team hoped the result would be.
+
+  - id: state-what-is-not-changing
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Before any status is written, state plainly that this review cannot
+      change the delivery state of {{ inputs.issue_ref }}.
+
+      Work that reached Output Done stays there whatever the measurement says.
+      Delivery answers "was it finished to the standard"; outcome answers "did
+      it do what it was for". Conflating them punishes teams for measuring
+      honestly, and a team punished for that measures less.
+
+      Say which of the two this run is about.
+
+  - id: route-on-assessment
+    type: switch
+    expression: '{{ inputs.assessed_status }}'
+    cases:
+      measuring:
+        - id: measuring-state-the-gap
+          type: prompt
+          integration: '{{ inputs.integration }}'
+          prompt: >-
+            The evidence does not yet support a verdict for {{ inputs.issue_ref }}.
+
+            State exactly what would make it conclusive: the remaining window,
+            the sample still needed, or the data-quality problem to fix. Give a
+            date or a number, not "more data".
+
+            Do not record this as a miss. Insufficient evidence is not failure,
+            and reporting it as one invents a result the data does not support.
+
+        - id: plan-measuring
+          command: speckit.github-lifecycle.plan
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Plan issue {{ inputs.issue_ref }} Outcome Status → Measuring.
+              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.
+              Do not mutate. Do not plan any Delivery Status change.
+
+        - id: approve-measuring
+          type: gate
+          integration: '{{ inputs.integration }}'
+          verdict_input: outcome_verdict
+          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md
+          on_reject: abort
+          options:
+            - approve
+            - reject
+          message: >-
+            Approve holding this outcome at Measuring. Rejecting stops the run;
+            it does not record a result.
+
+        - id: transition-outcome-measuring
+          command: speckit.github-lifecycle.transition
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Apply approved transition for {{ inputs.issue_ref }}: Outcome
+              Status → Measuring. Leave Delivery Status untouched.
+              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.
+
+      validated:
+        - id: validated-name-the-authority
+          type: prompt
+          integration: '{{ inputs.integration }}'
+          prompt: >-
+            The assessment recommends Outcome Validated for {{ inputs.issue_ref }}.
+
+            Name the person approving at the gate and their role. Only
+            product_owner or analytics_owner may validate an outcome; if the
+            reviewer is neither, say so and stop. You are not one of them, and
+            a recommendation you produced is not a decision you may also make.
+
+            Restate the measured value, the target, and every guardrail with
+            its result, so the approver is deciding on evidence rather than on
+            your summary of it.
+
+        - id: plan-validated
+          command: speckit.github-lifecycle.plan
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Validated.
+              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md.
+              Do not mutate. Do not plan any Delivery Status change.
+
+        - id: approve-validated
+          type: gate
+          integration: '{{ inputs.integration }}'
+          verdict_input: outcome_verdict
+          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md
+          on_reject: abort
+          options:
+            - approve
+            - reject
+          message: >-
+            Validate this outcome. Approve only if you are the product owner or
+            the analytics owner: this is the one status in the system an agent
+            may never write on its own judgement.
+
+        - id: transition-outcome-validated
+          command: speckit.github-lifecycle.transition
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Apply approved transition for {{ inputs.issue_ref }}: Outcome
+              Status → Outcome Validated. Record the approving authority.
+              Leave Delivery Status untouched.
+              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md.
+
+      inconclusive:
+        - id: inconclusive-say-the-question-is-open
+          type: prompt
+          integration: '{{ inputs.integration }}'
+          prompt: >-
+            The measurement for {{ inputs.issue_ref }} did not settle the
+            question. The window elapsed and the sample was large enough, and
+            the result still does not distinguish success from failure.
+
+            Say that, and do not say the work failed. A missed target is a
+            result somebody can act on; this is an open question, and telling a
+            team its work failed on evidence that says no such thing is how you
+            stop them measuring.
+
+            Name what would settle it: a different measure, a longer window, a
+            cleaner data source. Be specific enough that somebody could go and
+            do it.
+
+        - id: plan-inconclusive
+          command: speckit.github-lifecycle.plan
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Missed / Inconclusive.
+              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md.
+              Do not mutate. Do not plan any Delivery Status change.
+
+        - id: approve-inconclusive
+          type: gate
+          integration: '{{ inputs.integration }}'
+          verdict_input: outcome_verdict
+          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md
+          on_reject: abort
+          options:
+            - approve
+            - reject
+          message: >-
+            Record this outcome as inconclusive. The board carries one option
+            for missed and inconclusive, so the record and the report are what
+            preserve the difference. Reject if you read the evidence as an
+            actual miss.
+
+        - id: transition-outcome-inconclusive
+          command: speckit.github-lifecycle.transition
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Apply approved transition for {{ inputs.issue_ref }}: Outcome
+              Status → Outcome Missed / Inconclusive, recording the finding as
+              inconclusive rather than missed. Leave Delivery Status untouched.
+              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md.
+
+      missed:
+        - id: missed-say-what-happened
+          type: prompt
+          integration: '{{ inputs.integration }}'
+          prompt: >-
+            The outcome for {{ inputs.issue_ref }} was missed or inconclusive.
+
+            Report which it was and why, using the assessment's reasons. If a
+            guardrail regressed while the target was met, report both facts and
+            do not soften either: a guardrail names the harm the success was
+            not permitted to cause.
+
+            Do not renegotiate the target, the guardrail, or the window to make
+            the result look better. Each is the assessment choosing its own
+            inputs, and it is the failure this whole record exists to prevent.
+
+        - id: plan-missed
+          command: speckit.github-lifecycle.plan
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Missed / Inconclusive.
+              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md.
+              Do not mutate. Do not plan any Delivery Status change.
+
+        - id: approve-missed
+          type: gate
+          integration: '{{ inputs.integration }}'
+          verdict_input: outcome_verdict
+          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md
+          on_reject: abort
+          options:
+            - approve
+            - reject
+          message: >-
+            Record this outcome as missed or inconclusive. The delivered work
+            stays delivered; this changes what is known, not what was done.
+
+        - id: transition-outcome-missed
+          command: speckit.github-lifecycle.transition
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Apply approved transition for {{ inputs.issue_ref }}: Outcome
+              Status → Outcome Missed / Inconclusive. Leave Delivery Status
+              untouched.
+              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md.
+
+        - id: search-for-an-existing-finding
+          command: speckit.github-lifecycle.capture
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Search the backlog for a finding that already covers what this
+              outcome revealed. Report every candidate with its score, closed
+              ones included: something already decided is exactly what this
+              search is for. Write nothing.
+
+        - id: approve-the-finding
+          type: gate
+          integration: '{{ inputs.integration }}'
+          verdict_input: finding_verdict
+          on_reject: abort
+          options:
+            - approve
+            - reject
+          message: >-
+            Create a follow-up finding for this missed outcome? The candidate
+            duplicates reported above are what you are deciding against, closed
+            ones included. Reject if one already covers this: a second issue for
+            a known problem makes the backlog less trustworthy, not more
+            complete.
+
+        - id: capture-the-finding
+          command: speckit.github-lifecycle.capture
+          integration: '{{ inputs.integration }}'
+          input:
+            args: >-
+              Create the approved finding, meeting its type's content contract.
+              State what was expected, what was measured, and what is now
+              unknown. A missed outcome is evidence, not a diagnosis, so do not
+              write a cause the measurement does not support.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report the outcome status recorded for {{ inputs.issue_ref }}, who
+      approved it, and on what evidence.
+
+      State again that the delivery state is unchanged, and give its value so
+      the reader can see it is unchanged rather than take your word for it.
+
+      If the result was held at Measuring, name the date or the number that
+      would settle it. An outcome left open without a condition for closing it
+      is one nobody returns to.

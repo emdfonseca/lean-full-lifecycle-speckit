@@ -20,6 +20,7 @@ families:
   - REQ-DOCS        # documentation truthfulness
   - REQ-BACKLOG     # triage, refine, decompose, capture
   - REQ-UNCERTAINTY # discovery, prototype, spike, threat analysis
+  - REQ-TEAM        # project and feature context, parallel teams
 
 gates:
   - release: "0.9.0"
@@ -411,8 +412,8 @@ requirements:
       - command:speckit.github-lifecycle.transition
       - check:SEC-COMMAND-SCRIPT-BACKED
     verified_by:
-      - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
 
   - id: REQ-GITHUB-RELATIONSHIPS-001
     statement: >-
@@ -655,15 +656,937 @@ requirements:
       - command:speckit.github-lifecycle.decompose
       - script:bundle/components/extensions/github-lifecycle/scripts/decompose.py
     verified_by:
-      - "tests/test_decompose.py::test_only_ready_children_count_toward_the_horizon"
-      - "tests/test_decompose.py::test_a_met_horizon_asks_for_nothing_more"
-      - "tests/test_decompose.py::test_unrefined_children_are_recommended_before_new_ones"
-      - "tests/test_decompose.py::test_a_rerun_against_a_met_horizon_creates_nothing"
-      - "tests/test_decompose.py::test_nothing_beyond_the_horizon_is_created"
-      - "tests/test_decompose.py::test_created_children_begin_inbox"
-      - "tests/test_decompose.py::test_created_children_are_linked_to_the_epic"
       - "tests/test_decompose.py::test_a_duplicate_proposal_is_skipped_not_created"
+      - "tests/test_decompose.py::test_a_met_horizon_asks_for_nothing_more"
+      - "tests/test_decompose.py::test_a_rerun_against_a_met_horizon_creates_nothing"
+      - "tests/test_decompose.py::test_created_children_are_linked_to_the_epic"
+      - "tests/test_decompose.py::test_created_children_begin_inbox"
+      - "tests/test_decompose.py::test_nothing_beyond_the_horizon_is_created"
+      - "tests/test_decompose.py::test_only_ready_children_count_toward_the_horizon"
       - "tests/test_decompose.py::test_the_workflow_gates_before_creating"
+      - "tests/test_decompose.py::test_unrefined_children_are_recommended_before_new_ones"
+    evidence:
+      - "Issue #55"
+
+  - id: REQ-STATE-OUTCOME-003
+    statement: >-
+      Reviewing an outcome must never change what was delivered. The workflow
+      records only Outcome Status; validation requires a named authority at a
+      gate; insufficient evidence holds the item at Measuring with a stated
+      condition for settling it; and a missed outcome produces a follow-up
+      finding only after a duplicate search.
+    priority: must
+    owner: framework
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-outcome-review
+      - command:speckit.github-lifecycle.outcome
+      - command:speckit.github-lifecycle.capture
+    verified_by:
+      - "tests/test_outcome_review.py::test_the_workflow_can_carry_an_inconclusive_assessment"
+      - "tests/test_outcome_review.py::test_the_inconclusive_branch_refuses_to_call_it_a_failure"
+      - "tests/test_outcome_review.py::test_the_inconclusive_branch_asks_what_would_settle_it"
+      - "tests/test_outcome_review.py::test_the_inconclusive_branch_reaches_the_same_status_by_its_own_route"
+      - "tests/test_outcome_review.py::test_the_inconclusive_branch_creates_no_follow_up_finding"
+      - tests/test_outcome_review.py::test_no_step_plans_or_applies_a_delivery_status_change
+      - tests/test_outcome_review.py::test_the_report_gives_the_delivery_state_rather_than_asserting_it_is_unchanged
+      - tests/test_outcome_review.py::test_the_validated_gate_names_the_two_authorities
+      - tests/test_outcome_review.py::test_the_agent_is_told_it_is_not_an_authority
+      - tests/test_outcome_review.py::test_the_measuring_branch_transitions_to_measuring_not_missed
+      - tests/test_outcome_review.py::test_the_measuring_branch_demands_a_date_or_a_number
+      - tests/test_outcome_review.py::test_the_missed_branch_searches_before_it_creates
+      - tests/test_outcome_review.py::test_the_search_step_writes_nothing
+      - tests/test_outcome_review.py::test_a_regressed_guardrail_may_not_be_softened
+      - tests/test_outcome_review.py::test_the_assessment_is_reported_as_a_recommendation
+      - tests/test_outcome_review.py::test_the_status_is_set_from_the_assessment_not_from_hope
+      - tests/test_outcome_review.py::test_every_exemption_names_a_step_that_exists
+      - tests/test_outcome_review.py::test_the_exempt_step_is_the_search_and_not_the_creation
+      - tests/test_outcome_review.py::test_every_branch_says_delivery_is_untouched[measuring]
+      - tests/test_outcome_review.py::test_every_branch_says_delivery_is_untouched[validated]
+      - tests/test_outcome_review.py::test_every_branch_says_delivery_is_untouched[missed]
+      - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[measuring]
+      - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[validated]
+      - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[missed]
+      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[measuring]
+      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[validated]
+      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[missed]
+    evidence:
+      - "Issue #54"
+
+  - id: REQ-CORE-GREENFIELD-001
+    statement: >-
+      Greenfield bootstrap must not write into a repository that already
+      contains application code. The check classifies by named files rather
+      than by how many, recommends brownfield adoption on a mismatch, blocks
+      rather than reporting empty when the repository cannot be read, and puts
+      a human gate ahead of every step that writes.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-greenfield-bootstrap
+      - command:speckit.github-lifecycle.mismatch
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - tests/test_mismatch.py::test_scaffolding_only_is_not_a_mismatch
+      - tests/test_mismatch.py::test_an_empty_repository_is_not_a_mismatch
+      - tests/test_mismatch.py::test_configuration_written_in_a_language_is_still_configuration
+      - tests/test_mismatch.py::test_one_domain_module_is_a_mismatch
+      - tests/test_mismatch.py::test_a_mismatch_recommends_brownfield_adoption
+      - tests/test_mismatch.py::test_a_test_suite_is_evidence_of_a_product
+      - tests/test_mismatch.py::test_many_configuration_files_are_still_not_a_mismatch
+      - tests/test_mismatch.py::test_the_count_detector_recognises_a_count_and_ignores_a_filename
+      - tests/test_mismatch.py::test_a_long_evidence_list_is_summarised_without_counting
+      - tests/test_mismatch.py::test_an_unreadable_repository_blocks
+      - tests/test_mismatch.py::test_enumeration_raises_rather_than_returning_a_partial_list
+      - tests/test_mismatch.py::test_the_check_and_its_gate_precede_every_writing_step
+      - tests/test_mismatch.py::test_rejecting_the_gate_aborts_rather_than_continuing
+      - tests/test_mismatch.py::test_the_gate_says_what_each_choice_costs
+      - tests/test_mismatch.py::test_the_classification_comes_from_policy_not_the_script
+      - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths0]"
+      - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths1]"
+    evidence:
+      - "Issue #56"
+
+  - id: REQ-CORE-VERIFYCMD-001
+    statement: >-
+      Bootstrap must establish that the project defines the verification
+      commands the workflows run, reporting present, overlaid, and missing
+      separately. Generating a script requires a recorded stack decision; an
+      overlay may satisfy only a command the workflows actually run; and
+      nothing is written before a human gate.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-greenfield-bootstrap
+      - workflow:lifecycle-brownfield-adoption
+      - command:speckit.github-lifecycle.verify-bootstrap
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_verify_bootstrap.py::test_both_commands_present_is_resolved"
+      - "tests/test_verify_bootstrap.py::test_detection_writes_nothing"
+      - "tests/test_verify_bootstrap.py::test_a_partial_project_reports_each_command_separately"
+      - "tests/test_verify_bootstrap.py::test_neither_command_defined_names_both"
+      - "tests/test_verify_bootstrap.py::test_a_missing_devbox_file_is_not_an_error"
+      - "tests/test_verify_bootstrap.py::test_an_unreadable_devbox_file_resolves_nothing"
+      - "tests/test_verify_bootstrap.py::test_generation_without_a_stack_decision_is_refused"
+      - "tests/test_verify_bootstrap.py::test_the_refusal_names_the_missing_input"
+      - "tests/test_verify_bootstrap.py::test_an_empty_stack_decision_does_not_count"
+      - "tests/test_verify_bootstrap.py::test_generation_is_permitted_once_a_stack_is_decided"
+      - "tests/test_verify_bootstrap.py::test_an_overlay_to_a_framework_command_is_accepted"
+      - "tests/test_verify_bootstrap.py::test_an_overlay_to_any_other_command_is_refused"
+      - "tests/test_verify_bootstrap.py::test_an_overlay_naming_no_project_command_is_refused"
+      - "tests/test_verify_bootstrap.py::test_the_allowed_targets_match_the_source_repo_allowed_shell"
+      - "tests/test_verify_bootstrap.py::test_both_bootstrap_workflows_check_verification_commands[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_both_bootstrap_workflows_check_verification_commands[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_aborts_on_reject[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_aborts_on_reject[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_check_step_says_it_writes_nothing_before_the_gate[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_check_step_says_it_writes_nothing_before_the_gate[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_gate_says_what_rejecting_costs[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_gate_says_what_rejecting_costs[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_commands_are_not_hardcoded_in_the_script"
+    evidence:
+      - "Issue #57"
+
+  - id: REQ-CORE-EXCEPTION-001
+    statement: >-
+      An exception must be scoped, owned, and time-bound. A record missing a
+      required field or carrying a placeholder is refused; a scope naming the
+      repository, a tree too near the root, or a family of rules is refused as
+      blanket; a permanent disposition requires a named approver; a glob scope
+      requires a baseline; and an exception past its review date is reported
+      rather than deleted and stops suppressing its rule.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.exception
+      - policy:exception-policy.yml
+    verified_by:
+      - "tests/test_exception.py::test_a_missing_required_field_is_refused_by_name[owner]"
+      - "tests/test_exception.py::test_a_missing_required_field_is_refused_by_name[approver]"
+      - "tests/test_exception.py::test_a_missing_required_field_is_refused_by_name[review_or_expiry_at]"
+      - "tests/test_exception.py::test_a_missing_required_field_is_refused_by_name[compensating_controls]"
+      - "tests/test_exception.py::test_a_missing_required_field_is_refused_by_name[policy_rule]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[  ]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[n/a]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[TBD]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[none]"
+      - "tests/test_exception.py::test_a_placeholder_owner_is_not_an_owner[team]"
+      - "tests/test_exception.py::test_every_required_field_in_policy_is_checked"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[*]"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[**]"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[.]"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[all]"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[everything]"
+      - "tests/test_exception.py::test_a_whole_repository_scope_is_refused[./**]"
+      - "tests/test_exception.py::test_a_tree_too_near_the_root_is_refused[legacy/**]"
+      - "tests/test_exception.py::test_a_tree_too_near_the_root_is_refused[src/*]"
+      - "tests/test_exception.py::test_a_tree_too_near_the_root_is_refused[app/**/*.py]"
+      - "tests/test_exception.py::test_a_scope_that_names_a_place_is_accepted[src/legacy/parser/**]"
+      - "tests/test_exception.py::test_a_scope_that_names_a_place_is_accepted[app/billing/tax/*.py]"
+      - "tests/test_exception.py::test_an_exception_to_a_family_of_rules_is_refused[*]"
+      - "tests/test_exception.py::test_an_exception_to_a_family_of_rules_is_refused[all]"
+      - "tests/test_exception.py::test_an_exception_to_a_family_of_rules_is_refused[any]"
+      - "tests/test_exception.py::test_an_exception_to_a_family_of_rules_is_refused[ALL]"
+      - "tests/test_exception.py::test_an_exception_past_its_review_date_is_reported_expired"
+      - "tests/test_exception.py::test_an_expired_exception_stops_suppressing_its_rule"
+      - "tests/test_exception.py::test_an_expired_exception_is_reported_not_deleted"
+      - "tests/test_exception.py::test_an_exception_reviewed_today_has_not_expired"
+      - "tests/test_exception.py::test_a_non_date_review_field_is_refused_rather_than_ignored"
+      - "tests/test_exception.py::test_a_permanent_exception_without_an_approver_is_refused"
+      - "tests/test_exception.py::test_a_permanent_exception_with_an_approver_is_accepted"
+      - "tests/test_exception.py::test_a_permanent_exception_does_not_suppress_by_virtue_of_permanence"
+      - "tests/test_exception.py::test_a_glob_scope_without_a_baseline_is_refused"
+      - "tests/test_exception.py::test_an_exact_path_needs_no_baseline"
+      - "tests/test_exception.py::test_the_forbidden_shapes_all_have_a_detector"
+      - "tests/test_exception.py::test_the_placeholders_are_not_hardcoded_in_the_script"
+    evidence:
+      - "Issue #58"
+
+  - id: REQ-CORE-BROWNFIELD-001
+    statement: >-
+      A brownfield readiness scan must read. The mode is a declared input
+      rather than an empty target, the scan branch writes only under .specify/,
+      it names the small changes that are still changes, it reports every file
+      written and stops on a stray one, and it recommends a single bounded
+      target rather than a modernization backlog.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-brownfield-adoption
+    verified_by:
+      - "tests/test_exception.py::test_the_scan_mode_is_declared_rather_than_implied"
+      - "tests/test_exception.py::test_the_scan_branch_writes_only_under_specify"
+      - "tests/test_exception.py::test_the_scan_branch_names_the_small_changes_that_are_still_changes"
+      - "tests/test_exception.py::test_the_scan_reports_what_it_wrote_and_stops_on_a_stray_file"
+      - "tests/test_exception.py::test_the_scan_recommends_one_target_not_a_backlog"
+      - "tests/test_exception.py::test_only_the_targeted_branch_validates_exceptions"
+    evidence:
+      - "Issue #58"
+
+  - id: REQ-SECURITY-SENSITIVE-001
+    statement: >-
+      Production data is denied to the agent unless a named authority has
+      authorized the specific read, and the refusal cites its rule. Every
+      record the framework writes is scanned for credential shapes, and a
+      finding names the record and the field but never the value. Redaction is
+      visible and does not authorize a read. The shapes live in one policy
+      file that the adapter and the scanner both read.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.sensitive
+      - workflow:lifecycle-brownfield-adoption
+      - policy:sensitive-data.yml
+    verified_by:
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[production_database]"
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[production_logs]"
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[production_backups]"
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[production_exports]"
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[customer_records]"
+      - "tests/test_sensitive.py::test_every_denied_source_is_refused_without_authorization[payment_records]"
+      - "tests/test_sensitive.py::test_the_refusal_cites_the_rule_rather_than_denying_generically"
+      - "tests/test_sensitive.py::test_a_source_that_is_not_production_is_not_refused"
+      - "tests/test_sensitive.py::test_a_complete_authorization_by_an_authority_permits_the_read"
+      - "tests/test_sensitive.py::test_an_incomplete_authorization_does_not_permit_it[authorized_by]"
+      - "tests/test_sensitive.py::test_an_incomplete_authorization_does_not_permit_it[source]"
+      - "tests/test_sensitive.py::test_an_incomplete_authorization_does_not_permit_it[scope]"
+      - "tests/test_sensitive.py::test_an_incomplete_authorization_does_not_permit_it[expires_at]"
+      - "tests/test_sensitive.py::test_authorization_by_someone_who_is_not_an_authority_is_refused"
+      - "tests/test_sensitive.py::test_a_credential_in_a_record_is_found"
+      - "tests/test_sensitive.py::test_the_finding_never_repeats_the_value"
+      - "tests/test_sensitive.py::test_a_nested_field_is_named_by_its_path"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[github_token]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[github_pat]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[labelled_secret]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[aws_access_key]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[private_key_block]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[connection_string]"
+      - "tests/test_sensitive.py::test_every_declared_shape_is_compiled[jwt]"
+      - "tests/test_sensitive.py::test_credential_shapes_are_caught[AKIAIOSFODNN7EXAMPLE]"
+      - "tests/test_sensitive.py::test_credential_shapes_are_caught[-----BEGIN RSA PRIVATE KEY-----]"
+      - "tests/test_sensitive.py::test_credential_shapes_are_caught[postgres://user:hunter2@db.internal:5432/app]"
+      - "tests/test_sensitive.py::test_credential_shapes_are_caught[password = hunter2]"
+      - "tests/test_sensitive.py::test_ordinary_prose_is_not_a_finding"
+      - "tests/test_sensitive.py::test_redaction_leaves_a_visible_marker"
+      - "tests/test_sensitive.py::test_redaction_is_not_silent_removal"
+      - "tests/test_sensitive.py::test_an_already_redacted_field_is_not_reported_again"
+      - "tests/test_sensitive.py::test_redacting_does_not_authorize_the_read"
+      - "tests/test_sensitive.py::test_the_authorization_check_takes_no_redaction_argument"
+      - "tests/test_sensitive.py::test_the_adapter_uses_the_same_pattern_list"
+      - "tests/test_sensitive.py::test_adding_a_shape_to_policy_changes_behaviour_without_editing_code"
+      - "tests/test_sensitive.py::test_a_fallback_says_so_rather_than_pretending"
+      - "tests/test_sensitive.py::test_the_fallback_still_catches_the_common_shape"
+      - "tests/test_sensitive.py::test_the_discovery_record_is_scanned_before_it_is_reviewed"
+      - "tests/test_sensitive.py::test_the_scan_step_forbids_quoting_the_value"
+    evidence:
+      - "Issue #59"
+
+  - id: REQ-GITHUB-BOARD-001
+    statement: >-
+      An item the framework creates must be placed on the board, because
+      delivery state lives there and an item off the board cannot be
+      transitioned. Placement is idempotent, takes the issue id rather than its
+      number, reads the new item back directly rather than re-listing, and a
+      capture that cannot place an item reports that rather than returning a
+      clean creation.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.capture
+      - command:speckit.github-lifecycle.decompose
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_field_backend.py::test_an_issue_can_be_placed_on_the_board"
+      - "tests/test_field_backend.py::test_placing_an_issue_already_present_is_idempotent"
+      - "tests/test_field_backend.py::test_placing_takes_the_issue_id_not_its_number"
+      - "tests/test_field_backend.py::test_a_placed_issue_is_readable_and_writable"
+      - "tests/test_field_backend.py::test_placement_survives_a_listing_that_lags_behind_the_write"
+      - "tests/test_field_backend.py::test_placement_refuses_when_the_item_reads_back_as_another_issue"
+      - "tests/test_capture.py::test_a_captured_item_is_placed_on_the_board"
+      - "tests/test_capture.py::test_placement_uses_the_issue_id_from_the_read_back"
+      - "tests/test_capture.py::test_a_capture_that_cannot_place_says_so"
+      - "tests/test_capture.py::test_a_backend_without_a_board_is_not_reported_as_a_failure"
+      - "tests/test_capture.py::test_a_dry_run_places_nothing"
+    evidence:
+      - "Issue #60"
+
+  - id: REQ-CORE-RATCHET-001
+    statement: >-
+      Every gate declared ratcheted carries a baseline. A measurement worse
+      than the baseline is refused, naming the gate, the baseline, and the
+      measurement; a better one moves the baseline and records what produced
+      it; a first run establishes a baseline and does not report a pass; a gate
+      declared ratcheted without a usable measure is refused rather than
+      skipped; and loosening a baseline requires a valid, unexpired exception
+      naming that gate.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.ratchet
+      - workflow:lifecycle-story-delivery
+      - workflow:lifecycle-bugfix
+      - policy:quality-gates.yml
+    verified_by:
+      - "tests/test_ratchet.py::test_a_regression_on_a_lower_is_better_gate_is_refused"
+      - "tests/test_ratchet.py::test_a_regression_on_a_higher_is_better_gate_is_refused"
+      - "tests/test_ratchet.py::test_the_refusal_names_the_gate_the_baseline_and_the_measurement"
+      - "tests/test_ratchet.py::test_a_refused_measurement_never_moves_the_baseline"
+      - "tests/test_ratchet.py::test_an_improvement_moves_the_baseline"
+      - "tests/test_ratchet.py::test_the_moved_baseline_records_what_produced_it"
+      - "tests/test_ratchet.py::test_an_improvement_with_no_provenance_is_refused"
+      - "tests/test_ratchet.py::test_an_unchanged_measurement_holds"
+      - "tests/test_ratchet.py::test_loosening_without_an_exception_is_refused"
+      - "tests/test_ratchet.py::test_loosening_under_an_exception_naming_the_gate_is_permitted"
+      - "tests/test_ratchet.py::test_an_exception_for_another_gate_does_not_loosen_this_one"
+      - "tests/test_ratchet.py::test_an_invalid_exception_does_not_loosen_anything"
+      - "tests/test_ratchet.py::test_an_expired_exception_does_not_loosen_anything"
+      - "tests/test_ratchet.py::test_a_tightening_is_not_a_loosening"
+      - "tests/test_ratchet.py::test_a_first_run_establishes_a_baseline"
+      - "tests/test_ratchet.py::test_a_first_run_does_not_report_a_pass"
+      - "tests/test_ratchet.py::test_an_entry_with_no_value_is_treated_as_no_baseline"
+      - "tests/test_ratchet.py::test_a_gate_declared_ratcheted_with_no_measure_is_refused"
+      - "tests/test_ratchet.py::test_a_gate_with_an_unknown_direction_is_refused"
+      - "tests/test_ratchet.py::test_refusing_is_not_skipping"
+      - "tests/test_ratchet.py::test_a_gate_that_does_not_ratchet_says_which_ones_do"
+      - "tests/test_ratchet.py::test_every_ratcheted_gate_is_a_gate_quality_gates_declares"
+      - "tests/test_ratchet.py::test_the_gate_names_are_not_hardcoded_in_the_script"
+      - "tests/test_ratchet.py::test_the_ratchet_runs_after_verification[lifecycle-bugfix]"
+      - "tests/test_ratchet.py::test_the_ratchet_runs_after_verification[lifecycle-story-delivery]"
+      - "tests/test_ratchet.py::test_the_step_forbids_reporting_a_baseline_as_a_pass[lifecycle-bugfix]"
+      - "tests/test_ratchet.py::test_the_step_forbids_reporting_a_baseline_as_a_pass[lifecycle-story-delivery]"
+    evidence:
+      - "Issue #62"
+
+  - id: REQ-TEAM-PROJECT-001
+    statement: >-
+      A command must act on the Spec Kit project it was meant to act on, not on
+      whichever directory it was launched from. The project root is the nearest
+      ancestor containing .specify/; SPECIFY_INIT_DIR overrides that search and
+      is strict, failing rather than falling back to the working directory; the
+      git root is not the project root; and every policy read in one run uses
+      one resolved root.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - command:speckit.github-lifecycle.doctor
+      - command:speckit.github-lifecycle.ratchet
+    verified_by:
+      - "tests/test_project_root.py::test_the_project_root_is_found_from_a_subdirectory"
+      - "tests/test_project_root.py::test_a_project_root_resolves_to_itself"
+      - "tests/test_project_root.py::test_the_nearest_ancestor_wins_over_an_outer_one"
+      - "tests/test_project_root.py::test_the_environment_selects_the_project"
+      - "tests/test_project_root.py::test_a_relative_environment_value_resolves_against_the_working_directory"
+      - "tests/test_project_root.py::test_a_nonexistent_environment_value_fails"
+      - "tests/test_project_root.py::test_a_directory_without_the_marker_fails"
+      - "tests/test_project_root.py::test_an_invalid_environment_value_never_falls_back_to_the_search"
+      - "tests/test_project_root.py::test_an_empty_environment_value_is_treated_as_unset"
+      - "tests/test_project_root.py::test_the_git_root_is_not_the_project_root"
+      - "tests/test_project_root.py::test_two_members_resolve_to_two_roots"
+      - "tests/test_project_root.py::test_the_search_does_not_stop_at_a_git_directory"
+      - "tests/test_project_root.py::test_an_explicit_root_wins_over_the_environment"
+      - "tests/test_project_root.py::test_no_project_anywhere_is_an_error_when_required"
+      - "tests/test_project_root.py::test_no_project_returns_none_when_not_required"
+      - "tests/test_project_root.py::test_no_script_defaults_its_policy_root_to_the_working_directory"
+      - "tests/test_project_root.py::test_only_the_greenfield_check_still_defaults_a_path_to_the_cwd"
+      - "tests/test_project_root.py::test_the_ratchet_reads_exception_policy_from_the_root_it_was_given"
+      - "tests/test_project_root.py::test_doctor_reports_a_project_it_is_standing_below"
+    evidence:
+      - "Issue #65"
+
+  - id: REQ-TEAM-FEATURE-001
+    statement: >-
+      The active feature comes from SPECIFY_FEATURE_DIRECTORY, then from
+      .specify/feature.json, and from nothing else. The git branch is never
+      consulted, so changing branches does not change the active feature; an
+      undeclared feature is refused with both declaring sources named rather
+      than guessed; and a relative value resolves against the project root.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_feature_context.py::test_the_environment_variable_selects_the_feature"
+      - "tests/test_feature_context.py::test_feature_json_is_not_consulted_when_the_variable_is_set"
+      - "tests/test_feature_context.py::test_an_empty_variable_is_treated_as_unset"
+      - "tests/test_feature_context.py::test_feature_json_selects_the_feature"
+      - "tests/test_feature_context.py::test_a_feature_json_with_no_declaration_is_an_error"
+      - "tests/test_feature_context.py::test_an_unreadable_feature_json_is_not_an_absent_one"
+      - "tests/test_feature_context.py::test_switching_branches_does_not_switch_the_feature"
+      - "tests/test_feature_context.py::test_a_branch_matching_a_feature_name_still_does_not_select_it"
+      - "tests/test_feature_context.py::test_the_resolver_never_shells_out_to_git"
+      - "tests/test_feature_context.py::test_an_undeclared_feature_is_refused"
+      - "tests/test_feature_context.py::test_the_refusal_names_both_declaring_sources"
+      - "tests/test_feature_context.py::test_an_undeclared_feature_returns_none_when_not_required"
+      - "tests/test_feature_context.py::test_a_relative_value_resolves_against_the_project_root"
+      - "tests/test_feature_context.py::test_an_absolute_value_stands_alone"
+      - "tests/test_feature_context.py::test_a_relative_feature_json_value_also_resolves_against_the_project"
+      - "tests/test_feature_context.py::test_two_members_can_hold_two_active_features"
+      - "tests/test_feature_context.py::test_the_source_is_reported_rather_than_implied"
+    evidence:
+      - "Issue #66"
+
+  - id: REQ-TEAM-MONOREPO-001
+    statement: >-
+      Two members of one monorepo, working on two features in concurrent
+      worktrees, must not write into each other's artifacts. Each member
+      resolves to its own project root and never to the git root, each worktree
+      holds its own active feature, a record written in one context is absent
+      from the other, a write outside the resolved project is refused naming
+      both paths, and removing the bundle from one member leaves the other
+      installed.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - command:speckit.github-lifecycle.transition
+      - command:speckit.github-lifecycle.ratchet
+    verified_by:
+      - "tests/sandbox/test_monorepo.py::test_each_member_resolves_to_its_own_root"
+      - "tests/sandbox/test_monorepo.py::test_a_nested_directory_resolves_to_its_member"
+      - "tests/sandbox/test_monorepo.py::test_neither_member_resolves_to_the_git_root"
+      - "tests/sandbox/test_monorepo.py::test_concurrent_worktrees_hold_distinct_features"
+      - "tests/sandbox/test_monorepo.py::test_a_worktree_feature_differs_from_the_main_checkout"
+      - "tests/sandbox/test_monorepo.py::test_each_worktree_resolves_to_its_own_project_root"
+      - "tests/sandbox/test_monorepo.py::test_a_record_written_in_one_context_is_absent_from_the_other"
+      - "tests/sandbox/test_monorepo.py::test_a_worktree_record_does_not_appear_in_the_main_checkout"
+      - "tests/sandbox/test_monorepo.py::test_a_plan_written_into_another_member_is_refused"
+      - "tests/sandbox/test_monorepo.py::test_a_traversal_out_of_the_member_is_refused"
+      - "tests/sandbox/test_monorepo.py::test_a_write_inside_the_member_is_permitted"
+      - "tests/sandbox/test_monorepo.py::test_removing_the_bundle_from_one_member_leaves_the_other"
+      - "tests/test_project_root.py::test_a_path_inside_the_project_is_returned_resolved"
+      - "tests/test_project_root.py::test_a_path_in_a_sibling_member_is_refused"
+      - "tests/test_project_root.py::test_the_refusal_names_the_project_and_the_attempted_path"
+      - "tests/test_project_root.py::test_the_git_root_is_outside_a_member"
+      - "tests/test_project_root.py::test_every_file_writing_script_passes_through_the_guard[transition_plan.py]"
+      - "tests/test_project_root.py::test_every_file_writing_script_passes_through_the_guard[ratchet.py]"
+    evidence:
+      - "Issue #67"
+
+  - id: REQ-TEAM-BLOCKED-001
+    statement: >-
+      An item with an unfinished blocker cannot start. The refusal names each
+      blocker and its state; a blocker in this repository is judged by delivery
+      state rather than closure, one in another repository blocks while open
+      and says so; an unreadable dependency list refuses rather than permits;
+      and none of this changes delivery status, which stays a dependency and
+      never becomes a state.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.plan
+      - policy:state-machine.yml
+    verified_by:
+      - "tests/test_transition.py::test_a_blocked_item_cannot_start"
+      - "tests/test_transition.py::test_the_refusal_names_each_blocker_and_its_state"
+      - "tests/test_transition.py::test_a_delivered_blocker_does_not_block"
+      - "tests/test_transition.py::test_an_item_with_no_blockers_starts"
+      - "tests/test_transition.py::test_a_blocker_closed_as_a_duplicate_has_not_been_delivered"
+      - "tests/test_transition.py::test_a_blocker_in_another_repository_still_blocks"
+      - "tests/test_transition.py::test_a_blocker_not_on_the_board_blocks"
+      - "tests/test_transition.py::test_an_unreadable_dependency_list_refuses_rather_than_permits"
+      - "tests/test_transition.py::test_blocking_does_not_change_delivery_status"
+      - "tests/test_transition.py::test_a_blocked_item_may_still_be_refined"
+      - "tests/test_transition.py::test_the_blocker_check_does_not_run_for_other_targets"
+    evidence:
+      - "Issue #69"
+
+  - id: REQ-PACKAGE-OVERLAY-002
+    statement: >-
+      In a monorepo, each member's workflow overlay applies to that member
+      alone. Neither member can see the other's overlay, an update in one
+      member leaves the other's overlay untouched, an overlay survives an
+      update that reported success, and removing the bundle from a member
+      leaves the project-local overlay it did not create.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-story-delivery
+    verified_by:
+      - "tests/sandbox/test_monorepo_overlays.py::test_each_member_resolves_its_own_overlay[member_a]"
+      - "tests/sandbox/test_monorepo_overlays.py::test_each_member_resolves_its_own_overlay[member_b]"
+      - "tests/sandbox/test_monorepo_overlays.py::test_no_member_sees_the_other_members_overlay"
+      - "tests/sandbox/test_monorepo_overlays.py::test_the_two_members_resolve_to_two_different_overlays"
+      - "tests/sandbox/test_monorepo_overlays.py::test_an_overlay_survives_an_update_in_its_member"
+      - "tests/sandbox/test_monorepo_overlays.py::test_updating_one_member_does_not_disturb_the_other"
+      - "tests/sandbox/test_monorepo_overlays.py::test_removing_the_bundle_from_a_member_leaves_both_overlays"
+    evidence:
+      - "Issue #68"
+
+  - id: REQ-CORE-MODELS-001
+    statement: >-
+      Every model a role names must exist in the installed OpenCode inventory
+      and come from an approved provider, with fallbacks checked exactly like
+      primaries. A role with no primary is reported unresolved rather than
+      filled in, and an inventory that cannot be read or reports nothing
+      refuses rather than verifying every id.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.models
+      - policy:model-routing.yml
+    verified_by:
+      - "tests/test_opencode_models.py::test_a_model_not_in_the_inventory_is_refused"
+      - "tests/test_opencode_models.py::test_a_model_in_the_inventory_is_verified"
+      - "tests/test_opencode_models.py::test_a_model_from_an_unapproved_provider_is_refused"
+      - "tests/test_opencode_models.py::test_an_empty_approved_list_does_not_reject_everything"
+      - "tests/test_opencode_models.py::test_a_real_model_from_an_unapproved_provider_still_fails"
+      - "tests/test_opencode_models.py::test_a_bad_fallback_is_refused_and_identified_as_a_fallback"
+      - "tests/test_opencode_models.py::test_good_fallbacks_are_reported_with_the_primary"
+      - "tests/test_opencode_models.py::test_a_fallback_with_no_primary_is_refused"
+      - "tests/test_opencode_models.py::test_a_null_primary_is_reported_unresolved"
+      - "tests/test_opencode_models.py::test_an_unresolved_role_is_not_a_problem_to_be_fixed_by_choosing_one"
+      - "tests/test_opencode_models.py::test_the_shipped_policy_resolves_no_roles_and_that_is_clean"
+      - "tests/test_opencode_models.py::test_a_failing_inventory_command_refuses"
+      - "tests/test_opencode_models.py::test_a_missing_inventory_command_refuses"
+      - "tests/test_opencode_models.py::test_an_empty_inventory_refuses_rather_than_verifying_everything"
+      - "tests/test_opencode_models.py::test_a_readable_inventory_is_parsed_into_provider_model_ids"
+      - "tests/test_opencode_models.py::test_the_inventory_command_comes_from_policy"
+      - "tests/test_opencode_models.py::test_the_real_cli_reports_a_usable_inventory"
+    evidence:
+      - "Issue #70"
+
+  - id: REQ-CORE-LAYOUT-001
+    statement: >-
+      Before anything writes into a project's OpenCode directory, the layout
+      must be detected: the current commands directory, the legacy one, both,
+      or neither. Both present is reported as a migration rather than resolved,
+      neither is refused naming every directory looked for, the paths come from
+      policy, and detection runs against the resolved project root rather than
+      the working directory.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.opencode-layout
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_opencode_layout.py::test_the_current_generation_is_detected"
+      - "tests/test_opencode_layout.py::test_the_legacy_generation_is_detected"
+      - "tests/test_opencode_layout.py::test_the_reported_directory_is_the_one_that_exists"
+      - "tests/test_opencode_layout.py::test_both_generations_present_is_reported_as_both"
+      - "tests/test_opencode_layout.py::test_both_present_chooses_neither"
+      - "tests/test_opencode_layout.py::test_both_present_says_it_is_a_migration"
+      - "tests/test_opencode_layout.py::test_a_project_with_no_layout_is_refused"
+      - "tests/test_opencode_layout.py::test_the_refusal_names_every_directory_it_looked_for"
+      - "tests/test_opencode_layout.py::test_a_file_where_a_directory_belongs_is_not_a_layout"
+      - "tests/test_opencode_layout.py::test_detection_runs_against_the_resolved_project_root"
+      - "tests/test_opencode_layout.py::test_the_command_detects_from_a_subdirectory"
+      - "tests/test_opencode_layout.py::test_a_sibling_member_layout_is_not_this_members"
+      - "tests/test_opencode_layout.py::test_the_directories_come_from_policy"
+      - "tests/test_opencode_layout.py::test_an_undescribed_integration_is_refused"
+    evidence:
+      - "Issue #72"
+
+  - id: REQ-SECURITY-OPENCODE-001
+    statement: >-
+      The generated OpenCode configuration must carry every runtime rule the
+      policy states that OpenCode can express, and must name every rule it
+      cannot. The reviewer role is denied edit, the verification commands are
+      allowed by pattern while the bash default stays ask, an unenforceable
+      rule is reported with why and what compensates, an uncompensated gap is
+      marked as one, and no configuration is written without an approved
+      proposal.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.opencode-config
+      - policy:agent-policy.yml
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_opencode_config.py::test_a_denial_flipped_in_policy_changes_the_output"
+      - "tests/test_opencode_config.py::test_a_proposal_cannot_be_written_outside_the_project"
+      - "tests/test_opencode_config.py::test_a_protected_push_is_denied_and_a_deploy_asks"
+      - "tests/test_opencode_config.py::test_a_role_without_an_edit_constraint_gets_no_agent_entry"
+      - "tests/test_opencode_config.py::test_a_written_proposal_is_recognised"
+      - "tests/test_opencode_config.py::test_an_uncompensated_gap_is_marked_as_one"
+      - "tests/test_opencode_config.py::test_apply_refuses_a_document_that_is_not_a_proposal"
+      - "tests/test_opencode_config.py::test_each_mapped_rule_reaches_its_config_key[external_directory_default-permission.external_directory]"
+      - "tests/test_opencode_config.py::test_each_mapped_rule_reaches_its_config_key[sharing-share]"
+      - "tests/test_opencode_config.py::test_each_mapped_rule_reaches_its_config_key[shell_default-permission.bash]"
+      - "tests/test_opencode_config.py::test_each_mapped_rule_reaches_its_config_key[web_default-permission.webfetch]"
+      - "tests/test_opencode_config.py::test_each_pattern_rule_reaches_the_bash_map[destructive_operations]"
+      - "tests/test_opencode_config.py::test_each_pattern_rule_reaches_the_bash_map[production_deploy]"
+      - "tests/test_opencode_config.py::test_each_pattern_rule_reaches_the_bash_map[protected_push]"
+      - "tests/test_opencode_config.py::test_each_unenforceable_rule_says_why_and_what_compensates"
+      - "tests/test_opencode_config.py::test_every_unenforceable_rule_is_reported"
+      - "tests/test_opencode_config.py::test_external_directory_access_is_denied"
+      - "tests/test_opencode_config.py::test_no_runtime_rule_is_silently_absent"
+      - "tests/test_opencode_config.py::test_proposing_writes_no_config_file"
+      - "tests/test_opencode_config.py::test_session_sharing_is_disabled"
+      - "tests/test_opencode_config.py::test_the_bash_default_is_still_ask"
+      - "tests/test_opencode_config.py::test_the_edit_denial_comes_from_the_role_constraint"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[*-ask]"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[devbox run release-verify-allow]"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[devbox run verify-allow]"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[git push --force*-deny]"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[kubectl apply*-ask]"
+      - "tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant[rm -rf*-deny]"
+      - "tests/test_opencode_config.py::test_the_mapping_is_not_hardcoded_in_the_script"
+      - "tests/test_opencode_config.py::test_the_patterns_that_were_used_are_reported"
+      - "tests/test_opencode_config.py::test_the_report_does_not_read_as_fully_enforced"
+      - "tests/test_opencode_config.py::test_the_reviewer_agent_is_denied_edit"
+      - "tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named[mcp_default]"
+      - "tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named[plugin_default]"
+      - "tests/test_opencode_config.py::test_the_verification_commands_are_allowed_by_pattern"
+    evidence:
+      - "Issue #71"
+
+  - id: REQ-CORE-MODELRECORD-001
+    statement: >-
+      A resolved model mapping must be recorded with each role, its model, the
+      evaluation date, and an expiry. Recording refuses a mapping that failed
+      verification, one where nothing was verified, and one with no expiry; an
+      expired record is reported expired rather than current; a role no
+      consumer names is reported unused rather than removed; and replacing the
+      mapping changes no workflow.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.models
+      - policy:model-routing.yml
+    verified_by:
+      - "tests/test_opencode_models.py::test_a_record_carries_each_role_its_model_and_both_dates"
+      - "tests/test_opencode_models.py::test_the_record_carries_the_roles_that_stayed_unresolved"
+      - "tests/test_opencode_models.py::test_an_expired_record_is_reported_expired"
+      - "tests/test_opencode_models.py::test_a_current_record_is_reported_current"
+      - "tests/test_opencode_models.py::test_a_record_with_no_usable_expiry_cannot_be_shown_current"
+      - "tests/test_opencode_models.py::test_recording_a_failed_verification_is_refused"
+      - "tests/test_opencode_models.py::test_recording_nothing_verified_is_refused"
+      - "tests/test_opencode_models.py::test_recording_without_an_expiry_is_refused"
+      - "tests/test_opencode_models.py::test_a_date_that_is_not_a_date_is_refused[soon]"
+      - "tests/test_opencode_models.py::test_a_date_that_is_not_a_date_is_refused[2026-13-01]"
+      - "tests/test_opencode_models.py::test_a_date_that_is_not_a_date_is_refused[None]"
+      - "tests/test_opencode_models.py::test_no_workflow_names_a_role"
+      - "tests/test_opencode_models.py::test_every_role_is_currently_reported_unused"
+      - "tests/test_opencode_models.py::test_a_role_a_consumer_names_is_not_reported_unused"
+      - "tests/test_opencode_models.py::test_the_record_path_comes_from_policy"
+    evidence:
+      - "Issue #73"
+
+  - id: REQ-CORE-INTEGRATION-001
+    statement: >-
+      No workflow names a specific agent. Every integration input defaults to
+      Spec Kit's runtime sentinel so the project's own integration is used, a
+      registered check refuses a specific default, and the documentation says
+      the workflows follow the project rather than telling a reader to pass one.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:INV-INTEGRATION-DEFAULT
+      - policy:framework.yml
+    verified_by:
+      - "tests/test_integration_default.py::test_every_workflow_defaults_to_the_runtime_sentinel"
+      - "tests/test_integration_default.py::test_the_input_is_still_a_string_with_no_enum"
+      - "tests/test_integration_default.py::test_the_framework_policy_follows_the_project"
+      - "tests/test_integration_default.py::test_the_invariant_declares_the_expected_default"
+      - "tests/test_integration_default.py::test_a_registered_check_enforces_it"
+      - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[README.md]"
+      - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[docs/installation.md]"
+      - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[INSTALL-LOCAL.md]"
+      - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[bundle/README.md]"
+      - "tests/test_integration_default.py::test_the_bundle_readme_says_the_workflows_follow_the_project"
+    evidence:
+      - "Issue #75"
+
+  - id: REQ-SECURITY-CLAUDE-001
+    statement: >-
+      The generated Claude Code settings must carry every runtime rule that
+      agent can express and name every rule it cannot, distinguishing a rule
+      that does not apply from a genuine gap. The reviewer role gets no writing
+      tools, the verification commands are allowed by name while the default
+      mode still asks, a rule OpenCode could not express is generated here
+      rather than copied across as a gap, and no settings are written without
+      an approved proposal.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.claude-config
+      - policy:agent-policy.yml
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_claude_config.py::test_a_denial_flipped_in_policy_changes_the_output"
+      - "tests/test_claude_config.py::test_a_denied_rule_is_not_also_allowed"
+      - "tests/test_claude_config.py::test_a_not_applicable_rule_does_not_make_the_report_unenforced"
+      - "tests/test_claude_config.py::test_a_proposal_cannot_be_written_outside_the_project"
+      - "tests/test_claude_config.py::test_a_role_without_the_constraint_gets_no_agent"
+      - "tests/test_claude_config.py::test_a_rule_opencode_could_not_express_is_generated_here[mcp_default]"
+      - "tests/test_claude_config.py::test_a_rule_opencode_could_not_express_is_generated_here[plugin_default]"
+      - "tests/test_claude_config.py::test_a_rule_this_agent_cannot_have_is_marked_not_applicable"
+      - "tests/test_claude_config.py::test_an_opencode_proposal_is_not_a_claude_proposal"
+      - "tests/test_claude_config.py::test_an_unlisted_command_is_not_allowed"
+      - "tests/test_claude_config.py::test_apply_refuses_a_document_that_is_not_a_proposal"
+      - "tests/test_claude_config.py::test_each_permission_rule_lands_in_some_list[destructive_operations]"
+      - "tests/test_claude_config.py::test_each_permission_rule_lands_in_some_list[production_deploy]"
+      - "tests/test_claude_config.py::test_each_permission_rule_lands_in_some_list[protected_push]"
+      - "tests/test_claude_config.py::test_each_permission_rule_lands_in_some_list[web_default]"
+      - "tests/test_claude_config.py::test_external_directories_are_declared_empty"
+      - "tests/test_claude_config.py::test_mcp_servers_are_not_enabled_wholesale"
+      - "tests/test_claude_config.py::test_mcp_stays_off_unless_policy_says_otherwise"
+      - "tests/test_claude_config.py::test_no_runtime_rule_is_silently_absent"
+      - "tests/test_claude_config.py::test_proposing_writes_no_settings_file"
+      - "tests/test_claude_config.py::test_the_default_mode_does_not_permit_arbitrary_commands"
+      - "tests/test_claude_config.py::test_the_gap_lists_of_the_two_integrations_differ"
+      - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[allow]"
+      - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[ask]"
+      - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[deny]"
+      - "tests/test_claude_config.py::test_the_one_genuine_gap_is_marked_uncompensated"
+      - "tests/test_claude_config.py::test_the_reviewer_agent_has_no_writing_tools"
+      - "tests/test_claude_config.py::test_the_tool_list_comes_from_the_role_constraint"
+      - "tests/test_claude_config.py::test_the_verification_commands_are_allowed_by_name"
+    evidence:
+      - "Issue #76"
+
+  - id: REQ-CORE-CLAUDEINST-001
+    statement: >-
+      The bundle must install into a project using Claude Code and place every
+      declared command where that integration reads it, as a directory holding
+      a SKILL.md with the flattened name. The component count matches the
+      OpenCode case, a command that did not land is named rather than counted,
+      one project can hold both integrations, and removing the bundle takes
+      back the commands it installed.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/sandbox/test_claude_install.py::test_the_bundle_installs_into_a_claude_project"
+      - "tests/sandbox/test_claude_install.py::test_the_component_count_matches_the_opencode_case"
+      - "tests/sandbox/test_claude_install.py::test_every_declared_command_is_present_in_the_claude_layout"
+      - "tests/sandbox/test_claude_install.py::test_each_command_is_a_directory_holding_a_skill_file"
+      - "tests/sandbox/test_claude_install.py::test_a_command_that_did_not_land_is_named"
+      - "tests/sandbox/test_claude_install.py::test_the_opencode_layout_still_receives_its_commands"
+      - "tests/sandbox/test_claude_install.py::test_a_workflow_resolves_under_claude"
+      - "tests/sandbox/test_claude_install.py::test_the_workflows_are_listed_under_claude"
+      - "tests/sandbox/test_claude_install.py::test_a_project_with_both_integrations_populates_both"
+      - "tests/sandbox/test_claude_install.py::test_removing_the_bundle_removes_its_commands"
+      - "tests/sandbox/test_claude_install.py::test_the_naming_convention_is_declared_rather_than_inferred[claude]"
+      - "tests/sandbox/test_claude_install.py::test_the_naming_convention_is_declared_rather_than_inferred[opencode]"
+    evidence:
+      - "Issue #77"
+
+  - id: REQ-DOCS-COMPAT-001
+    statement: >-
+      The compatibility matrix must say which capabilities have been exercised
+      under which agent integration, derived from named tests rather than
+      maintained beside them. Every declared integration appears even when
+      nothing has been tried under it, a capability nobody claims is stated
+      rather than implied, and a claim naming a test the suite does not collect
+      fails validation.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:PUB-COMPAT-CLAIM
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_compatibility.py::test_every_declared_integration_appears_in_the_matrix[opencode]"
+      - "tests/test_compatibility.py::test_every_declared_integration_appears_in_the_matrix[claude]"
+      - "tests/test_compatibility.py::test_an_untested_capability_is_marked_not_tested"
+      - "tests/test_compatibility.py::test_what_nobody_claims_is_stated"
+      - "tests/test_compatibility.py::test_every_claim_names_at_least_one_test"
+      - "tests/test_compatibility.py::test_every_capability_used_is_declared"
+      - "tests/test_compatibility.py::test_the_document_is_current"
+      - "tests/test_compatibility.py::test_the_document_says_it_is_generated"
+      - "tests/test_compatibility.py::test_a_registered_check_verifies_the_claims"
+      - "tests/test_compatibility.py::test_every_claimed_node_id_is_collected"
+    evidence:
+      - "Issue #78"
+
+  - id: REQ-CORE-FLAVOUR-001
+    statement: >-
+      The extension must declare the interpreter its commands invoke and
+      reference only a script flavour it ships. A registered check refuses a
+      command naming an unshipped script or a manifest that omits the
+      interpreter, and doctor reports a project whose recorded script choice
+      this extension does not honour, rather than leaving the operator to
+      discover it when a command fails.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - check:INV-SCRIPT-FLAVOUR
+      - command:speckit.github-lifecycle.doctor
+    verified_by:
+      - "tests/test_script_flavour.py::test_the_extension_declares_the_interpreter_its_commands_invoke"
+      - "tests/test_script_flavour.py::test_every_command_invokes_only_a_shipped_script"
+      - "tests/test_script_flavour.py::test_no_command_invokes_a_flavour_the_extension_does_not_ship"
+      - "tests/test_script_flavour.py::test_a_registered_check_enforces_it"
+      - "tests/test_script_flavour.py::test_a_matching_project_is_reported_ok"
+      - "tests/test_script_flavour.py::test_a_shell_project_is_reported_as_a_mismatch"
+      - "tests/test_script_flavour.py::test_the_mismatch_says_what_it_does_and_does_not_mean"
+      - "tests/test_script_flavour.py::test_a_project_with_no_recorded_choice_is_unknown_not_ok"
+      - "tests/test_script_flavour.py::test_an_unreadable_choice_is_unknown_not_ok"
+      - "tests/test_script_flavour.py::test_without_the_preset_the_provided_flavour_is_not_asserted"
+    evidence:
+      - "Issue #80"
+
+  - id: REQ-TOOLING-HARNESS-001
+    statement: >-
+      A workflow must be runnable in the suite without a model, so its
+      behaviour can be tested rather than its text read. Steps are visited in
+      order, a rejected gate aborts the run and nothing after it executes, an
+      unscripted gate is an error rather than an approval, a command step
+      executes the real script and its refusal stops the run, a command with no
+      supplied invocation is recorded rather than invented, prompt steps are
+      recorded and never reported as executed, and a workflow missing an
+      expected step fails the run by name.
+    priority: must
+    owner: framework
+    release: "0.9.0"
+    status: verified
+    components:
+      - workflow:lifecycle-refine
+      - workflow:lifecycle-outcome-review
+    verified_by:
+      - "tests/test_harness.py::test_a_workflow_runs_end_to_end"
+      - "tests/test_harness.py::test_steps_are_visited_in_order"
+      - "tests/test_harness.py::test_a_switch_descends_into_the_case_its_input_selects"
+      - "tests/test_harness.py::test_an_input_outside_its_enum_is_refused"
+      - "tests/test_harness.py::test_a_rejected_gate_aborts_the_run"
+      - "tests/test_harness.py::test_no_step_after_a_rejected_gate_executes"
+      - "tests/test_harness.py::test_an_unscripted_gate_is_not_an_approval"
+      - "tests/test_harness.py::test_a_command_step_runs_the_real_script"
+      - "tests/test_harness.py::test_a_refusing_command_stops_the_run"
+      - "tests/test_harness.py::test_a_command_with_no_invocation_is_recorded_not_invented"
+      - "tests/test_harness.py::test_a_prompt_step_records_what_it_asked_for"
+      - "tests/test_harness.py::test_no_prompt_step_is_ever_reported_as_executed"
+      - "tests/test_harness.py::test_an_expected_step_that_no_longer_exists_fails_the_run"
+      - "tests/test_harness.py::test_expected_steps_that_exist_do_not_fail_the_run"
+      - "tests/test_harness.py::test_a_step_inside_a_switch_case_counts_as_present"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-brownfield-adoption]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-bugfix]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-decompose]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-discover]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-greenfield-bootstrap]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-incident-hotfix]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-outcome-review]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-prototype]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-refine]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-release-outcome]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-retirement]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-spike]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-story-delivery]"
+      - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-triage]"
+    evidence:
+      - "Issue #82"
+
+  - id: REQ-TOOLING-ASSERT-001
+    statement: >-
+      The suite must not count an assertion that cannot fail as coverage.
+      Generated permission decisions are pinned as literals so a denial
+      relaxed in policy breaks a test; an assertion that reads a workflow's
+      prose is marked as checking wording rather than behaviour and can be
+      excluded from a behavioural run; and the three paths nothing executed --
+      a not-ready verdict, the Refining to Ready edge, and a second
+      decomposition wave -- are executed.
+    priority: must
+    owner: framework
+    release: "0.9.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.readiness
+      - command:speckit.github-lifecycle.decompose
+      - command:speckit.github-lifecycle.plan
+    verified_by:
+      - "tests/test_assertion_quality.py::test_a_marked_test_is_excluded_from_behavioural_selection"
+      - "tests/test_assertion_quality.py::test_no_permission_test_reads_its_expectation_from_the_policy"
+      - "tests/test_assertion_quality.py::test_the_prose_assertions_are_marked"
+      - "tests/test_assertion_quality.py::test_the_wording_marker_is_declared"
+      - "tests/test_decompose.py::test_a_second_wave_creates_only_what_the_horizon_still_needs"
+      - "tests/test_decompose.py::test_a_second_wave_stops_once_the_horizon_is_met"
+      - "tests/test_readiness.py::test_a_not_ready_verdict_exits_non_zero"
+      - "tests/test_readiness.py::test_a_not_ready_verdict_with_no_blocking_question_is_still_not_ready"
+      - "tests/test_readiness.py::test_a_ready_verdict_exits_zero"
+      - "tests/test_transition.py::test_ready_is_applied_once_the_evidence_is_asserted"
+      - "tests/test_transition.py::test_ready_is_refused_without_that_evidence"
+      - "tests/test_transition.py::test_refining_to_ready_requires_the_readiness_evidence"
+    evidence:
+      - "Issue #84"
 
   - id: REQ-BACKLOG-TRIAGE-001
     statement: >-
@@ -688,17 +1611,37 @@ requirements:
       - "tests/test_triage.py::test_an_untyped_item_cannot_be_assessed_against_a_contract"
       - "tests/test_triage.py::test_the_proposed_transition_is_never_past_refining"
 
-  - id: REQ-BACKLOG-READY-001
+  - id: REQ-DOCS-TRUTH-001
     statement: >-
-      An item reaches Ready only through a schema-valid readiness verdict with
-      no blocking questions, approved by a human. Technical design is not a
-      prerequisite.
-    priority: must
-    owner: product/process owner
-    release: "0.2.0"
-    status: planned
+      Published documentation states what has been verified and on what
+      platform, and names what has not. A claim no test backs is not made.
+    priority: should
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: implemented
     components:
-      - policy:state-machine.yml
+      - script:VALIDATION.md
+    verified_by:
+      - "tests/test_docs.py::test_validation_states_unverified_areas"
+
+  - id: REQ-TOOLING-TASKS-001
+    statement: >-
+      Each build task is defined exactly once. Make owns the definitions;
+      Devbox provisions the toolchain and supervises processes, and its scripts
+      may only delegate.
+    priority: must
+    owner: bundle maintainer
+    release: "0.1.1"
+    status: verified
+    components:
+      - script:Makefile
+      - script:devbox.json
+      - script:process-compose.yaml
+    verified_by:
+      - "tests/test_toolchain.py::test_every_devbox_script_only_delegates_to_make"
+      - "tests/test_toolchain.py::test_every_devbox_script_targets_a_real_make_target"
+
+  # --- documentation ---------------------------------------------------------
 
   - id: REQ-UNCERTAINTY-DISCOVER-001
     statement: >-
@@ -724,6 +1667,34 @@ requirements:
       - "tests/test_discover.py::test_inferred_observations_are_surfaced_for_reconciliation"
       - "tests/test_discover.py::test_the_workflow_states_scope_before_investigating"
       - "tests/test_discover.py::test_the_workflow_writes_nothing_to_github"
+
+  - id: REQ-UNCERTAINTY-DISPOSAL-001
+    statement: >-
+      A prototype or spike records its disposal decision before the work it
+      informed can reach Output Done, and promotion names an approver and a
+      reason. Throwaway code does not become production code by omission.
+    priority: must
+    owner: workflow maintainer
+    release: "0.2.0"
+    status: verified
+    components:
+      - policy:artifact-policy.yml
+      - workflow:lifecycle-prototype
+      - workflow:lifecycle-spike
+      - command:speckit.github-lifecycle.disposal
+      - script:bundle/components/extensions/github-lifecycle/scripts/disposal.py
+    verified_by:
+      - "tests/test_disposal.py::test_a_complete_prototype_record_validates"
+      - "tests/test_disposal.py::test_promotion_requires_an_approver_and_a_reason"
+      - "tests/test_disposal.py::test_disposal_must_name_the_artifacts"
+      - "tests/test_disposal.py::test_a_spike_must_state_its_boundary"
+      - "tests/test_disposal.py::test_unresolved_is_a_legitimate_finding"
+      - "tests/test_disposal.py::test_completion_requires_a_disposal_record"
+      - "tests/test_disposal.py::test_an_ordinary_item_is_unaffected"
+      - "tests/test_disposal.py::test_a_present_record_satisfies_the_guard"
+      - "tests/test_disposal.py::test_each_uncertainty_workflow_ends_in_a_disposal_decision"
+      - "tests/test_disposal.py::test_neither_workflow_uses_production_data"
+      - "tests/test_disposal.py::test_the_prototype_workflow_explicitly_excludes_production_data"
 
   - id: REQ-UNCERTAINTY-MODE-001
     statement: >-
@@ -760,62 +1731,43 @@ requirements:
       - "tests/test_workflow_parity.py::test_an_embedded_branch_matches_its_standalone_workflow"
       - "tests/test_workflow_parity.py::test_an_embedded_branch_keeps_its_gate"
 
-  - id: REQ-UNCERTAINTY-DISPOSAL-001
+  - id: REQ-STATE-OUTCOME-002
     statement: >-
-      A prototype or spike records its disposal decision before the work it
-      informed can reach Output Done, and promotion names an approver and a
-      reason. Throwaway code does not become production code by omission.
+      An outcome record must carry the evidence its status depends on, and the
+      assessment must refuse to conclude more than that evidence supports. A
+      regressed guardrail defeats a met target; a missed target and an
+      inconclusive one are reported as different findings even though they
+      share one status; insufficient evidence leaves the item Measuring rather
+      than missed; an unreadable data source blocks; and only a named
+      authority may record Outcome Validated.
     priority: must
-    owner: workflow maintainer
+    owner: framework
     release: "0.2.0"
     status: verified
     components:
-      - policy:artifact-policy.yml
-      - workflow:lifecycle-prototype
-      - workflow:lifecycle-spike
-      - command:speckit.github-lifecycle.disposal
-      - script:bundle/components/extensions/github-lifecycle/scripts/disposal.py
+      - extension:github-lifecycle
+      - command:speckit.github-lifecycle.outcome
+      - policy:outcome-policy.yml
     verified_by:
-      - "tests/test_disposal.py::test_a_complete_prototype_record_validates"
-      - "tests/test_disposal.py::test_promotion_requires_an_approver_and_a_reason"
-      - "tests/test_disposal.py::test_disposal_must_name_the_artifacts"
-      - "tests/test_disposal.py::test_a_spike_must_state_its_boundary"
-      - "tests/test_disposal.py::test_unresolved_is_a_legitimate_finding"
-      - "tests/test_disposal.py::test_completion_requires_a_disposal_record"
-      - "tests/test_disposal.py::test_an_ordinary_item_is_unaffected"
-      - "tests/test_disposal.py::test_a_present_record_satisfies_the_guard"
-      - "tests/test_disposal.py::test_each_uncertainty_workflow_ends_in_a_disposal_decision"
-      - "tests/test_disposal.py::test_neither_workflow_uses_production_data"
-      - "tests/test_disposal.py::test_the_prototype_workflow_explicitly_excludes_production_data"
-
-  - id: REQ-TOOLING-TASKS-001
-    statement: >-
-      Each build task is defined exactly once. Make owns the definitions;
-      Devbox provisions the toolchain and supervises processes, and its scripts
-      may only delegate.
-    priority: must
-    owner: bundle maintainer
-    release: "0.1.1"
-    status: verified
-    components:
-      - script:Makefile
-      - script:devbox.json
-      - script:process-compose.yaml
-    verified_by:
-      - "tests/test_toolchain.py::test_every_devbox_script_only_delegates_to_make"
-      - "tests/test_toolchain.py::test_every_devbox_script_targets_a_real_make_target"
-
-  # --- documentation ---------------------------------------------------------
-
-  - id: REQ-DOCS-TRUTH-001
-    statement: >-
-      Published documentation states what has been verified and on what
-      platform, and names what has not. A claim no test backs is not made.
-    priority: should
-    owner: bundle maintainer
-    release: "0.1.1"
-    status: implemented
-    components:
-      - script:VALIDATION.md
-    verified_by:
-      - "tests/test_docs.py::test_validation_states_unverified_areas"
+      - "tests/test_outcome.py::test_a_missed_target_says_the_evidence_supports_it"
+      - "tests/test_outcome.py::test_a_missed_target_with_sufficient_evidence_is_missed"
+      - "tests/test_outcome.py::test_a_record_with_nothing_measured_never_reaches_a_finding"
+      - "tests/test_outcome.py::test_a_regressed_guardrail_defeats_a_met_target"
+      - "tests/test_outcome.py::test_a_validated_outcome_carries_the_met_finding"
+      - "tests/test_outcome.py::test_an_incomplete_record_cannot_be_judged[data_source]"
+      - "tests/test_outcome.py::test_an_incomplete_record_cannot_be_judged[guardrail_results]"
+      - "tests/test_outcome.py::test_an_incomplete_record_cannot_be_judged[hypothesis]"
+      - "tests/test_outcome.py::test_an_incomplete_record_cannot_be_judged[window_elapsed]"
+      - "tests/test_outcome.py::test_an_inconclusive_result_is_not_reported_as_missed"
+      - "tests/test_outcome.py::test_an_undersized_sample_leaves_it_measuring"
+      - "tests/test_outcome.py::test_an_unelapsed_window_leaves_it_measuring"
+      - "tests/test_outcome.py::test_an_unreadable_data_source_blocks_rather_than_concludes"
+      - "tests/test_outcome.py::test_an_unrecognised_result_is_refused_rather_than_guessed"
+      - "tests/test_outcome.py::test_evidence_sufficiency_is_checked_before_the_target"
+      - "tests/test_outcome.py::test_the_output_states_that_it_is_only_a_recommendation"
+      - "tests/test_outcome.py::test_the_required_fields_come_from_policy"
+      - "tests/test_outcome.py::test_the_result_vocabulary_comes_from_policy"
+      - "tests/test_outcome.py::test_validation_without_a_named_authority_is_refused"
+    evidence:
+      - "Issue #55"
+      - "Issue #86"

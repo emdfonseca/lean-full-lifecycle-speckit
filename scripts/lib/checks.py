@@ -11,9 +11,12 @@ composition properties this bundle chooses to hold.
 from __future__ import annotations
 
 import re
+import sys
+
 from pathlib import Path
 from typing import Any, Iterator
 
+from .inventory import ROOT, load_yaml
 from .registry import Ctx, Finding, check
 
 PLACEHOLDER_SCAN_SUFFIXES = {".md", ".yml", ".yaml", ".json", ".py"}
@@ -423,3 +426,122 @@ def catalog_root(ctx: Ctx) -> Iterator[Finding]:
     if not pub.get("org"):
         yield ctx.finding("PUB-CATALOG-ROOT", "tooling/bundle-meta.yml",
                           "publishing.org is unset; catalogs emit UNSET download URLs")
+
+
+@check("INV-INTEGRATION-DEFAULT", "No workflow names a specific agent",
+       scope="workflow")
+def integration_default(ctx: Ctx) -> Iterator[Finding]:
+    # Fifteen workflows shipped with `default: opencode`, so a project
+    # initialized with any other agent still dispatched to that one. Spec Kit's
+    # engine resolves the `auto` sentinel to the project's configured
+    # integration at run time and exempts it from enum validation specifically.
+    #
+    # Registered rather than fixed once: the next workflow is written by
+    # copying its neighbour, and that is how the default would come back.
+    expected = ctx.invariants["integration_default"]
+    for comp in ctx.inv.by_kind("workflow"):
+        spec = ((comp.manifest.get("inputs") or {}).get("integration") or {})
+        if "default" not in spec:
+            continue
+        default = spec["default"]
+        if default != expected:
+            yield ctx.finding(
+                "INV-INTEGRATION-DEFAULT", comp.id,
+                f"integration default is {default!r}; must be {expected!r} so "
+                f"the project's own integration is used")
+
+
+@check("PUB-COMPAT-CLAIM", "Every compatibility claim names a test that exists",
+       scope="bundle")
+def compat_claims(ctx: Ctx) -> Iterator[Finding]:
+    # The matrix is a public claim about what works under which agent. A row
+    # naming a test that does not exist is the same failure as an over-claimed
+    # coverage rating: it reads as evidence and is not.
+    import subprocess
+
+    # ctx.root, not the module ROOT: a check that reads the real tree cannot be
+    # exercised by a negative fixture, which copies the tree and breaks the
+    # copy. The first version of this check did exactly that and its fixture
+    # could not make it fail.
+    matrix = ctx.root / "tooling/compatibility.yml"
+    if not matrix.is_file():
+        return
+    compat = load_yaml(matrix)
+
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q",
+         "--no-header", "-p", "no:cacheprovider"],
+        cwd=ctx.root, capture_output=True, text=True)
+    known = {line.strip() for line in collected.stdout.splitlines()
+             if "::" in line}
+    if not known:
+        yield ctx.finding("PUB-COMPAT-CLAIM", "tooling/compatibility.yml",
+                          "could not collect the test suite, so no claim was "
+                          "verified; an unverified matrix is not a checked one")
+        return
+
+    capabilities = set(compat["capabilities"])
+    for integration, entries in (compat["integrations"] or {}).items():
+        for capability, tests in (entries or {}).items():
+            subject = f"compatibility:{integration}.{capability}"
+            if capability not in capabilities:
+                yield ctx.finding("PUB-COMPAT-CLAIM", subject,
+                                  f"{capability!r} is not a declared capability")
+            for node in tests or []:
+                if node not in known:
+                    yield ctx.finding(
+                        "PUB-COMPAT-CLAIM", subject,
+                        f"claims {node}, which the suite does not collect")
+
+
+@check("INV-SCRIPT-FLAVOUR", "Commands invoke only a script flavour the extension ships",
+       scope="extension")
+def script_flavour(ctx: Ctx) -> Iterator[Finding]:
+    # Every command here invokes a Python script, and the manifest did not say
+    # so: `requires.tools` listed `gh` alone. A project that chose `--script sh`
+    # got no warning until a command failed.
+    #
+    # The rule is not "be portable". It is "reference only what you ship, and
+    # declare what you need" -- reimplementing thirteen scripts in shell would
+    # produce a second copy that drifts, and the drifting one is untested.
+    policy = load_yaml(ctx.root / "policy/bootstrap-policy.yml")
+    flavours = policy.get("script_flavours") or {}
+    provided = set(flavours.get("provided") or [])
+    if not provided:
+        return
+
+    suffixes = {"py": ".py", "sh": ".sh", "ps1": ".ps1"}
+    allowed = {suffixes[f] for f in provided if f in suffixes}
+
+    for comp in ctx.inv.by_kind("extension"):
+        scripts = comp.path / "scripts"
+        shipped = {p.name for p in scripts.glob("*")} if scripts.is_dir() else set()
+        needs_python = False
+        for entry in comp.manifest["provides"]["commands"]:
+            doc = comp.path / entry["file"]
+            if not doc.is_file():
+                continue
+            text = doc.read_text(encoding="utf-8")
+            for match in re.finditer(r"scripts/([A-Za-z0-9_.-]+\.(?:py|sh|ps1))",
+                                     text):
+                name = match.group(1)
+                subject = f"{comp.id}:{entry['name']}"
+                if Path(name).suffix not in allowed:
+                    yield ctx.finding(
+                        "INV-SCRIPT-FLAVOUR", subject,
+                        f"invokes {name}, a flavour this extension does not "
+                        f"ship (provides {sorted(provided)})")
+                elif name not in shipped:
+                    yield ctx.finding(
+                        "INV-SCRIPT-FLAVOUR", subject,
+                        f"invokes {name}, which is not in scripts/")
+                if Path(name).suffix == ".py":
+                    needs_python = True
+
+        declared = {t["name"] for t in (comp.manifest["requires"].get("tools") or [])}
+        if needs_python and not declared & {"python", "python3"}:
+            yield ctx.finding(
+                "INV-SCRIPT-FLAVOUR", comp.id,
+                "commands invoke Python scripts and requires.tools does not "
+                "declare python; a project learns the dependency when a "
+                "command fails")

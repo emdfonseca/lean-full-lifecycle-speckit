@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import project_root  # noqa: E402
 import yaml  # noqa: E402
 
 # A criterion header: "AC1 — name", "AC1: name", or a bare numbered line.
@@ -114,9 +115,16 @@ def main() -> int:
     src.add_argument("--file", type=Path, help="Read criteria from a file.")
     src.add_argument("--issue", type=int, help="Read the acceptance section of an issue.")
     ap.add_argument("--repo", help="owner/name, required with --issue")
-    ap.add_argument("--policy-root", type=Path, default=Path.cwd())
+    ap.add_argument("--policy-root", type=Path, default=None,
+                    help="Spec Kit project root. Defaults to SPECIFY_INIT_DIR, then the nearest ancestor with a .specify/ directory.")
     ap.add_argument("--format", choices=["text", "json"], default="text")
     args = ap.parse_args()
+    try:
+        args.policy_root = project_root.resolve(
+            args.policy_root, required=False) or Path.cwd()
+    except project_root.ProjectRootError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     contract = load_contract(args.policy_root)
 
