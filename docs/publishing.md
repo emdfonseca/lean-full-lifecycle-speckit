@@ -12,7 +12,7 @@ grep -R "YOUR-ORG" .
 
 ```bash
 python scripts/validate_source.py
-python -m unittest discover -s tests
+python -m pytest
 ```
 
 ## 3. Validate with official Spec Kit
@@ -34,7 +34,7 @@ specify workflow run lifecycle-greenfield-bootstrap ...
 
 ```bash
 python scripts/build_release.py
-specify bundle build --path . --output dist/
+specify bundle build --path bundle/ --output dist/
 ```
 
 The helper creates component archives and catalog files. The official Spec Kit
@@ -42,7 +42,13 @@ command creates the canonical bundle artifact.
 
 ## 5. Publish release assets
 
-Upload all archives under `dist/` to release `v0.1.0`.
+Upload the per-component archives under `dist/` to the release. These are what
+the catalogs resolve: `specify bundle install` downloads one archive per
+component and never reads the bundle archive's contents.
+
+Upload the bundle archive from `specify bundle build` as well, for provenance.
+It is a manifest of references and is not installable on its own, so it must not
+be presented as the thing a user downloads.
 
 ## 6. Host catalogs
 

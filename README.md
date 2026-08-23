@@ -139,7 +139,7 @@ from bundled/installed components or active install-allowed catalogs.
 
 ```bash
 python scripts/validate_source.py
-python -m unittest discover -s tests -v
+python -m pytest
 python scripts/build_release.py
 ```
 
@@ -147,7 +147,7 @@ When `specify` is installed:
 
 ```bash
 specify bundle validate --path bundle/ --offline
-specify bundle build --path . --output dist/
+specify bundle build --path bundle/ --output dist/
 python scripts/smoke_test.py --integration opencode
 ```
 

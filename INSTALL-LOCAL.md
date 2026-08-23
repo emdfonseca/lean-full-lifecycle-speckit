@@ -1,85 +1,90 @@
 # Install locally into a product repository
 
-Keep this source in a separate tooling folder.
+Keep this source in a separate tooling folder. Do not copy the source tree into
+the product repository.
 
 ```text
 tooling/
-  lean-full-lifecycle-speckit-0.1.0/
+  lean-full-lifecycle-speckit/
 
 products/
   my-product/
 ```
 
-Do not copy the complete source tree into `my-product`.
-
-## 1. Extract the source release
+## 1. Get the source
 
 ```bash
-unzip lean-full-lifecycle-speckit-0.1.0-source.zip
-cd lean-full-lifecycle-speckit-0.1.0
+git clone https://github.com/emdfonseca/lean-full-lifecycle-speckit.git
+cd lean-full-lifecycle-speckit
+python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 ```
 
-## 2. Validate locally
+## 2. Install Spec Kit
 
 ```bash
-python scripts/validate_source.py
+uv tool install --from git+https://github.com/github/spec-kit.git@v1.0.1 specify-cli
 ```
 
-## 3. Preview installation
+The bundle requires `>=1.0.1,<2.0.0`.
+
+## 3. Validate
 
 ```bash
+make validate
+specify bundle validate --path bundle/ --offline
+```
+
+The online form of `bundle validate` resolves component references against the
+project containing the manifest, so it cannot pass from a source checkout. Use
+`--offline` here.
+
+## 4. Initialize the product repository
+
+```bash
+cd /absolute/path/to/my-product
+specify init --here --integration opencode --script py
+```
+
+## 5. Install the bundle
+
+```bash
+cd /absolute/path/to/lean-full-lifecycle-speckit
 python scripts/local_catalog.py install --target /absolute/path/to/my-product
-  --dry-run
 ```
 
-## 4. Install
+This builds the component archives, serves them from a local catalog, registers
+that catalog with the product repository, and installs the bundle the way a
+published install works. A bundle artifact is a manifest of references, not a
+container, so a catalog is the only real install path.
+
+For faster iteration while editing a component, `dev-install` skips the build
+and server:
 
 ```bash
-python scripts/local_catalog.py install --target /absolute/path/to/my-product
+python scripts/local_catalog.py dev-install --target /absolute/path/to/my-product
 ```
 
-The installer initializes Spec Kit if necessary and installs:
+Components installed that way are never attributed to the bundle: `specify
+bundle list` reports nothing and `specify bundle remove` is a no-op. Use it to
+iterate, never to verify installation.
 
-```text
-official Lean preset
-Lean Full-Lifecycle governance preset
-GitHub lifecycle extension
-seven lifecycle workflows
-bundle provenance record
-```
-
-The source repository remains separate. The target receives only normal Spec
-Kit-installed assets under `.specify/` and the active agent integration's
-managed command/skill files.
-
-## 5. Inspect installation
-
-Inside the target:
+## 6. Confirm
 
 ```bash
-specify bundle list
-specify preset list
-specify extension list
-specify workflow list
-specify preset resolve speckit.specify
-specify workflow info lifecycle-story-delivery
-specify integration status --json
+cd /absolute/path/to/my-product
+specify preset list                       # governance at 10, lean at 20
+specify preset resolve speckit.specify    # [base] lean -> [append] governance
+specify workflow list                     # seven lifecycle workflows
 ```
 
-## 6. Run framework bootstrap
+## Known limitations
 
-```bash
-specify workflow run lifecycle-greenfield-bootstrap \
-  -i integration=opencode \
-  -i mode=framework-only
-```
-
-Then resume human gates with the requested verdict input:
-
-```bash
-specify workflow status
-specify workflow resume <run-id> --input bootstrap_verdict=approve
-```
-
-For a product bootstrap, supply product context through workflow inputs rather
-than editing this bundle source.
+- `specify bundle install` cannot install workflows from a catalog
+  (github/spec-kit#4282), so the installer adds them through `specify workflow
+  add` first. They are still catalog-sourced, but the bundle does not own them
+  and `bundle remove` will leave them behind.
+- `specify bundle install` does not scaffold extension configuration
+  (github/spec-kit#4283). Run `specify extension add github-lifecycle` or copy
+  `config-template.yml` to `github-lifecycle-config.yml` yourself.
+- The workflows call `devbox run verify` and `devbox run release-verify`. The
+  product repository must provide those.

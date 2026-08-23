@@ -25,16 +25,18 @@ python scripts/local_catalog.py dev-install --target /absolute/path/to/product-a
 python scripts/local_catalog.py install --target /absolute/path/to/product-a
 ```
 
-The installer:
+`install` is the real path: it builds the component archives, serves them from
+a local catalog, registers that catalog with the target project, and installs
+the bundle as a published install would. Use it whenever the result needs to
+reflect real user behaviour.
 
-1. initializes the target as a Spec Kit project if needed;
-2. installs the official Lean preset;
-3. installs the local governance preset in development mode;
-4. installs the local GitHub extension in development mode;
-5. installs all local workflow packages;
-6. validates and installs the local bundle manifest to record provenance.
+`dev-install` installs each component straight from the source tree with
+`--dev`. It skips the build and the server, which makes it faster while
+iterating on a component's content, but the bundle is never recorded as owning
+those components: `specify bundle list` reports nothing and `specify bundle
+remove` is a no-op.
 
-It does not copy this repository into the product.
+Neither copies this repository into the product.
 
 ## Published installation
 

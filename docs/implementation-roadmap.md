@@ -1,6 +1,6 @@
 # Implementation roadmap: source design to supported 1.0 bundle
 
-This roadmap turns the current pilot-ready Spec Kit bundle source into a
+This roadmap turns the current unvalidated `0.1.0` Spec Kit bundle source into a
 complete, tested, installable, and supportable `1.0.0` release without losing
 the principles already established.
 
@@ -212,8 +212,8 @@ devbox run verify
 Run:
 
 ```bash
-specify bundle validate --path .
-specify bundle build --path . --output dist/
+specify bundle validate --path bundle/ --offline
+specify bundle build --path bundle/ --output dist/
 ```
 
 Then test in a clean empty repository:
