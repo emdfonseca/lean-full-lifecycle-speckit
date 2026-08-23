@@ -20,9 +20,9 @@ products/
 From the bundle source:
 
 ```bash
-python scripts/install_dev.py   --target /absolute/path/to/product-a   --integration opencode   --dry-run
+python scripts/local_catalog.py dev-install --target /absolute/path/to/product-a
 
-python scripts/install_dev.py   --target /absolute/path/to/product-a   --integration opencode
+python scripts/local_catalog.py install --target /absolute/path/to/product-a
 ```
 
 The installer:

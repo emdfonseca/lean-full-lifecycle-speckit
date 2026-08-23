@@ -127,10 +127,9 @@ def register(project: Path, base_url: str, name: str = "local-dev") -> None:
 
 
 def workflow_ids() -> list[str]:
-    import yaml
+    from lib.inventory import load_inventory
 
-    data = yaml.safe_load((BUNDLE / "bundle.yml").read_text(encoding="utf-8"))
-    return [w["id"] for w in data["provides"]["workflows"]]
+    return [c.id for c in load_inventory().by_kind("workflow")]
 
 
 def install_workflows(project: Path) -> None:
@@ -156,6 +155,45 @@ def install_workflows(project: Path) -> None:
         )
 
 
+def dev_install(project: Path) -> int:
+    """Install every component straight from the source tree, no build or server.
+
+    Faster than the catalog path when iterating on a component's content, and
+    the only reason this mode still exists. It is not a substitute for testing
+    installation: `--dev` components are never attributed to the bundle, so
+    `specify bundle list` reports nothing and `specify bundle remove` is a
+    no-op (defect D5). Use `install` for anything that must reflect real user
+    behaviour.
+    """
+    from lib.inventory import load_inventory
+
+    inv = load_inventory()
+    owned = inv.meta.get("owned_preset", {}) or {}
+    steps: list[list[str]] = []
+
+    for ext in inv.external_preset_refs():
+        steps.append(["specify", "preset", "add", ext["id"],
+                      "--priority", str(ext.get("priority", 20))])
+    for comp in inv.by_kind("preset"):
+        steps.append(["specify", "preset", "add", "--dev", str(comp.path),
+                      "--priority", str(owned.get("priority", 10))])
+    for comp in inv.by_kind("extension"):
+        steps.append(["specify", "extension", "add", "--dev", str(comp.path)])
+    for comp in inv.by_kind("workflow"):
+        steps.append(["specify", "workflow", "add", str(comp.path)])
+
+    for cmd in steps:
+        print("+", " ".join(cmd))
+        r = subprocess.run(cmd, cwd=project, text=True, capture_output=True)
+        if r.returncode != 0:
+            sys.stderr.write(r.stdout + r.stderr)
+            return r.returncode
+    print(f"\nInstalled {len(steps)} components from source into {project}.")
+    print("These are --dev installs: the bundle owns none of them (D5). "
+          "Use `install` to exercise the real catalog path.")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -167,6 +205,12 @@ def main() -> int:
     p_install = sub.add_parser("install", help="Install the bundle into a project.")
     p_install.add_argument("--target", type=Path, required=True)
     p_install.add_argument("--port", type=int, default=None)
+
+    p_dev = sub.add_parser(
+        "dev-install",
+        help="Install components straight from source: fast, but the bundle owns nothing.",
+    )
+    p_dev.add_argument("--target", type=Path, required=True)
 
     args = ap.parse_args()
 
@@ -185,6 +229,10 @@ def main() -> int:
     if not (target / ".specify").exists():
         print(f"Not a Spec Kit project: {target}", file=sys.stderr)
         return 1
+
+    if args.cmd == "dev-install":
+        return dev_install(target)
+
     with serve(args.port) as base:
         register(target, base)
         install_workflows(target)

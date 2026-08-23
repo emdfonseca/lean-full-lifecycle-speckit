@@ -91,13 +91,13 @@ helper then installs the local bundle manifest to record bundle provenance.
 Dry-run:
 
 ```bash
-python scripts/install_dev.py   --target /absolute/path/to/your-project   --integration opencode   --dry-run
+python scripts/local_catalog.py dev-install --target /absolute/path/to/your-project
 ```
 
 Install:
 
 ```bash
-python scripts/install_dev.py   --target /absolute/path/to/your-project   --integration opencode
+python scripts/local_catalog.py install --target /absolute/path/to/your-project
 ```
 
 The target project is initialized explicitly if needed. The source repository

@@ -28,18 +28,14 @@ python scripts/validate_source.py
 ## 3. Preview installation
 
 ```bash
-python scripts/install_dev.py \
-  --target /absolute/path/to/my-product \
-  --integration opencode \
+python scripts/local_catalog.py install --target /absolute/path/to/my-product
   --dry-run
 ```
 
 ## 4. Install
 
 ```bash
-python scripts/install_dev.py \
-  --target /absolute/path/to/my-product \
-  --integration opencode
+python scripts/local_catalog.py install --target /absolute/path/to/my-product
 ```
 
 The installer initializes Spec Kit if necessary and installs:
