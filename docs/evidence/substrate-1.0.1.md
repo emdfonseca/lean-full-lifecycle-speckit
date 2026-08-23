@@ -63,6 +63,8 @@ governance preset does not addend and the roadmap never mentions.
 | D5 | Manual `--dev` adds then `bundle install` records 0 components | script-assumption |
 | D6 | Online `bundle validate` can never pass from the source repo | false-doc-claim |
 | D7 | A bundle artifact is not self-contained; catalog hosting gates all install testing | cli-surface-drift |
+| D8 | **Upstream:** `bundle install` cannot install any workflow from a catalog | upstream-defect |
+| D9 | **Upstream:** `bundle install` does not scaffold extension config | upstream-defect |
 
 ### D1 — extension config never scaffolds
 
@@ -208,3 +210,95 @@ workflows and both presets succeeded without error.
    validator check that config templates resolve.
 6. **The version pin is safe to raise.** No manifest required any change to pass
    1.0.1 validation, so `>=1.0.1,<2.0.0` carries no migration cost.
+
+
+---
+
+# P0c addendum — catalog harness findings
+
+Recorded 2026-08-23 while building the local catalog harness. These refine D7
+and add two upstream defects that only surface once a catalog exists.
+
+## Catalog mechanics
+
+There are **four independent catalog registries**, not one:
+`.specify/preset-catalogs.yml`, `.specify/extension-catalogs.yml`,
+`.specify/workflow-catalogs.yml`, and `.specify/bundle-catalogs.yml`. A bundle
+install needs all four registered.
+
+They do not share a signature:
+
+| Group | Required | Optional | Notes |
+|---|---|---|---|
+| `preset` | `--name` | `--priority`, `--install-allowed` | defaults to discovery-only |
+| `extension` | `--name` | `--priority`, `--install-allowed` | defaults to discovery-only |
+| `workflow` | none | `--name` | accepts neither `--priority` nor `--install-allowed` |
+| `bundle` | none | `--policy`, `--priority`, `--id` | also accepts `file://` and bare paths |
+
+**Component catalogs must be HTTPS.** Only `bundle catalog add` accepts
+`file://`. All four accept plain HTTP for `localhost`, `127.0.0.1`, and `::1`,
+so the harness serves `dist/` over `http://localhost:<port>` rather than
+`file://` as originally planned.
+
+**Entry schema differs by kind.** Presets, extensions, and bundles key the
+archive as `download_url`; **workflows use `url`**. A workflow entry with
+`download_url` is accepted, listed, and searchable, and fails only at install
+with "does not have an install URL in the catalog".
+
+**Catalogs are cached per project** under `.specify/<kind>/.cache/`. A changed
+`download_url` is not picked up until the cache is cleared, which silently
+serves the previous URL.
+
+## D8 — `bundle install` cannot install a workflow from a catalog
+
+`bundler/services/primitives.py` installs a workflow with:
+
+```python
+lambda: workflow_add(component.id)
+```
+
+`workflow_add` is a Typer command whose second parameter is
+`dev: bool = typer.Option(False, "--dev", ...)`. Called as a plain Python
+function, `dev` keeps its `typer.OptionInfo` default, which is **truthy**, so
+every catalog install takes the local-path branch and fails with:
+
+```
+Error: --dev source must be a workflow YAML file, supported archive, or
+directory containing workflow.yml: lifecycle-greenfield-bootstrap
+```
+
+Confirmed present in 1.0.1 and on `main` at time of writing.
+`workflow_remove` is unaffected: it declares only a `typer.Argument`, which the
+bundler supplies positionally.
+
+**Workaround:** install workflows through the CLI
+(`specify workflow add <id>`) before `bundle install`, which lets Typer bind
+`dev=False`. They are still catalog-sourced; only the call path differs.
+
+**Cost:** `bundle install` then reports them "already present" and does not
+attribute them, so the bundle records 3 components rather than 10 and
+`bundle remove` leaves the workflows installed. Functionally every component is
+present and correct; only bundle-level bookkeeping is degraded.
+
+## D9 — `bundle install` does not scaffold extension config
+
+`ExtensionManager.scaffold_config` is called from the `specify extension add`
+command flow, never from the bundler primitive. A bundle-installed project
+therefore has `config-template.yml` but no `github-lifecycle-config.yml`, even
+after the D1 fix.
+
+`doctor.py` now reports `config_source` as `scaffolded`, `template-only`, or
+`missing` rather than treating absence as failure, and names the remedy.
+
+## Status of the P0c exit gate
+
+`scripts/smoke_test.py` runs the full lifecycle over the local catalog: 14
+checks, all passing. Install, info, composition, idempotent reinstall, update,
+remove, and reinstall-after-remove all work. The single deviation from the
+original gate is the component count, which is 3 rather than 10 for the reason
+D8 gives.
+
+## Recommended upstream reports
+
+Both D8 and D9 are Spec Kit defects, not bundle defects, and are worth filing.
+Neither has been reported: filing is left to the maintainer.
