@@ -348,6 +348,27 @@ requirements:
       - "tests/test_field_backend.py::test_replaying_an_operation_id_does_not_write_again"
       - "tests/test_field_backend.py::test_dry_run_reports_the_intent_and_writes_nothing"
       - "tests/test_field_backend.py::test_an_unset_field_reads_as_none"
+      - "tests/test_field_backend.py::test_selection_returns_the_backend_the_inspection_chose"
+
+  - id: REQ-GITHUB-ORGFIELDS-001
+    statement: >-
+      Where an organization's Issue Fields carry the delivery state, they are
+      used in preference to a project board, through the same interface and
+      with the same read-back guarantee.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    # implemented, not verified: exercised offline against the documented wire
+    # format, but no write has been performed against a real organization.
+    status: implemented
+    components:
+      - extension:github-lifecycle
+      - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/field_backend.py
+    verified_by:
+      - "tests/test_field_backend.py::test_org_backend_round_trips_a_value"
+      - "tests/test_field_backend.py::test_org_backend_sends_the_option_name_not_its_id"
+      - "tests/test_field_backend.py::test_org_backend_uses_field_id_not_id_in_the_payload"
 
   - id: REQ-GITHUB-READBACK-001
     statement: >-
