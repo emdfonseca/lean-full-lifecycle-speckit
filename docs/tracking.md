@@ -54,6 +54,33 @@ The rule, in order:
 Reconciling closed issues after the fact is a repair, not the process. If the
 field is being backfilled, the board was not being used to run the work.
 
+## Ready is a gate, not a waypoint
+
+`Refining → In Progress` is not a legal transition. The path is
+`Refining → Ready → In Progress`, and the two steps exist separately because
+they carry different authorities:
+
+| Transition | Authority | Evidence |
+|---|---|---|
+| Refining → Ready | product or refinement authority | `readiness_verdict_ready` |
+| Ready → In Progress | assigned engineering owner | `owner_assigned`, `work_started` |
+
+Collapsing them exercises both authorities at once. Ready is what makes an item
+*eligible* to be started; setting it in the same motion as In Progress means no
+readiness verdict was ever produced and nothing was ever gated.
+
+Stories #35 and #36 did exactly that and are recorded as such rather than
+backfilled. A project board applies no transition validation, so the illegal
+move was silently accepted — which is the argument for the deterministic
+transition command rather than an argument against the model.
+
+The sequence:
+
+1. Refine until no blocking questions remain, and write the verdict.
+2. Move to Ready. This is a decision, and it is not the same person's to make
+   as the one who starts the work.
+3. Assign an owner, then move to In Progress.
+
 ## A gap: nothing represents blocked
 
 `policy/state-machine.yml` defines Inbox, Refining, Ready, In Progress, and
