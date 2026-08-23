@@ -32,7 +32,7 @@
       "effect": "read-write",
       "download_url": "UNSET",
       "provides": {
-        "commands": 9,
+        "commands": 10,
         "hooks": 0
       }
     }

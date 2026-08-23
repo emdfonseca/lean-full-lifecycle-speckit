@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Discovery record",
+  "description": "Bounded discovery output. Evidence, never intent: a finding becomes intended behaviour only through reconciliation. Generated from policy/artifact-policy.yml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scope",
+    "capability_boundary",
+    "entry_points",
+    "data_ownership",
+    "external_dependencies",
+    "trust_boundaries",
+    "current_behaviour",
+    "current_tests",
+    "open_uncertainty",
+    "safe_seams",
+    "security_observations"
+  ],
+  "properties": {
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What was examined, and what was deliberately not."
+    },
+    "capability_boundary": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Where this capability starts and stops."
+    },
+    "entry_points": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "How execution reaches it."
+    },
+    "data_ownership": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What data it owns, and what it only reads."
+    },
+    "external_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What it needs that it does not control."
+    },
+    "trust_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Where input stops being trusted."
+    },
+    "current_behaviour": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "statement",
+          "source"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "enum": [
+              "specified",
+              "inferred"
+            ]
+          },
+          "evidence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "current_tests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What is covered, and what that coverage would not catch."
+    },
+    "open_uncertainty": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Questions the code does not answer. Recorded, never resolved by guessing."
+    },
+    "safe_seams": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Where a change could be made with the least blast radius."
+    },
+    "security_observations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "What an attacker could reach, and what stops them."
+    }
+  }
+}

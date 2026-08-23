@@ -57,6 +57,24 @@
         "steps": 6
       }
     },
+    "lifecycle-discover": {
+      "name": "Bounded Discovery",
+      "id": "lifecycle-discover",
+      "version": "0.1.0",
+      "description": "Investigate a capability within a stated boundary and produce a consumable record.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0"
+      },
+      "tags": [],
+      "verified": false,
+      "url": "UNSET",
+      "provides": {
+        "steps": 5
+      }
+    },
     "lifecycle-greenfield-bootstrap": {
       "name": "Greenfield Bootstrap",
       "id": "lifecycle-greenfield-bootstrap",

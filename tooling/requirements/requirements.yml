@@ -700,6 +700,31 @@ requirements:
     components:
       - policy:state-machine.yml
 
+  - id: REQ-UNCERTAINTY-DISCOVER-001
+    statement: >-
+      Bounded discovery produces a complete, machine-readable record that is
+      evidence rather than intent. Every section is present, every behaviour
+      observation declares whether it is specified or inferred, and an
+      incomplete record is refused rather than partially consumed.
+    priority: must
+    owner: workflow maintainer
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-discover
+      - command:speckit.github-lifecycle.discover
+      - policy:artifact-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/discover.py
+    verified_by:
+      - "tests/test_discover.py::test_a_complete_record_validates"
+      - "tests/test_discover.py::test_a_missing_section_is_blocking"
+      - "tests/test_discover.py::test_an_empty_section_is_blocking_not_ignored"
+      - "tests/test_discover.py::test_a_behaviour_observation_must_declare_its_source"
+      - "tests/test_discover.py::test_a_source_outside_the_vocabulary_is_rejected"
+      - "tests/test_discover.py::test_inferred_observations_are_surfaced_for_reconciliation"
+      - "tests/test_discover.py::test_the_workflow_states_scope_before_investigating"
+      - "tests/test_discover.py::test_the_workflow_writes_nothing_to_github"
+
   - id: REQ-UNCERTAINTY-DISPOSAL-001
     statement: >-
       A prototype or spike records its disposal decision before the work it

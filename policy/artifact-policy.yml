@@ -27,6 +27,74 @@ artifacts:
   discovery_notes:
     authority: evidence_ephemeral
     retention: archive_or_delete_after_reconciliation
+
+    # The record's shape, because three later workflows read it: prototype,
+    # spike, and the uncertainty branch of story delivery. Getting it wrong
+    # means rewriting all three, so it is defined before any of them exist.
+    #
+    # evidence_ephemeral is the whole constraint. Discovery reports what is
+    # there; it never establishes what was wanted. A finding becomes intent
+    # only through reconciliation with a spec, which is a separate act by a
+    # different authority.
+    record:
+      sections:
+        - id: scope
+          label: Scope
+          prompt: What was examined, and what was deliberately not.
+        - id: capability_boundary
+          label: Capability boundary
+          prompt: Where this capability starts and stops.
+        - id: entry_points
+          label: Entry points
+          prompt: How execution reaches it.
+        - id: data_ownership
+          label: Data ownership
+          prompt: What data it owns, and what it only reads.
+        - id: external_dependencies
+          label: External dependencies
+          prompt: What it needs that it does not control.
+        - id: trust_boundaries
+          label: Trust boundaries
+          prompt: Where input stops being trusted.
+        - id: current_behaviour
+          label: Current behaviour
+          prompt: >-
+            What it does now. Each observation states whether it is specified
+            or inferred.
+        - id: current_tests
+          label: Current tests
+          prompt: What is covered, and what that coverage would not catch.
+        - id: open_uncertainty
+          label: Open uncertainty
+          prompt: >-
+            Questions the code does not answer. Recorded, never resolved by
+            guessing.
+        - id: safe_seams
+          label: Safe seams
+          prompt: Where a change could be made with the least blast radius.
+        - id: security_observations
+          label: Security observations
+          prompt: What an attacker could reach, and what stops them.
+
+      # An observation is one or the other, and which matters more than the
+      # observation. A reader cannot otherwise tell a decision from a guess.
+      behaviour_sources:
+        specified: agreed somewhere a reader can find
+        inferred: read from code, with nothing confirming it was wanted
+
+      rules:
+        - >-
+          Every section appears. A section with nothing to report says so,
+          because an absent section and an empty one mean different things and
+          only one of them was investigated.
+        - >-
+          Inferred behaviour is never written as intended behaviour, and never
+          becomes an acceptance criterion without reconciliation.
+        - >-
+          Open uncertainty is recorded rather than answered. An invented answer
+          is worse than an admitted question: it stops anyone looking.
+        - >-
+          Discovery modifies nothing outside its own record.
   outcome_record:
     authority: historical_evidence
     retention: product_governance_policy

@@ -1,0 +1,106 @@
+schema_version: '1.0'
+workflow:
+  id: lifecycle-discover
+  name: Bounded Discovery
+  version: 0.1.0
+  author: Lean Full-Lifecycle Contributors
+  description: Investigate a capability within a stated boundary and produce a consumable record.
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+inputs:
+  integration:
+    type: string
+    default: opencode
+  target:
+    type: string
+    required: true
+  scope_note:
+    type: string
+    default: ''
+  record_verdict:
+    type: string
+    default: ''
+    enum:
+      - ''
+      - approve
+      - reject
+steps:
+  - id: state-scope
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      State the boundary for discovering {{ inputs.target }} before looking at
+      anything.
+
+
+      Write .specify/lifecycle/discovery-scope-{{ context.run_id }}.md saying
+      what you will examine and what you will deliberately not.
+      {{ inputs.scope_note }}
+
+
+      Bounding first is the point. Discovery that decides its own scope while
+      running expands until someone stops it, and produces a record nobody can
+      tell the edges of.
+
+  - id: investigate
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Investigate {{ inputs.target }} within the stated scope. Read only.
+
+
+      Write .specify/lifecycle/discovery-{{ context.run_id }}.md as a fenced
+      yaml record with every section the schema requires: scope,
+      capability_boundary, entry_points, data_ownership,
+      external_dependencies, trust_boundaries, current_behaviour,
+      current_tests, open_uncertainty, safe_seams, security_observations.
+
+
+      Each current_behaviour entry states source as `specified` when something
+      a reader can find agrees it was wanted, or `inferred` when it was read
+      from code with nothing confirming it. Which of the two matters more than
+      the observation.
+
+
+      A section with nothing to report says so. Leaving it empty makes an
+      uninvestigated area look identical to one where nothing was found.
+
+
+      Record questions the code does not answer under open_uncertainty. Do not
+      invent an answer: a plausible guess stops anyone looking, which an
+      admitted question does not.
+
+  - id: validate-record
+    command: speckit.github-lifecycle.discover
+    integration: '{{ inputs.integration }}'
+    input:
+      args: >-
+        Validate .specify/lifecycle/discovery-{{ context.run_id }}.md. Report
+        blocking findings separately from advisory ones. Stop on any blocking
+        finding.
+
+  - id: approve-record
+    type: gate
+    integration: '{{ inputs.integration }}'
+    verdict_input: record_verdict
+    show_file: .specify/lifecycle/discovery-{{ context.run_id }}.md
+    on_reject: abort
+    options:
+      - approve
+      - reject
+    message: >-
+      Accept this record as evidence. It is not a specification: nothing here
+      becomes intended behaviour until it is reconciled with one.
+
+  - id: report
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: >-
+      Report what was found for {{ inputs.target }}: the boundary examined,
+      what was left out, and the open uncertainty.
+
+
+      List every inferred observation separately and say plainly that these are
+      evidence rather than intent. Anything acting on this record — a
+      prototype, a spike, or a story — must reconcile them with a spec before
+      asserting them.

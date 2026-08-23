@@ -41,6 +41,9 @@ provides:
   - name: speckit.github-lifecycle.triage
     file: commands/triage.md
     description: Assess an incoming item and propose what happens to it next.
+  - name: speckit.github-lifecycle.discover
+    file: commands/discover.md
+    description: Validate a bounded discovery record.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.
