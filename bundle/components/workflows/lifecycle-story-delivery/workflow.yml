@@ -20,26 +20,54 @@ inputs:
   readiness_verdict:
     type: string
     default: ''
-    enum: &id001
+    enum:
     - ''
     - approve
     - reject
   spec_verdict:
     type: string
     default: ''
-    enum: *id001
+    enum:
+    - ''
+    - approve
+    - reject
   plan_verdict:
     type: string
     default: ''
-    enum: *id001
+    enum:
+    - ''
+    - approve
+    - reject
   tasks_verdict:
     type: string
     default: ''
-    enum: *id001
+    enum:
+    - ''
+    - approve
+    - reject
   output_verdict:
     type: string
     default: ''
-    enum: *id001
+    enum:
+    - ''
+    - approve
+    - reject
+  uncertainty_mode:
+    type: string
+    default: none
+    enum:
+    - none
+    - discovery
+    - prototype
+    - spike
+    - threat-analysis
+  uncertainty_verdict:
+    type: string
+    default: ''
+    enum:
+    - ''
+    - approve
+    - reject
 steps:
 - id: inspect-item
   command: speckit.github-lifecycle.inspect
@@ -83,8 +111,8 @@ steps:
   command: speckit.github-lifecycle.transition
   integration: '{{ inputs.integration }}'
   input:
-    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back. Approved plan:
-      .specify/github-lifecycle/plans/{{ context.run_id }}-in-progress.md.'
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back.
+      Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-in-progress.md.'
 - id: specify
   command: speckit.specify
   integration: '{{ inputs.integration }}'
@@ -98,6 +126,196 @@ steps:
   - reject
   on_reject: abort
   verdict_input: spec_verdict
+- id: resolve-uncertainty
+  type: switch
+  expression: '{{ inputs.uncertainty_mode }}'
+  cases:
+    none:
+    - id: uncertainty-none
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'No material uncertainty was declared for {{ inputs.issue_ref }}.
+
+
+
+        Say so explicitly in the run record. Proceeding silently makes an unexamined assumption indistinguishable
+        from an examined one.'
+    discovery:
+    - id: uncertainty-discovery-scope
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'State the boundary for discovering what {{ inputs.issue_ref }} needs, before looking at
+        anything.
+
+
+
+        Write .specify/lifecycle/discovery-scope-{{ context.run_id }}.md saying what you will examine
+        and what you will deliberately not.'
+    - id: uncertainty-discovery-investigate
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Investigate within that scope. Read only.
+
+
+
+        Write .specify/lifecycle/discovery-{{ context.run_id }}.md with every section the schema requires.
+        Mark each behaviour observation specified or inferred; which of the two matters more than the
+        observation.'
+    - id: uncertainty-discovery-validate
+      command: speckit.github-lifecycle.discover
+      integration: '{{ inputs.integration }}'
+      input:
+        args: Validate .specify/lifecycle/discovery-{{ context.run_id }}.md. Stop on any blocking finding.
+    - id: uncertainty-discovery-approve
+      type: gate
+      integration: '{{ inputs.integration }}'
+      verdict_input: uncertainty_verdict
+      show_file: .specify/lifecycle/discovery-{{ context.run_id }}.md
+      on_reject: abort
+      options:
+      - approve
+      - reject
+      message: 'Accept this record as evidence. It is not a specification: nothing here becomes intended
+        behaviour until reconciled.'
+    prototype:
+    - id: uncertainty-prototype-questions
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'State what this prototype must answer for {{ inputs.issue_ref }}, before building anything.
+
+
+
+        Write .specify/lifecycle/prototype-questions-{{ context.run_id }}.md naming the journeys you will
+        implement and the ones you will not. Use fake or local data; production credentials and production
+        data are out of scope.'
+    - id: uncertainty-prototype-build
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Build only enough to answer the stated questions. Use the real design system where practical,
+        so what you learn is about the interaction rather than the scaffolding.
+
+
+
+        Stop when the questions are answered.'
+    - id: uncertainty-prototype-disposal
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Write .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md with kind,
+        questions, findings, decision, and artifacts.
+
+
+
+        Record what you learned, not what you built. "unresolved" is a legitimate finding. Choose delete,
+        archive, or promote; promotion requires an approver and a reason.'
+    - id: uncertainty-prototype-validate
+      command: speckit.github-lifecycle.disposal
+      integration: '{{ inputs.integration }}'
+      input:
+        args: Validate .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md. Stop
+          on any blocking finding.
+    - id: uncertainty-prototype-approve
+      type: gate
+      integration: '{{ inputs.integration }}'
+      verdict_input: uncertainty_verdict
+      show_file: .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+      on_reject: abort
+      options:
+      - approve
+      - reject
+      message: Approve this disposal. Promotion carries the artifacts into production and is the decision
+        the ephemeral classification exists to make deliberate.
+    spike:
+    - id: uncertainty-spike-bound
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Bound this spike for {{ inputs.issue_ref }} before starting.
+
+
+
+        Write .specify/lifecycle/spike-scope-{{ context.run_id }}.md stating the question, permitted scope,
+        required evidence, time box, and exit criteria. The exit criteria must include the case where
+        the answer invalidates the work that prompted it.'
+    - id: uncertainty-spike-investigate
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Investigate within the stated scope and time box.
+
+
+
+        Stop at the time box whether or not you have an answer. An expired spike with a partial answer
+        is a result; one that quietly ran long has destroyed its own boundary.'
+    - id: uncertainty-spike-disposal
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: Write .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md with kind,
+        question, permitted_scope, required_evidence, time_box, exit_criteria, questions, findings, decision,
+        and artifacts.
+    - id: uncertainty-spike-validate
+      command: speckit.github-lifecycle.disposal
+      integration: '{{ inputs.integration }}'
+      input:
+        args: Validate .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md. Stop
+          on any blocking finding.
+    - id: uncertainty-spike-approve
+      type: gate
+      integration: '{{ inputs.integration }}'
+      verdict_input: uncertainty_verdict
+      show_file: .specify/lifecycle/disposal/{{ inputs.issue_ref }}-{{ context.run_id }}.md
+      on_reject: abort
+      options:
+      - approve
+      - reject
+      message: Approve this disposal. Anything the spike produced is ephemeral until this says otherwise.
+    threat-analysis:
+    - id: uncertainty-threat-model
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'Analyse the threats {{ inputs.issue_ref }} introduces or changes.
+
+
+
+        Write .specify/lifecycle/threat-{{ context.run_id }}.md naming the assets, the trust boundaries
+        this change moves, the inputs an attacker controls, the abuse cases, and the controls required.
+
+
+
+        Name the negative verification each control needs. A control nobody tested for absence is an assumption.'
+    - id: uncertainty-threat-approve
+      type: gate
+      integration: '{{ inputs.integration }}'
+      verdict_input: uncertainty_verdict
+      show_file: .specify/lifecycle/threat-{{ context.run_id }}.md
+      on_reject: abort
+      options:
+      - approve
+      - reject
+      message: Accept this threat analysis. Rejecting stops the run rather than proceeding with the risk
+        unexamined.
+  default:
+  - id: uncertainty-unrecognised
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: 'The uncertainty mode was unset or unrecognised, so none was assumed.
+
+
+
+      State which mode was assumed and why. A default that says nothing leaves a reader unable to tell
+      a decision from an omission.'
+- id: reconcile-spec
+  type: prompt
+  integration: '{{ inputs.integration }}'
+  prompt: 'Reconcile what was learned with the spec for {{ inputs.issue_ref }} before planning.
+
+
+
+    Every inferred observation is either confirmed against the spec or recorded as still unconfirmed.
+    An unconfirmed observation must not be written as an acceptance criterion: it is evidence, and evidence
+    is not intent.
+
+
+
+    If nothing was learned because the mode was none, say so. Skipping this step silently is how a guess
+    becomes a requirement.'
 - id: plan
   command: speckit.plan
   integration: '{{ inputs.integration }}'
@@ -151,8 +369,8 @@ steps:
   command: speckit.github-lifecycle.plan
   integration: '{{ inputs.integration }}'
   input:
-    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done and optional completed closure. Write exactly .specify/github-lifecycle/plans/{{
-      context.run_id }}-output-done.md. Do not mutate.
+    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done and optional completed closure.
+      Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md. Do not mutate.
 - id: approve-output-done
   type: gate
   message: Review verification and convergence. Approve Output Done?
@@ -166,5 +384,6 @@ steps:
   command: speckit.github-lifecycle.transition
   integration: '{{ inputs.integration }}'
   input:
-    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close only if authorized;
-      read back. Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md.'
+    args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close
+      only if authorized; read back. Approved plan: .specify/github-lifecycle/plans/{{ context.run_id
+      }}-output-done.md.'

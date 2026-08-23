@@ -52,6 +52,29 @@ extension_config_safety:
   # other route must never be taken to mean the work is done.
   infer_output_done_from_closed_issue: false
 
-# Standalone workflows that must stay semantically parallel to a branch
-# embedded in another workflow. Populated in P7.
-parity: []
+# Spec Kit has no sub-workflow step, so a branch that mirrors a standalone
+# workflow must inline its steps and the sequence exists twice. The roadmap
+# offered two remedies for that under "Avoiding workflow drift": generate both
+# from shared fragments, or test them for semantic parity. P0d chose parity,
+# because a generator hides hand-written prompt prose behind a template layer
+# and doubles the review surface.
+#
+# This is where that choice is paid for. Parity compares the sequence of step
+# kinds and commands after normalisation; prose is deliberately not compared,
+# since the embedded branch addresses a story already in flight and the
+# standalone one does not.
+parity:
+  - standalone: lifecycle-discover
+    embedded_in: lifecycle-story-delivery
+    case: discovery
+    # The standalone workflow reports at its end; the embedded branch defers
+    # to story delivery's own report step.
+    standalone_trailing_steps: 1
+  - standalone: lifecycle-prototype
+    embedded_in: lifecycle-story-delivery
+    case: prototype
+    standalone_trailing_steps: 1
+  - standalone: lifecycle-spike
+    embedded_in: lifecycle-story-delivery
+    case: spike
+    standalone_trailing_steps: 1

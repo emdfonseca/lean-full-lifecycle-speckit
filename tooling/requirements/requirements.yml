@@ -725,6 +725,41 @@ requirements:
       - "tests/test_discover.py::test_the_workflow_states_scope_before_investigating"
       - "tests/test_discover.py::test_the_workflow_writes_nothing_to_github"
 
+  - id: REQ-UNCERTAINTY-MODE-001
+    statement: >-
+      Story delivery branches on a declared uncertainty mode, every declared
+      mode has a case, an unrecognised mode states what was assumed, and what
+      was learned is reconciled with the spec before planning.
+    priority: must
+    owner: workflow maintainer
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-story-delivery
+    verified_by:
+      - "tests/test_workflow_parity.py::test_every_declared_mode_has_a_case"
+      - "tests/test_workflow_parity.py::test_the_default_says_what_it_assumed"
+      - "tests/test_workflow_parity.py::test_reconciliation_runs_before_planning"
+      - "tests/test_workflow_parity.py::test_reconciliation_forbids_promoting_unconfirmed_observations"
+
+  - id: REQ-UNCERTAINTY-PARITY-001
+    statement: >-
+      A branch that mirrors a standalone workflow keeps the same sequence of
+      steps and its approval gate. Spec Kit has no sub-workflow step, so the
+      duplication is forced and drift must be detected rather than prevented.
+    priority: must
+    owner: workflow maintainer
+    release: "0.2.0"
+    status: verified
+    components:
+      - workflow:lifecycle-story-delivery
+      - workflow:lifecycle-prototype
+      - workflow:lifecycle-spike
+      - workflow:lifecycle-discover
+    verified_by:
+      - "tests/test_workflow_parity.py::test_an_embedded_branch_matches_its_standalone_workflow"
+      - "tests/test_workflow_parity.py::test_an_embedded_branch_keeps_its_gate"
+
   - id: REQ-UNCERTAINTY-DISPOSAL-001
     statement: >-
       A prototype or spike records its disposal decision before the work it
