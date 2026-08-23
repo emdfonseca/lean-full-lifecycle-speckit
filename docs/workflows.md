@@ -46,6 +46,26 @@ Install:
 specify workflow overlay add project-overlay.yml --priority 10
 ```
 
+## Two priority spaces, deliberately unrelated
+
+Workflow overlays and presets both use priority, both default to `10`, and both
+resolve lower-number-wins. They are **independent namespaces** and never
+interact.
+
+| | Ordered by | Stored in |
+|---|---|---|
+| Workflow overlay priority | which overlay's edits win for a step | `.specify/workflows/overlays/` |
+| Preset priority | which preset's template contributes, and how | `.specify/presets/` |
+
+Verified against Spec Kit `1.0.1`: installing an overlay at priority `10` in a
+project whose governance preset is also at priority `10` leaves preset
+resolution unchanged, while the overlay applies to exactly the step it edits.
+Neither subsystem references the other; the shared convention is intentional
+consistency, not a shared resolution space.
+
+`specify workflow resolve <id>` shows per-step layer attribution, which is how
+to confirm an overlay is applied.
+
 ## Gates
 
 Gates use fixed trusted messages. Review the referenced artifacts manually;
