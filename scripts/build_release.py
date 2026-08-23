@@ -31,10 +31,24 @@ def bundle_version() -> str:
     return str(data["bundle"]["version"])
 
 
+# Never published. Mirrors packager.EXCLUDE_NAMES in Spec Kit, which is why
+# `specify bundle build` was clean while these archives were not.
+EXCLUDE_DIRS = {"__pycache__", ".git", ".pytest_cache", ".mypy_cache"}
+EXCLUDE_SUFFIXES = {".pyc", ".pyo"}
+EXCLUDE_NAMES = {".DS_Store"}
+
+
+def _publishable(path: Path, source: Path) -> bool:
+    rel = path.relative_to(source)
+    if EXCLUDE_DIRS.intersection(rel.parts):
+        return False
+    return path.suffix not in EXCLUDE_SUFFIXES and path.name not in EXCLUDE_NAMES
+
+
 def zip_dir(source: Path, destination: Path) -> None:
     with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(source.rglob("*")):
-            if path.is_file():
+            if path.is_file() and _publishable(path, source):
                 archive.write(path, path.relative_to(source))
 
 

@@ -7,3 +7,5 @@ __pycache__/
 .specify/
 .devbox/
 .devbox-venv/
+__pycache__/
+*.pyc
