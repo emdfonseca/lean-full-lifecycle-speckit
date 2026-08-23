@@ -147,6 +147,15 @@ def break_transition_contract(tmp):
     _edit_yaml(p, mutate)
 
 
+def break_command_script_backed(tmp):
+    # Revert a command to prose: the state it was in before #44.
+    path = tmp / EXT / "commands/transition.md"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(
+        "\n".join(ln for ln in text.splitlines() if "scripts/" not in ln),
+        encoding="utf-8")
+
+
 def break_extension_config_safety(tmp):
     _edit_yaml(tmp / EXT / "config-template.yml",
                lambda d: d["safety"].__setitem__("require_read_back", False))
@@ -188,6 +197,7 @@ MUTATORS = {
     "INV-COMMAND-RESOLVES": break_command_resolves,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
+    "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
     "INV-ITEM-CONTENT": break_item_content,
@@ -216,6 +226,7 @@ CURRENTLY_VIOLATED = {
 }
 
 
+@pytest.mark.req("REQ-GITHUB-COMMANDS-001")
 @pytest.mark.req("REQ-TOOLING-CHECKS-001")
 def test_every_check_has_a_negative_case():
     missing = set(REGISTRY) - set(MUTATORS)
@@ -223,6 +234,7 @@ def test_every_check_has_a_negative_case():
     assert not set(MUTATORS) - set(REGISTRY)
 
 
+@pytest.mark.req("REQ-GITHUB-COMMANDS-001")
 @pytest.mark.req("REQ-BACKLOG-ITEMS-001")
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
 @pytest.mark.req("REQ-CORE-COMPOSE-001")

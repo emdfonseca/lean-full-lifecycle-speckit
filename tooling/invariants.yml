@@ -17,6 +17,19 @@ write_effect_commands:
   - speckit.github-lifecycle.link
 plan_command: speckit.github-lifecycle.plan
 
+# Commands that reach GitHub must invoke a script rather than describe the
+# calls. Prose leaves the agent to decide how to reach the API, which is the
+# freedom the deterministic adapter exists to remove.
+#
+# capture and link are absent deliberately: they have no implementation behind
+# them yet, and P5 decides whether they are wired or removed. Listing them
+# would demand an implementation to justify a command.
+script_backed_commands:
+  - inspect
+  - plan
+  - transition
+  - doctor
+
 # Safety keys the extension config template must declare, with required values.
 # These are the defaults a user inherits; relaxing one is a deliberate act, not
 # an accident of editing the template.

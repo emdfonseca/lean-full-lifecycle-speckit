@@ -266,6 +266,40 @@ def extension_config_safety(ctx: Ctx) -> Iterator[Finding]:
                               f"expected {want!r}, got {safety.get(key)!r}")
 
 
+@check("SEC-COMMAND-SCRIPT-BACKED",
+       "Commands that reach GitHub invoke a script rather than describe calls",
+       scope="extension")
+def command_script_backed(ctx: Ctx) -> Iterator[Finding]:
+    import re
+
+    required = set(ctx.invariants.get("script_backed_commands", []) or [])
+    if not required:
+        return
+    ext = ctx.inv.extension
+    for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
+        short = str(entry.get("name", "")).rsplit(".", 1)[-1]
+        if short not in required:
+            continue
+        path = ext.path / str(entry.get("file", ""))
+        if not path.is_file():
+            yield ctx.finding("SEC-COMMAND-SCRIPT-BACKED", f"{ext.ref}:{short}",
+                              "command file missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        invoked = re.findall(r"scripts/([A-Za-z_][A-Za-z0-9_]*\.py)", text)
+        if not invoked:
+            yield ctx.finding(
+                "SEC-COMMAND-SCRIPT-BACKED", f"{ext.ref}:{short}",
+                "invokes no script; the agent is left to decide how to reach "
+                "the API, which the deterministic adapter exists to prevent")
+            continue
+        for script in set(invoked):
+            if not (ext.path / "scripts" / script).is_file():
+                yield ctx.finding("SEC-COMMAND-SCRIPT-BACKED",
+                                  f"{ext.ref}:{short}",
+                                  f"invokes {script!r}, which does not exist")
+
+
 @check("INV-EXTENSION-CONFIG-NAME", "Extension config targets a name Spec Kit preserves",
        scope="extension")
 def extension_config_name(ctx: Ctx) -> Iterator[Finding]:

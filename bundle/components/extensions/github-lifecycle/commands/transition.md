@@ -4,38 +4,39 @@ description: Apply one approved GitHub lifecycle field transition.
 
 # GitHub Lifecycle Transition
 
-Apply exactly one approved issue-field transition.
+Apply exactly one approved transition and read it back.
 
-Required context:
+Requires an approved plan written by `plan`. Do not proceed without one.
 
-```text
-issue
-field
-target value
-reason
-approved plan path
+Run:
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/transition_plan.py \
+  --repo <owner>/<name> \
+  apply --plan <approved plan path> \
+  --evidence <key>=<value> ...
 ```
 
-Before mutation:
+Approved plan: `.specify/github-lifecycle/plans/<descriptive-id>.md`
 
-1. verify the approved plan matches this issue/field/value;
-2. verify the transition is allowed by installed policy;
-3. verify current value and authority;
-4. abort on ambiguous duplicate fields/options;
-5. never infer Output Done from issue closure.
+Supply one `--evidence` for each item the plan lists. The script refuses the
+write when any is missing, and names what is absent. Assert only evidence that
+is true; the audit record is what a reviewer will read afterwards.
 
-Apply the smallest mutation using the current official GitHub API through
-`gh`.
+Use `--dry-run` first when the transition is consequential. It prints the exact
+call and performs nothing.
 
-Read the value back. A successful mutation response without matching
-read-back is failure.
+## Report
 
-Record issue, stable field/option IDs, previous/new value, actor, reason,
-approved plan, timestamp, and read-back evidence under:
+State the value before and after, and the operation id. The script reads back
+after writing and fails loudly if the result disagrees — a write that reports
+success while the read disagrees is not a success.
 
-```text
-.specify/github-lifecycle/evidence/
-```
+## Never
 
-Close a completed engineering issue after Output Done only when the approved
-plan explicitly authorizes closure.
+- Mutate without an approved plan, or with a plan whose path you did not verify.
+- Retry a refused transition with different evidence to get past it. A refusal
+  is a finding to report, not an obstacle.
+- Infer that work is complete because an issue was closed. Closure follows the
+  delivery state and never sets it.
+- Change more than the one value the plan names.

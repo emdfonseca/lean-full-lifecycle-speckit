@@ -395,6 +395,25 @@ requirements:
       - "tests/test_transition.py::test_reapplying_the_same_plan_is_idempotent"
       - "tests/test_transition.py::test_a_plan_round_trips_through_markdown"
 
+  - id: REQ-GITHUB-COMMANDS-001
+    statement: >-
+      A command that reaches GitHub invokes the deterministic adapter rather
+      than describing the calls, so the agent decides what to report and when
+      to stop, never how to reach the API.
+    priority: must
+    owner: GitHub integration engineer
+    release: "0.2.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - command:speckit.github-lifecycle.inspect
+      - command:speckit.github-lifecycle.plan
+      - command:speckit.github-lifecycle.transition
+      - check:SEC-COMMAND-SCRIPT-BACKED
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
+      - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+
   - id: REQ-GITHUB-READBACK-001
     statement: >-
       Every write is read back before it is reported as done. A write whose
