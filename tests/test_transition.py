@@ -435,6 +435,7 @@ def test_closed_while_not_output_done_is_reported():
 
 
 @pytest.mark.req("REQ-BACKLOG-AUDIT-001")
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
 def test_output_done_over_an_incomplete_child_is_reported():
     # The transition command refuses to create this; a hand edit can.
     gh, insp, be = audit_setup(
@@ -473,12 +474,16 @@ def test_an_epic_with_one_movable_child_is_not_reported():
 @pytest.mark.req("REQ-BACKLOG-AUDIT-002")
 def test_an_epic_whose_children_are_all_delivered_is_reported():
     # Every child at Output Done and the epic still In Progress: nothing is
-    # left to do, so the epic is waiting on a transition nobody made.
+    # left to do, so the epic is waiting on a transition nobody made. The
+    # message must say that, not "no child can move" -- both are true and
+    # only one tells the reader what to do next.
     gh, insp, be = audit_setup(
         {1: "open", 2: "open"}, {1: "In Progress", 2: "Output Done"},
         children_of={1: [2]}, labels={1: ["epic"]})
     problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
-    assert problems and "delivered" in problems[0].problem
+    assert problems
+    assert "every child is delivered" in problems[0].problem
+    assert "no child can move" not in problems[0].problem
 
 
 @pytest.mark.req("REQ-BACKLOG-AUDIT-002")
@@ -511,6 +516,99 @@ def test_an_epic_with_no_children_is_not_reported_by_this_rule():
     gh, insp, be = audit_setup(
         {1: "open"}, {1: "In Progress"}, labels={1: ["epic"]})
     assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_in_refining_with_a_delivered_child_is_reported():
+    # The shape #17 was in: four children at Output Done while the epic
+    # claimed nothing had been built. The rule for #87 never looked at it,
+    # because it examined only epics already In Progress.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open", 3: "open"},
+        {1: "Refining", 2: "Output Done", 3: "Inbox"},
+        children_of={1: [2, 3]}, labels={1: ["epic"]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems, "an understated epic was not reported"
+    assert "already started or finished" in problems[0].problem
+    assert "#2" in problems[0].problem
+    assert "nothing has been built yet" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_in_inbox_with_a_child_in_progress_is_reported():
+    # Understating is not only about delivered children. Work has started.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "Inbox", 2: "In Progress"},
+        children_of={1: [2]}, labels={1: ["epic"]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems and "already started or finished" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_in_refining_whose_children_are_all_pre_delivery_is_not_reported():
+    # Refinement of an epic and its children at once is ordinary work.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open", 3: "open"},
+        {1: "Refining", 2: "Refining", 3: "Ready"},
+        children_of={1: [2, 3]}, labels={1: ["epic"]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_a_story_in_refining_with_a_delivered_child_is_not_reported():
+    # A story owns its own progress. Only an epic derives progress from its
+    # children, so only an epic can understate it.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "Refining", 2: "Output Done"},
+        children_of={1: [2]}, labels={1: ["story"]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_a_non_epic_parent_at_output_done_over_an_undelivered_child_is_still_reported():
+    # The one angle that is NOT epic-only. Folding this into an epic-only
+    # rule would have dropped coverage for every other parent type, which is
+    # the regression this test exists to prevent.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "Output Done", 2: "In Progress"},
+        children_of={1: [2]}, labels={1: ["story"]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems and "children are not" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_the_state_order_comes_from_the_state_machine_not_from_constants():
+    # "Further along than" is a fact about the policy. A second copy of the
+    # order living in this script is the copy that drifts.
+    values = tp.load_state_machine(ROOT)["delivery_status"]["values"]
+    kids = [tp.ChildState(2, "Output Done", None), tp.ChildState(3, "Inbox", None)]
+    # Under the real order, Refining sits below In Progress, so a delivered
+    # child means the epic understates itself.
+    assert tp.parent_disagreement(values, "Refining", kids, True)
+    # Reverse the policy order and Refining no longer sits below In Progress.
+    # Same inputs, opposite verdict: the order is read, not assumed.
+    assert tp.parent_disagreement(list(reversed(values)), "Refining", kids, True) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_one_rule_decides_every_parent_child_disagreement():
+    # The point of #96: three rules examining one relationship drifted apart.
+    # audit_board must reach parent_disagreement once and nowhere else.
+    source = (SCRIPTS / "transition_plan.py").read_text()
+    body = source.split("def audit_board(")[1].split("\ndef ")[0]
+    assert body.count("parent_disagreement(") == 1
+    assert "child_mobility" not in source, "the superseded helper survived"
+    assert "incomplete_children(" not in body, "a second child rule is still in the audit"
+
+
+def test_a_delivered_child_is_not_asked_about_blockers():
+    # A finished child cannot be blocked. Asking spends one request per child
+    # to learn nothing.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "In Progress", 2: "Output Done"},
+        children_of={1: [2]}, labels={1: ["epic"]})
+    tp.audit_board(gh, be, insp)
+    assert not any("/issues/2/dependencies" in " ".join(c) for c in gh.audit and [] or [])
 
 
 def test_an_item_with_no_delivery_state_is_reported():

@@ -566,12 +566,20 @@ requirements:
 
   - id: REQ-BACKLOG-AUDIT-002
     statement: >-
-      An epic In Progress whose every child is either delivered or blocked is
-      reported. An epic's progress derives from its children, so when no child
-      can move the epic's state is a claim the board cannot support. An epic
-      with one movable child is not reported, a non-epic is not judged by this
-      rule, and an epic with no children is left to decomposition rather than
-      reported here.
+      A parent's delivery state must be consistent with its children's, and one
+      rule decides that. A parent at Output Done over a child that is not
+      delivered is reported whatever its type, because nothing is complete
+      while part of it is not. The remaining angles apply to epics only, whose
+      progress derives from their children rather than being an independent
+      fact: an epic is reported when it claims less than its children show
+      (below In Progress while a child has started or finished, or below Output
+      Done while every child is delivered) and when it claims more than they
+      support (In Progress while no child can move). A child is judged movable
+      unless it is delivered or has an unresolved blocker, so refinement counts
+      as progress. The order of the states is read from the state machine
+      rather than compiled into the audit, an epic with no children is left to
+      decomposition, and a non-epic parent is never judged by the epic-only
+      angles.
     priority: should
     owner: product/process owner
     release: "0.3.0"
@@ -579,6 +587,7 @@ requirements:
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
       - policy:item-types.yml
+      - policy:state-machine.yml
     verified_by:
       - "tests/test_transition.py::test_an_epic_in_progress_whose_every_child_is_blocked_is_reported"
       - "tests/test_transition.py::test_an_epic_with_one_movable_child_is_not_reported"
@@ -586,8 +595,17 @@ requirements:
       - "tests/test_transition.py::test_a_blocker_at_output_done_no_longer_stalls_its_parent"
       - "tests/test_transition.py::test_a_story_in_progress_with_blocked_children_is_not_reported"
       - "tests/test_transition.py::test_an_epic_with_no_children_is_not_reported_by_this_rule"
+      - "tests/test_transition.py::test_an_epic_in_refining_with_a_delivered_child_is_reported"
+      - "tests/test_transition.py::test_an_epic_in_inbox_with_a_child_in_progress_is_reported"
+      - "tests/test_transition.py::test_an_epic_in_refining_whose_children_are_all_pre_delivery_is_not_reported"
+      - "tests/test_transition.py::test_a_story_in_refining_with_a_delivered_child_is_not_reported"
+      - "tests/test_transition.py::test_a_non_epic_parent_at_output_done_over_an_undelivered_child_is_still_reported"
+      - "tests/test_transition.py::test_the_state_order_comes_from_the_state_machine_not_from_constants"
+      - "tests/test_transition.py::test_one_rule_decides_every_parent_child_disagreement"
+      - "tests/test_transition.py::test_output_done_over_an_incomplete_child_is_reported"
     evidence:
       - "Issue #87"
+      - "Issue #96"
 
   - id: REQ-BACKLOG-REFINE-001
     statement: >-

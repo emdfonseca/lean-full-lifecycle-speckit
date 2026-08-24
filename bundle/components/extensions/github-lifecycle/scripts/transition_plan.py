@@ -300,15 +300,23 @@ class Inconsistency:
 
 
 def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
-                role: str = "delivery_state") -> list[Inconsistency]:
+                role: str = "delivery_state",
+                machine: dict | None = None) -> list[Inconsistency]:
     """Board state that contradicts the policy.
 
     The transition command enforces these for anyone who uses it, but
     `gh issue close` and the project UI both bypass it. Reports rather than
     repairs: repairing silently would hide how the drift happened, and the
     drift is the interesting part.
+
+    The delivery states are ordered by `state-machine.yml`, not by constants
+    here, because "further along than" is a fact about the policy and a second
+    copy of that order is the copy that drifts.
     """
     found: list[Inconsistency] = []
+    values = (machine or load_state_machine(
+        project_root.resolve(None, required=False) or Path.cwd())
+    )["delivery_status"]["values"]
     issues = gh.rest(
         "GET", f"repos/{inspection.owner}/{inspection.repo}/issues?state=all",
         paginate=True,
@@ -343,22 +351,17 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                     number,
                     f"is Ready but blocked by {named}. It claims to be "
                     f"startable and is not."))
-        if value == TERMINAL_STATE:
-            blocking = incomplete_children(gh, backend, inspection, int(number), role)
-            if blocking:
-                listed = ", ".join(f"#{n} ({v or 'not on the board'})" for n, v in blocking)
-                found.append(Inconsistency(
-                    number,
-                    f"is {TERMINAL_STATE} but these children are not: {listed}"))
-        if value == START_STATE and item_type_of(issue, {"epic"}) == "epic":
-            movable, stuck = child_mobility(gh, backend, inspection, int(number), role)
-            if stuck and not movable:
-                listed = ", ".join(f"#{n} ({why})" for n, why in stuck)
-                found.append(Inconsistency(
-                    number,
-                    f"is {START_STATE} but no child can move: {listed}. An "
-                    f"epic's progress derives from its children, so this "
-                    f"claims work that nothing on the board can do."))
+        is_epic = item_type_of(issue, {"epic"}) == "epic"
+        if is_epic or value == TERMINAL_STATE:
+            # Read children only when a rule could use them. For every other
+            # item this costs nothing, which is why the gate is here and not
+            # inside the rule.
+            problem = parent_disagreement(
+                values, value,
+                child_states(gh, backend, inspection, int(number), role),
+                is_epic)
+            if problem:
+                found.append(Inconsistency(number, problem))
     return found
 
 
@@ -417,37 +420,116 @@ def unfinished_blockers(gh: GitHub, backend: FieldBackend,
     return out
 
 
-def child_mobility(gh: GitHub, backend: FieldBackend, inspection: Inspection,
-                   issue_number: int, role: str = "delivery_state",
-                   ) -> tuple[list[int], list[tuple[int, str]]]:
-    """Split an item's children into those that can still move and those that cannot.
+@dataclass(frozen=True)
+class ChildState:
+    """One child's delivery state, and what stops it moving if anything."""
 
-    A child that is delivered has stopped moving because it is finished. A
-    child with an unresolved blocker cannot move at all. Anything else can:
-    an item in Refining is being refined, and refinement is progress even
-    though nothing has been built yet.
+    number: int
+    state: str | None
+    blocked_by: str | None
+
+    @property
+    def delivered(self) -> bool:
+        return self.state == TERMINAL_STATE
+
+    @property
+    def movable(self) -> bool:
+        """Able to advance today.
+
+        Delivered children have stopped on purpose and blocked ones cannot
+        move at all. Everything else can: an item in Refining is being
+        refined, and refinement is progress even though nothing is built yet.
+        """
+        return not self.delivered and self.blocked_by is None
+
+    def describe(self) -> str:
+        if self.delivered:
+            return f"#{self.number} (delivered)"
+        if self.blocked_by:
+            return f"#{self.number} (blocked by {self.blocked_by})"
+        return f"#{self.number} ({self.state or 'not on the board'})"
+
+
+def child_states(gh: GitHub, backend: FieldBackend, inspection: Inspection,
+                 issue_number: int, role: str = "delivery_state") -> list[ChildState]:
+    """Every child's delivery state and what blocks it, read once.
 
     Blockers are judged the way `unfinished_blockers` judges them -- by
-    delivery state here, by closure elsewhere -- so a blocker sitting at
-    Output Done but not yet closed correctly stops blocking.
+    delivery state in this repository, by closure elsewhere -- so a blocker
+    sitting at Output Done but not yet closed correctly stops blocking. A
+    delivered child is not asked about blockers: nothing can block work that
+    is finished, and asking would spend a request per child to learn it.
     """
-    movable: list[int] = []
-    stuck: list[tuple[int, str]] = []
+    out: list[ChildState] = []
     for number in child_issue_numbers(gh, inspection.owner, inspection.repo, issue_number):
         try:
             value = backend.read(number, role).value
         except NotFound:
             value = None
         if value == TERMINAL_STATE:
-            stuck.append((number, "delivered"))
+            out.append(ChildState(number, value, None))
             continue
         waiting = unfinished_blockers(gh, backend, inspection, number, role)
-        if waiting:
-            stuck.append((number, "blocked by "
-                          + ", ".join(name for name, _ in waiting)))
-            continue
-        movable.append(number)
-    return movable, stuck
+        out.append(ChildState(
+            number, value,
+            ", ".join(name for name, _ in waiting) if waiting else None))
+    return out
+
+
+def parent_disagreement(values: list[str], claimed: str,
+                        children: list[ChildState], is_epic: bool) -> str | None:
+    """How a parent's own delivery state contradicts its children's, or None.
+
+    One rule rather than one per angle. Overstating and understating are the
+    same error measured in opposite directions, and separate rules examining
+    one relationship drift apart the first time any of them changes -- which
+    is exactly what happened between #87 and #96.
+
+    The scope is not uniform, and pretending it were would be the drift in
+    another form. A parent at Output Done over an undelivered child is wrong
+    whatever its type: nothing is complete while part of it is not. The other
+    angles are epic-only, because `item-types.yml` says an epic's progress
+    *derives* from its children. A story owns its own progress and may sit in
+    any state regardless of what hangs beneath it.
+    """
+    if not children:
+        # An undecomposed epic is a decomposition gap with a different fix.
+        # Reporting it here would put two problems behind one message.
+        return None
+
+    rank = {name: index for index, name in enumerate(values)}
+    here = rank.get(claimed)
+    if here is None:
+        return None
+
+    if claimed == TERMINAL_STATE:
+        outstanding = [c for c in children if not c.delivered]
+        if outstanding:
+            return (f"is {TERMINAL_STATE} but these children are not: "
+                    f"{', '.join(c.describe() for c in outstanding)}")
+        return None
+
+    if not is_epic:
+        return None
+
+    if all(c.delivered for c in children):
+        listed = ", ".join(f"#{c.number}" for c in children)
+        return (f"is {claimed} but every child is delivered ({listed}). "
+                f"Nothing remains for it to be {claimed} about.")
+
+    started = [c for c in children
+               if rank.get(c.state or "", -1) >= rank[START_STATE]]
+    if here < rank[START_STATE] and started:
+        return (f"is {claimed} but these children have already started or "
+                f"finished: {', '.join(c.describe() for c in started)}. "
+                f"{claimed} claims nothing has been built yet.")
+
+    if claimed == START_STATE and not any(c.movable for c in children):
+        return (f"is {START_STATE} but no child can move: "
+                f"{', '.join(c.describe() for c in children)}. An epic's "
+                f"progress derives from its children, so this claims work "
+                f"that nothing on the board can do.")
+    return None
 
 
 @dataclass(frozen=True)
@@ -589,7 +671,7 @@ def main() -> int:
             return 0
 
         if args.cmd == "audit":
-            problems = audit_board(gh, backend, inspection)
+            problems = audit_board(gh, backend, inspection, machine=machine)
             for item in problems:
                 print(item)
             print(f"\n{len(problems)} inconsistencies")
