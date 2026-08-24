@@ -1574,6 +1574,38 @@ requirements:
       - "Issue #119"
       - "Issue #103"
 
+  - id: REQ-GITHUB-BACKENDS-001
+    statement: >-
+      What each backend can carry is recorded, and a role it cannot carry names
+      what the project loses and how to reach it. Not every backend carries
+      every role: organization Issue Fields apply to every repository in the
+      organization and this bundle performs no organization schema mutation, so
+      four roles cannot be created there. Silence about a role reads as support
+      for it, so every backend accounts for the same set, an unavailable role
+      carries a reason, and a backend with unavailable roles carries a remedy.
+      Inspection reports the consequence rather than the bare absence, and a
+      preset without the matrix loses the explanation rather than the
+      inspection.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:INV-ROLE-REACHABLE
+      - script:bundle/components/extensions/github-lifecycle/scripts/inspect_target.py
+      - policy:github-schema.yml
+    verified_by:
+      - "tests/test_inspect.py::test_every_backend_accounts_for_the_same_roles"
+      - "tests/test_inspect.py::test_the_organization_backend_records_what_it_cannot_carry"
+      - "tests/test_inspect.py::test_a_missing_role_says_what_the_project_loses"
+      - "tests/test_inspect.py::test_a_role_nothing_writes_says_nothing_is_blocked"
+      - "tests/test_inspect.py::test_an_older_preset_loses_the_explanation_not_the_inspection"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-ROLE-REACHABLE]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-ROLE-REACHABLE]"
+    evidence:
+      - "Issue #118"
+      - "Issue #103"
+
   - id: REQ-GITHUB-BOARD-001
     statement: >-
       An item the framework creates must be placed on the board, because

@@ -348,6 +348,63 @@ def command_script_invocation(ctx: Ctx) -> Iterator[Finding]:
                 "nothing resolves it")
 
 
+@check("INV-ROLE-REACHABLE",
+       "Every field role a workflow writes is reachable on each claimed backend",
+       scope="workflow")
+def role_reachable(ctx: Ctx) -> Iterator[Finding]:
+    """A declared role with nowhere to live is a workflow that cannot complete.
+
+    `lifecycle-release-outcome` writes Outcome Status at three steps. On the
+    organization Issue Fields backend that field cannot exist -- it would land
+    on every repository in the organization, and #91 established this bundle
+    performs no organization schema mutation. So the workflow is unrunnable
+    there, and nothing said so until a pilot reasoned it out (#118).
+
+    This does not require every backend to carry every role. It requires the
+    matrix to *say* which it cannot, and why. An unavailable role with no
+    recorded reason is the failure: silence reads as support.
+    """
+    matrix = load_yaml(ctx.root / "tooling" / "compatibility.yml") or {}
+    backends = matrix.get("backends") or {}
+    if not backends:
+        return
+
+    # The role names come from the matrix itself, because the role-to-field
+    # mapping lives in `inspect_target.ROLE_CANDIDATES` rather than in policy,
+    # and a check in this file must not import an extension script. What is
+    # checkable without it is the property that actually drifts: every backend
+    # accounting for the same set of roles.
+    accounted = {name: set(spec.get("carries") or [])
+                 | set((spec.get("unavailable") or {}))
+                 for name, spec in backends.items()}
+    union = set().union(*accounted.values()) if accounted else set()
+
+    for backend, spec in backends.items():
+        carries = set(spec.get("carries") or [])
+        unavailable = spec.get("unavailable") or {}
+
+        for role in sorted(union - accounted[backend]):
+            yield ctx.finding(
+                "INV-ROLE-REACHABLE", f"{backend}:{role}",
+                f"is accounted for by another backend and not by this one; "
+                f"silence reads as support")
+        for role, reason in unavailable.items():
+            if not str(reason or "").strip():
+                yield ctx.finding(
+                    "INV-ROLE-REACHABLE", f"{backend}:{role}",
+                    "is unavailable with no reason recorded; a reader cannot "
+                    "tell what the project loses")
+            if role in carries:
+                yield ctx.finding(
+                    "INV-ROLE-REACHABLE", f"{backend}:{role}",
+                    "is listed as both carried and unavailable")
+        if unavailable and not str(spec.get("remedy") or "").strip():
+            yield ctx.finding(
+                "INV-ROLE-REACHABLE", backend,
+                "records unavailable roles and no remedy, so a project has no "
+                "way to reach them")
+
+
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",
        scope="workflow")
 def gate_verdict(ctx: Ctx) -> Iterator[Finding]:

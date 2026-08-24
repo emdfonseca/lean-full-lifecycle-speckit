@@ -38,6 +38,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config  # noqa: E402
+import project_root  # noqa: E402
 
 from github_api import GitHub, GitHubError, NotFound  # noqa: E402
 
@@ -290,8 +291,44 @@ def _finalize(result: Inspection) -> Inspection:
         )
     for role in ROLE_CANDIDATES:
         if role not in result.roles and role not in REQUIRED_ROLES:
-            result.notes.append(f"optional role {role!r} has no field")
+            # "optional role has no field" says nothing about what the project
+            # loses. On the organization backend four of these cannot exist at
+            # all, and a workflow that needs one cannot complete -- which a
+            # bootstrap had to reason out because nothing recorded it.
+            result.notes.append(
+                f"optional role {role!r} has no field. "
+                + _role_consequence(result.backend, role))
     return result
+
+
+def _role_consequence(backend: str | None, role: str) -> str:
+    """What a project loses without this role, read from the matrix."""
+    entry = (_backend_matrix().get(str(backend)) or {})
+    reason = (entry.get("unavailable") or {}).get(role)
+    if reason:
+        remedy = str(entry.get("remedy") or "").strip()
+        return (f"On the {backend} backend it cannot be created by this "
+                f"bundle: {str(reason).strip()}"
+                + (f" Remedy: {remedy}" if remedy else ""))
+    return "Nothing writes it, so nothing is blocked by its absence."
+
+
+def _backend_matrix() -> dict:
+    """`backends` from compatibility.yml, or empty when it is not installed.
+
+    Empty rather than raising: an older preset without the matrix should lose
+    the explanation, not the inspection.
+    """
+    import yaml
+
+    root = project_root.resolve(required=False) or Path.cwd()
+    for rel in ("tooling/compatibility.yml",
+                ".specify/tooling/compatibility.yml"):
+        path = root / rel
+        if path.is_file():
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            return data.get("backends") or {}
+    return {}
 
 
 def main() -> int:

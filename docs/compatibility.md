@@ -18,7 +18,7 @@ initialized with. This table says what has actually been exercised.
 
 ## What no integration claims
 
-- **workflow execution** — No integration has had a workflow run end to end in the suite. Every row above is installation, layout, or resolution.
+- **workflow execution** — No integration has had a workflow run end to end *in the suite*. Every row above is installation, layout, or resolution. One has now run outside it: lifecycle-greenfield-bootstrap completed under claude during the P13 greenfield pilot, recorded in docs/evidence/pilot-greenfield.md. That is evidence, not a claimed row, because a pilot is one run by one operator and a row here means the suite reproduces it.
 
 ## The tests behind each cell
 

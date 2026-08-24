@@ -250,3 +250,54 @@ def test_the_record_serializes():
     payload = json.loads(json.dumps(it.inspect(client(r), "acme", "widgets").to_dict()))
     assert payload["usable"] is True
     assert payload["roles"]["delivery_state"] == "Status"
+
+
+# --- what a backend cannot carry --------------------------------------------
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_every_backend_accounts_for_the_same_roles():
+    # A role added to one backend and forgotten in another is the drift this
+    # prevents. Silence about a role reads as support for it.
+    import yaml
+    matrix = yaml.safe_load((ROOT / "tooling/compatibility.yml").read_text())
+    backends = matrix["backends"]
+    accounted = {name: set(spec.get("carries") or [])
+                 | set(spec.get("unavailable") or {})
+                 for name, spec in backends.items()}
+    assert len(set(map(frozenset, accounted.values()))) == 1, accounted
+
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_the_organization_backend_records_what_it_cannot_carry():
+    import yaml
+    matrix = yaml.safe_load((ROOT / "tooling/compatibility.yml").read_text())
+    org = matrix["backends"]["issue-fields"]
+    assert set(org["unavailable"]) == {
+        "outcome_status", "risk", "severity", "capability"}
+    for role, reason in org["unavailable"].items():
+        assert reason.strip(), role
+    assert org["remedy"].strip()
+
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_a_missing_role_says_what_the_project_loses():
+    # "optional role has no field" said nothing actionable. On the
+    # organization backend it cannot be created at all, and a workflow needing
+    # it cannot complete.
+    said = it._role_consequence("issue-fields", "outcome_status")
+    assert "cannot be created by this bundle" in said
+    assert "lifecycle-release-outcome" in said
+    assert "Remedy:" in said
+
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_a_role_nothing_writes_says_nothing_is_blocked():
+    said = it._role_consequence("projects-v2", "capability")
+    assert "nothing is blocked" in said.lower()
+
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_an_older_preset_loses_the_explanation_not_the_inspection(monkeypatch):
+    monkeypatch.setattr(it, "_backend_matrix", lambda: {})
+    said = it._role_consequence("issue-fields", "outcome_status")
+    assert said and "nothing is blocked" in said.lower()

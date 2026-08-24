@@ -57,7 +57,47 @@ integrations:
 # Running a workflow end to end under any integration is not claimed by
 # anyone. It needs a live model and a person at each gate, and it is tracked as
 # #79 rather than quietly implied by the rows above.
+# Which field roles each backend can carry, and what a project loses when it
+# cannot. Recorded because a declared role with nowhere to live is a workflow
+# that cannot complete, and nothing said so: the greenfield pilot found it by
+# reasoning about the backend rather than by any check (#118).
+backends:
+  projects-v2:
+    # A project board is created and shaped by `speckit.github-lifecycle.board`,
+    # so every role is reachable without touching anything outside the project.
+    carries: [delivery_state, outcome_status, risk, severity, priority, capability]
+    unavailable: {}
+  issue-fields:
+    # Organization Issue Fields apply to every repository in the organization.
+    # #91 established that this bundle performs no organization schema
+    # mutation, so it cannot create these, and creating them is a decision an
+    # organization owner makes once, in the open.
+    carries: [delivery_state, priority]
+    unavailable:
+      outcome_status: >-
+        lifecycle-release-outcome writes Outcome Status at three steps and
+        cannot complete without it.
+      risk: >-
+        risk.py scores a change and names the band; without the field the score
+        is reported and never recorded.
+      severity: >-
+        item-types.yml sets severity_required for a security finding, so triage
+        refuses to propose Refining and nothing can satisfy it.
+      capability: >-
+        github-schema.yml leaves the strategy to the organization; absent, no
+        capability is recorded.
+    remedy: >-
+      An organization owner creates the fields once, outside this bundle. The
+      exact call is in docs/evidence/orgfields-round-trip.md, recorded when the
+      Delivery Status field was made for #37. Until then the roles above are
+      unavailable, and the commands needing them refuse rather than writing
+      somewhere else.
+
 not_claimed_by_anyone:
   workflow_execution: >-
-    No integration has had a workflow run end to end in the suite. Every row
-    above is installation, layout, or resolution.
+    No integration has had a workflow run end to end *in the suite*. Every row
+    above is installation, layout, or resolution. One has now run outside it:
+    lifecycle-greenfield-bootstrap completed under claude during the P13
+    greenfield pilot, recorded in docs/evidence/pilot-greenfield.md. That is
+    evidence, not a claimed row, because a pilot is one run by one operator and
+    a row here means the suite reproduces it.
