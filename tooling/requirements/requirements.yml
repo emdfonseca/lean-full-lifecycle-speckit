@@ -2551,6 +2551,34 @@ requirements:
       - "tests/test_acceptance_registry.py::test_blocked_metadata_is_required"
       - "tests/test_acceptance_registry.py::test_p12_gate_rejects_partial_and_absent_but_ignores_other_phases"
 
+  - id: REQ-GITHUB-CONFIG-002
+    statement: >-
+      A configured project number belongs to the configured repository. A
+      command aimed at a different repository does not inherit it, because a
+      board is linked to one repository and an inherited number pointed a
+      command at another project's board while reporting the backend usable.
+      An explicit project alongside an explicit repository is honoured: the
+      caller named both halves, so nothing is inherited and nothing is silent,
+      which is the whole defect. A config declaring no repository constrains
+      nothing.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/config.py
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_config.py::test_the_configured_repository_still_inherits_its_project"
+      - "tests/test_config.py::test_naming_the_same_repository_explicitly_still_inherits"
+      - "tests/test_config.py::test_another_repository_does_not_inherit_the_project"
+      - "tests/test_config.py::test_naming_both_halves_explicitly_is_honoured"
+      - "tests/test_config.py::test_an_explicit_project_for_the_configured_repository_is_allowed"
+      - "tests/test_config.py::test_a_config_declaring_no_repository_constrains_nothing"
+    evidence:
+      - "Issue #121"
+      - "Issue #120"
+
   - id: REQ-GITHUB-CONFIG-001
     statement: >-
       A command must read the target from the configuration the project

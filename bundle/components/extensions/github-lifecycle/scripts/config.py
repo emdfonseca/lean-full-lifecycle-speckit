@@ -102,14 +102,41 @@ def resolve_target(repo: str | None = None, project: int | None = None,
     if "/" not in chosen_repo:
         raise ConfigError(f"--repo must be owner/name, got {chosen_repo!r}")
 
+    # A configured project_number is a fact about the configured repository's
+    # board, not about whatever repository this invocation names. Carrying it
+    # across let a command aimed elsewhere keep this project's board, and an
+    # explicit project short-circuits discovery entirely -- so the
+    # repository-scoped lookup could not catch it either.
+    configured_repo = _configured_repo(config)
+    elsewhere = bool(configured_repo) and chosen_repo != configured_repo
+
     chosen_project = project
     if chosen_project is None and env.get(PROJECT_ENV):
         chosen_project = int(env[PROJECT_ENV])
     if chosen_project is None and config.get("project_number") is not None:
-        chosen_project = int(config["project_number"])
+        if elsewhere:
+            # Dropped, not inherited. Discovery then finds the board this
+            # repository is actually linked to, or reports that it has none.
+            chosen_project = None
+        else:
+            chosen_project = int(config["project_number"])
+    # An explicit --project alongside an explicit --repo is honoured. The
+    # caller named both halves, so nothing is inherited and nothing is silent
+    # -- which is the whole defect. Only the carried-over case is dropped.
 
     where = "--repo" if repo else (REPO_ENV if env.get(REPO_ENV) else origin)
     return Target(chosen_repo, chosen_project, where or "argument")
+
+
+def _configured_repo(config: dict) -> str | None:
+    """The repository the config declares, in owner/name form."""
+    owner = config.get("organization")
+    name = config.get("repository")
+    if owner and name:
+        return f"{owner}/{name}"
+    if name and "/" in str(name):
+        return str(name)
+    return None
 
 
 def field_names(root: Path | None = None) -> dict:

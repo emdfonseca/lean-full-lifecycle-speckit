@@ -169,3 +169,71 @@ def test_the_scripts_no_longer_require_the_flag():
         source = (SCRIPTS / name).read_text(encoding="utf-8")
         assert '"--repo", required=True' not in source, name
         assert "config.resolve_target" in source, name
+
+
+# --- a project number belongs to its repository ------------------------------
+#
+# Carrying it across let a command aimed elsewhere keep this project's board,
+# and an explicit project short-circuits discovery, so the repository-scoped
+# lookup could not catch it either.
+
+CONFIGURED = """schema_version: "1.0"
+organization: acme
+repository: widgets
+project_number: 3
+"""
+
+
+def _configured(tmp_path):
+    d = tmp_path / ".specify/extensions/github-lifecycle"
+    d.mkdir(parents=True)
+    (d / "github-lifecycle-config.yml").write_text(CONFIGURED, encoding="utf-8")
+    return tmp_path
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_the_configured_repository_still_inherits_its_project(tmp_path):
+    target = cfg.resolve_target(None, None, _configured(tmp_path), env={})
+    assert target.repo == "acme/widgets"
+    assert target.project == 3
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_naming_the_same_repository_explicitly_still_inherits(tmp_path):
+    target = cfg.resolve_target("acme/widgets", None, _configured(tmp_path), env={})
+    assert target.project == 3
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_another_repository_does_not_inherit_the_project(tmp_path):
+    # Discovery then finds the board this repository is linked to, or reports
+    # that it has none.
+    target = cfg.resolve_target("acme/other", None, _configured(tmp_path), env={})
+    assert target.repo == "acme/other"
+    assert target.project is None
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_naming_both_halves_explicitly_is_honoured(tmp_path):
+    # The caller named the repository and the board, so nothing is inherited
+    # and nothing is silent -- which is the whole defect. Refusing this would
+    # remove a legitimate use to fix a different problem.
+    target = cfg.resolve_target("acme/other", 9, _configured(tmp_path), env={})
+    assert target.repo == "acme/other"
+    assert target.project == 9
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_an_explicit_project_for_the_configured_repository_is_allowed(tmp_path):
+    target = cfg.resolve_target("acme/widgets", 9, _configured(tmp_path), env={})
+    assert target.project == 9
+
+
+@pytest.mark.req("REQ-GITHUB-CONFIG-002")
+def test_a_config_declaring_no_repository_constrains_nothing(tmp_path):
+    d = tmp_path / ".specify/extensions/github-lifecycle"
+    d.mkdir(parents=True)
+    (d / "github-lifecycle-config.yml").write_text(
+        'schema_version: "1.0"\nproject_number: 3\n', encoding="utf-8")
+    target = cfg.resolve_target("acme/other", None, tmp_path, env={})
+    assert target.project == 3, "a config naming no repository should not gate"
