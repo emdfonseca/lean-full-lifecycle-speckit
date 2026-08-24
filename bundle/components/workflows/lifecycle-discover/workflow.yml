@@ -26,6 +26,7 @@ inputs:
       - reject
 steps:
   - id: state-scope
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -43,6 +44,7 @@ steps:
       tell the edges of.
 
   - id: investigate
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -93,6 +95,7 @@ steps:
       becomes intended behaviour until it is reconciled with one.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

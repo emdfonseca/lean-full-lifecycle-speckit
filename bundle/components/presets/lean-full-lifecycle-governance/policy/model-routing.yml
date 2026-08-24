@@ -37,10 +37,26 @@ approved_providers: []
 
 resolution:
   require_approved_provider: true
-  # How the installed inventory is read. Asking the CLI is the only authority
-  # on whether a model id is real; a list maintained here would be a second
-  # copy that drifts.
-  inventory_command: [opencode, models]
+  # How the installed inventory is read, per integration. Asking the CLI is
+  # the only authority on whether a model id is real; a list maintained here
+  # would be a second copy that drifts.
+  #
+  # Keyed by integration because there is no command that answers for both.
+  # A single `opencode models` was declared for every project until the
+  # greenfield pilot ran under `claude` and the one executable instruction in
+  # this file could not run (#115).
+  inventory_command:
+    opencode: [opencode, models]
+    # Claude Code has no inventory subcommand. Stated as null rather than
+    # omitted: absent would read as an oversight, and a wrong command reads as
+    # a capability. Neither is true, and a caller must be able to tell that
+    # this integration cannot be asked.
+    claude: null
+  # An integration with no command cannot have its provider checked against the
+  # installed inventory. Refusing is the honest response: approving every model
+  # because the inventory is unreadable is how `require_approved_provider`
+  # becomes decorative.
+  unreadable_inventory: refuse
   # Where a resolved mapping is written. `record_resolved_mapping: true` above
   # described an intention with no destination.
   record_path: .specify/lifecycle/model-routing-resolved.yml

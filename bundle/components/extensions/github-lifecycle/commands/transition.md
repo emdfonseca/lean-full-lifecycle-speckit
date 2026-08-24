@@ -1,5 +1,7 @@
 ---
 description: Apply one approved GitHub lifecycle field transition.
+scripts:
+  py: scripts/transition_plan.py
 ---
 
 # GitHub Lifecycle Transition
@@ -11,7 +13,7 @@ Requires an approved plan written by `plan`. Do not proceed without one.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/transition_plan.py \
+{SCRIPT} \
   --repo <owner>/<name> \
   apply --plan <approved plan path> \
   --evidence <key>=<value> ...

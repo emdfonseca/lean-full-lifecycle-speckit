@@ -1,5 +1,7 @@
 ---
 description: Assess an incoming item and propose what happens to it next.
+scripts:
+  py: scripts/triage.py
 ---
 
 # GitHub Lifecycle Triage
@@ -9,7 +11,7 @@ decision by a different person, and conflating them turns a triage queue into a
 commitment nobody agreed to.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/triage.py \
+{SCRIPT} \
   --repo <owner>/<name> --issue <number> \
   --out .specify/lifecycle/triage-<run>.json
 ```
@@ -41,7 +43,7 @@ for one boolean; the label plus a required Severity says the same thing and
 nothing downstream has to learn a new shape.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/triage.py \
+{SCRIPT} \
   --issue <n> --severity <Critical|High|Medium|Low> --format json
 ```
 

@@ -1,5 +1,7 @@
 ---
 description: Plan GitHub lifecycle changes without applying them.
+scripts:
+  py: scripts/transition_plan.py
 ---
 
 # GitHub Lifecycle Plan
@@ -10,7 +12,7 @@ and decides; applying is a separate command against the artifact this writes.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/transition_plan.py \
+{SCRIPT} \
   --repo <owner>/<name> \
   plan --issue <number> --to "<target state>" \
   --out .specify/github-lifecycle/plans/<descriptive-id>.md

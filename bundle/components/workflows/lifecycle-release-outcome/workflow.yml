@@ -37,6 +37,7 @@ inputs:
     - reject
 steps:
 - id: prepare-release-readiness
+  timeout: 300
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Prepare .specify/lifecycle/release-readiness.md for
@@ -70,6 +71,7 @@ steps:
   type: shell
   run: devbox run release-verify
 - id: prepare-rollout
+  timeout: 300
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Create .specify/lifecycle/rollout-plan.md with environments, approvals,
@@ -92,6 +94,7 @@ steps:
   verdict_input: rollout_verdict
   show_file: .specify/lifecycle/rollout-plan.md
 - id: prepare-outcome-record
+  timeout: 300
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Create/update an outcome record for {{ inputs.issue_ref }} with

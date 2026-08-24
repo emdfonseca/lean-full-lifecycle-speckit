@@ -1,5 +1,7 @@
 ---
 description: Inspect GitHub lifecycle configuration without mutation.
+scripts:
+  py: scripts/inspect_target.py
 ---
 
 # GitHub Lifecycle Inspect
@@ -10,7 +12,7 @@ Everything else in this extension depends on the answer, so run it first.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/inspect_target.py \
+{SCRIPT} \
   --repo <owner>/<name> \
   --out .specify/github-lifecycle/inspection.json
 ```

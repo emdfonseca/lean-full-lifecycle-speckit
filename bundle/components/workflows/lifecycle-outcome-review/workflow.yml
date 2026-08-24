@@ -52,6 +52,7 @@ steps:
         the team hoped the result would be.
 
   - id: state-what-is-not-changing
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -71,6 +72,7 @@ steps:
     cases:
       measuring:
         - id: measuring-state-the-gap
+          timeout: 300
           type: prompt
           integration: '{{ inputs.integration }}'
           prompt: >-
@@ -116,6 +118,7 @@ steps:
 
       validated:
         - id: validated-name-the-authority
+          timeout: 600
           type: prompt
           integration: '{{ inputs.integration }}'
           prompt: >-
@@ -165,6 +168,7 @@ steps:
 
       inconclusive:
         - id: inconclusive-say-the-question-is-open
+          timeout: 300
           type: prompt
           integration: '{{ inputs.integration }}'
           prompt: >-
@@ -217,6 +221,7 @@ steps:
 
       missed:
         - id: missed-say-what-happened
+          timeout: 300
           type: prompt
           integration: '{{ inputs.integration }}'
           prompt: >-
@@ -299,6 +304,7 @@ steps:
               write a cause the measurement does not support.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

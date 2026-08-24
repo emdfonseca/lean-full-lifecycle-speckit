@@ -257,50 +257,95 @@ def build_after_in_progress(ctx: Ctx) -> Iterator[Finding]:
                 f"asserted after the work started.")
 
 
-@check("INV-SYNTHESIS-STEP-TIMEOUT",
-       "A step that builds a whole artifact declares how long it may take",
+@check("INV-STEP-TIMEOUT-TIER",
+       "Every prompt step declares a timeout from a policy tier",
        scope="workflow")
-def synthesis_step_timeout(ctx: Ctx) -> Iterator[Finding]:
-    """The default is 300 seconds and nothing said so.
+def step_timeout_tier(ctx: Ctx) -> Iterator[Finding]:
+    """No step runs on an unstated default, and no check guesses which are slow.
 
-    Every step in the bundle ran on it until a real product context made the
-    greenfield bootstrap plan exceed it. The workflow passed its own harness,
-    where the context was empty and there was nothing to synthesise, and failed
-    on first real use.
+    The first attempt at this keyed on the step id -- a generative command or a
+    `create-` prefix -- and the very next step of the very workflow that
+    prompted it, `apply-greenfield-bootstrap`, matched neither and timed out
+    (#117). Inferring cost from a name fails at the next name nobody thought
+    of.
 
-    Only steps whose duration scales with the input are checked. A blanket
-    increase would hide a genuinely hung step behind a long wait, which is the
-    opposite failure and harder to notice.
-
-    The value comes from `bootstrap-policy.yml`, so raising it is a policy edit
-    rather than 24 separate ones.
+    So the author declares a tier and this checks the value is one. That is
+    reliable in a way inference is not: a step with no timeout, or one with a
+    number the policy does not name, is reported, and nobody has to predict
+    which ids mean expensive.
     """
     policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
-    want = (policy.get("step_timeouts") or {}).get("artifact_synthesis")
-    if not want:
+    tiers = policy.get("step_timeouts") or {}
+    if not tiers:
         return
+    allowed = {value for value in tiers.values() if isinstance(value, int)}
 
-    generative = {"speckit.specify", "speckit.plan", "speckit.tasks",
-                  "speckit.implement", "speckit.analyze", "speckit.converge",
-                  "speckit.checklist", "speckit.clarify"}
     for comp in ctx.inv.by_kind("workflow"):
         for step in _steps(comp):
-            step_id = str(step.get("id") or "")
-            command = str(step.get("command") or "")
-            builds = command in generative or step_id.startswith("create-")
-            if not builds:
+            kind = step.get("type") or ("command" if step.get("command") else "prompt")
+            if kind != "prompt":
                 continue
+            step_id = str(step.get("id") or "")
             declared = step.get("timeout")
             if declared is None:
                 yield ctx.finding(
-                    "INV-SYNTHESIS-STEP-TIMEOUT", f"{comp.id}:{step_id}",
-                    f"builds a whole artifact and declares no timeout, so it "
-                    f"runs on the runner's 300s default")
-            elif declared != want:
+                    "INV-STEP-TIMEOUT-TIER", f"{comp.id}:{step_id}",
+                    f"declares no timeout, so it runs on the runner's default; "
+                    f"choose a tier from {sorted(allowed)}")
+            elif declared not in allowed:
                 yield ctx.finding(
-                    "INV-SYNTHESIS-STEP-TIMEOUT", f"{comp.id}:{step_id}",
-                    f"declares timeout {declared!r}; bootstrap-policy.yml sets "
-                    f"artifact_synthesis to {want}")
+                    "INV-STEP-TIMEOUT-TIER", f"{comp.id}:{step_id}",
+                    f"declares {declared!r}, which is not a tier "
+                    f"bootstrap-policy.yml names: {sorted(allowed)}")
+
+
+@check("INV-COMMAND-SCRIPT-INVOCATION",
+       "A command declares its script and never prescribes a bare interpreter",
+       scope="extension")
+def command_script_invocation(ctx: Ctx) -> Iterator[Finding]:
+    """`python <script>` is not an invocation that works everywhere.
+
+    The greenfield pilot found it three ways on one machine: no `python` on
+    PATH, a `python3` too old to parse the scripts' own syntax, and another
+    `python3` without PyYAML. Two agents hit it in the same run and invented
+    two different workarounds, which is the part that matters -- a workaround
+    an agent invents is not a contract, and the next agent invents a different
+    one.
+
+    Spec Kit already solved this. A command declares `scripts:` in its front
+    matter and writes `{SCRIPT}` in the prose; the CLI substitutes an
+    interpreter it resolved (a project `.venv` first, then `python3`, then
+    `python`). Prescribing a literal bypasses that resolution.
+
+    Declaring `scripts:` also makes a command addressable as an event handler.
+    Without it `resolve_and_run_event_command` finds the template, finds no
+    script, and returns 0 -- a guard that permits silently (#99).
+    """
+    import re
+
+    ext = ctx.inv.extension
+    literal = re.compile(r"\b(python3?|py)\s+\.specify/")
+    for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
+        path = ext.path / str(entry.get("file", ""))
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        subject = f"{ext.ref}:{path.name}"
+
+        found = literal.search(text)
+        if found:
+            yield ctx.finding(
+                "INV-COMMAND-SCRIPT-INVOCATION", subject,
+                f"prescribes {found.group(0).strip()!r}; write {{SCRIPT}} and "
+                f"let the CLI resolve an interpreter")
+
+        front = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        declares = bool(front) and "scripts:" in front.group(1)
+        if "{SCRIPT}" in text and not declares:
+            yield ctx.finding(
+                "INV-COMMAND-SCRIPT-INVOCATION", subject,
+                "uses {SCRIPT} but declares no scripts: front matter, so "
+                "nothing resolves it")
 
 
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",

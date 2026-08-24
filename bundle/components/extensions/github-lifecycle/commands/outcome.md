@@ -1,5 +1,7 @@
 ---
 description: Assess an outcome record and recommend a status.
+scripts:
+  py: scripts/outcome.py
 ---
 
 # GitHub Lifecycle Outcome
@@ -7,7 +9,7 @@ description: Assess an outcome record and recommend a status.
 Decide what a measurement means, and refuse to conclude more than it supports.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/outcome.py \
+{SCRIPT} \
   --record .specify/lifecycle/outcome/<id>.md
 ```
 

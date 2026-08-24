@@ -1,5 +1,7 @@
 ---
 description: Decide whether a repository already contains a product before greenfield bootstrap writes anything.
+scripts:
+  py: scripts/mismatch.py
 ---
 
 # GitHub Lifecycle Mismatch
@@ -8,7 +10,7 @@ Greenfield bootstrap assumes an empty repository. Run against a real codebase
 it scaffolds over somebody's work, and nobody notices until later.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/mismatch.py \
+{SCRIPT} \
   --path . --format json
 ```
 

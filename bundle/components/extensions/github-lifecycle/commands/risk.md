@@ -1,5 +1,7 @@
 ---
 description: Score a change's risk from policy and name the controls it requires.
+scripts:
+  py: scripts/risk.py
 ---
 
 # GitHub Lifecycle Risk
@@ -11,7 +13,7 @@ survives review as a control, and refuses nothing.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/risk.py \
+{SCRIPT} \
   --rating <dimension>=<0-3> ... \
   --override <name> ... \
   --format json

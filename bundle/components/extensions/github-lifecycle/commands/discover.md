@@ -1,5 +1,7 @@
 ---
 description: Validate a bounded discovery record.
+scripts:
+  py: scripts/discover.py
 ---
 
 # GitHub Lifecycle Discover
@@ -10,7 +12,7 @@ nine of eleven sections and proceeds is worse than one that stops: it produces
 a confident answer from an incomplete picture.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/discover.py \
+{SCRIPT} \
   --record .specify/lifecycle/discovery-<run>.md
 ```
 

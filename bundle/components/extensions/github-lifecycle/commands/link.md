@@ -1,5 +1,7 @@
 ---
 description: Manage approved issue hierarchy and dependency links.
+scripts:
+  py: scripts/relationships.py
 ---
 
 # GitHub Lifecycle Link
@@ -16,21 +18,21 @@ repository. This never changes the delivery state (ADR 0004).
 Inspect:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/relationships.py \
+{SCRIPT} \
   --repo <owner>/<name> show --issue <number>
 ```
 
 Attach a child:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/relationships.py \
+{SCRIPT} \
   --repo <owner>/<name> link --parent <number> --child <number>
 ```
 
 Record a blocker, here or elsewhere:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/relationships.py \
+{SCRIPT} \
   --repo <owner>/<name> block --issue <number> --blocked-by <owner/repo#number>
 ```
 

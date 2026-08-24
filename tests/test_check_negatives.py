@@ -238,15 +238,27 @@ def break_build_after_in_progress(tmp):
     _edit_yaml(path, mutate)
 
 
-def break_synthesis_step_timeout(tmp):
+def break_step_timeout_tier(tmp):
     # Remove the timeout from the step that exposed this. Before #116 every
     # step looked exactly like this and nothing objected.
     path = tmp / "bundle/components/workflows/lifecycle-greenfield-bootstrap/workflow.yml"
 
     def mutate(d):
-        step = next(s for s in d["steps"] if s.get("id") == "create-bootstrap-plan")
+        # The step that exposed the id-prefix heuristic: a prompt step whose
+        # name matched no rule, two steps after the one that was fixed.
+        step = next(s for s in d["steps"] if s.get("id") == "apply-greenfield-bootstrap")
         step.pop("timeout", None)
     _edit_yaml(path, mutate)
+
+
+def break_command_script_invocation(tmp):
+    # A bare interpreter in a command doc. Every doc looked like this until
+    # the greenfield pilot found three ways it fails on one machine.
+    path = tmp / EXT / "commands/doctor.md"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(
+        text.replace("{SCRIPT}", "python .specify/extensions/github-lifecycle/scripts/doctor.py", 1),
+        encoding="utf-8")
 
 
 def break_extension_config_name(tmp):
@@ -292,7 +304,8 @@ MUTATORS = {
     "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
-    "INV-SYNTHESIS-STEP-TIMEOUT": break_synthesis_step_timeout,
+    "INV-COMMAND-SCRIPT-INVOCATION": break_command_script_invocation,
+    "INV-STEP-TIMEOUT-TIER": break_step_timeout_tier,
     "INV-BUILD-AFTER-IN-PROGRESS": break_build_after_in_progress,
     "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION": break_untrusted_no_command_interpolation,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
@@ -345,6 +358,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
 @pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-001")
+@pytest.mark.req("REQ-GITHUB-INVOCATION-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
@@ -366,6 +380,7 @@ def test_check_detects_its_own_violation(check_id, bundle_copy):
 @pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
 @pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-001")
+@pytest.mark.req("REQ-GITHUB-INVOCATION-001")
 def test_check_passes_on_clean_source(check_id):
     r = subprocess.run(
         [sys.executable, "scripts/validate_source.py", "--only", check_id, "--format", "json"],

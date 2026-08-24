@@ -116,6 +116,7 @@ steps:
   input:
     args: Create or update the project Constitution using the installed Lean Full-Lifecycle governance preset.
 - id: apply-greenfield-bootstrap
+  timeout: 1800
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Apply only approved items from
@@ -186,6 +187,7 @@ steps:
   input:
     args: Read-only final lifecycle configuration check.
 - id: validate-bootstrap
+  timeout: 600
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Validate actual repository state against the approved plan. Re-read files

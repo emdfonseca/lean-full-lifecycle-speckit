@@ -35,6 +35,7 @@ steps:
         Report which children are Ready, done, and in flight.
 
   - id: decide-whether-to-decompose
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -51,6 +52,7 @@ steps:
       recommendation.
 
   - id: propose-children
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -84,7 +86,6 @@ steps:
       operation here, and rejecting creates nothing.
 
   - id: create-children
-    timeout: 1800
     command: speckit.github-lifecycle.decompose
     integration: '{{ inputs.integration }}'
     input:
@@ -97,6 +98,7 @@ steps:
         read back.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

@@ -98,6 +98,7 @@ steps:
   cases:
     scan:
     - id: scan-state-the-restraint
+      timeout: 600
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'This is a readiness scan of somebody else''s codebase. It reads.
@@ -108,6 +109,7 @@ steps:
         looked free, and a dependency bump. Each is small, and each turns a scan somebody
         agreed to into a change they did not.'
     - id: scan-read-only-discovery
+      timeout: 600
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'Perform the shallow readiness scan. Read only.
@@ -125,6 +127,7 @@ steps:
         Recommend exactly one bounded first target: a scan that recommends five is a
         modernization backlog, which is the thing this workflow exists not to produce.'
     - id: scan-report-what-was-touched
+      timeout: 600
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'State in the report that the run was read-only, and name every file written.
@@ -135,6 +138,7 @@ steps:
         make the record wrong as well.'
     targeted:
     - id: targeted-apply-approved-scope
+      timeout: 300
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'Apply approved framework-adoption changes, then perform only the approved
@@ -220,6 +224,7 @@ steps:
   input:
     args: Read-only final lifecycle configuration check.
 - id: validate-adoption
+  timeout: 600
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Validate actual state, quality ratchet, scoped exceptions, preserved

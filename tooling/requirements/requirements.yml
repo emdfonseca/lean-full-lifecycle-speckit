@@ -1234,26 +1234,79 @@ requirements:
 
   - id: REQ-WORKFLOW-TIMEOUT-001
     statement: >-
-      A step that builds a whole artifact declares how long it may take, and
-      the duration comes from policy rather than from each workflow. Only steps
-      whose work scales with the input are bounded this way: raising the
-      default for every step would hide a genuinely hung step behind a long
-      wait, which is the opposite failure and harder to notice. A step that
-      builds an artifact and declares nothing, or declares a value the policy
-      does not set, is reported.
+      Every prompt step declares how long it may take, drawn from a named tier
+      in bootstrap-policy.yml. No step runs on an unstated default, and no
+      check infers which steps are expensive from their names: the first
+      attempt keyed on the step id and the very next step of the same workflow
+      matched no rule and timed out. An author choosing a tier is reliable
+      where inference is not, so a step with no timeout, or with a value the
+      policy does not name, is reported.
     priority: must
     owner: framework
     release: "0.3.0"
     status: verified
     components:
-      - check:INV-SYNTHESIS-STEP-TIMEOUT
+      - check:INV-STEP-TIMEOUT-TIER
       - policy:bootstrap-policy.yml
       - workflow:lifecycle-greenfield-bootstrap
     verified_by:
-      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-SYNTHESIS-STEP-TIMEOUT]"
-      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-SYNTHESIS-STEP-TIMEOUT]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-STEP-TIMEOUT-TIER]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-STEP-TIMEOUT-TIER]"
     evidence:
       - "Issue #116"
+      - "Issue #117"
+      - "Issue #103"
+
+  - id: REQ-GITHUB-INVOCATION-001
+    statement: >-
+      A command declares its script in front matter and writes the substitution
+      token in its prose, never a literal interpreter. Spec Kit resolves an
+      interpreter per project -- a virtual environment first, then python3,
+      then python -- and prescribing a literal bypasses that resolution, which
+      fails where no python is on PATH, where python3 is too old to parse the
+      scripts, and where it lacks PyYAML. Declaring the script also makes the
+      command addressable as an event handler, which an undeclared one is not.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:INV-COMMAND-SCRIPT-INVOCATION
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-COMMAND-SCRIPT-INVOCATION]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-COMMAND-SCRIPT-INVOCATION]"
+    evidence:
+      - "Issue #114"
+      - "Issue #103"
+
+  - id: REQ-SECURITY-ROUTING-001
+    statement: >-
+      How the installed model inventory is read is declared per integration,
+      because no one command answers for both shapes the bundle claims. Every
+      integration compatibility.yml claims carries an entry, and an integration
+      that cannot be asked declares null rather than being omitted: absent
+      reads as an oversight and a wrong command reads as a capability. An
+      unreadable inventory refuses rather than approving every model, since
+      approving everything because nothing could be checked is how an approved
+      provider requirement becomes decorative. A policy predating the
+      per-integration form still resolves.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:model-routing.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/opencode_models.py
+    verified_by:
+      - "tests/test_opencode_models.py::test_the_inventory_command_comes_from_policy"
+      - "tests/test_opencode_models.py::test_claude_has_no_inventory_command_and_says_so"
+      - "tests/test_opencode_models.py::test_an_unreadable_inventory_refuses_rather_than_approving_everything"
+      - "tests/test_opencode_models.py::test_an_unknown_integration_is_named_not_guessed"
+      - "tests/test_opencode_models.py::test_an_older_flat_policy_still_works"
+      - "tests/test_opencode_models.py::test_every_claimed_integration_is_declared"
+    evidence:
+      - "Issue #115"
       - "Issue #103"
 
   - id: REQ-RISK-SCORING-001

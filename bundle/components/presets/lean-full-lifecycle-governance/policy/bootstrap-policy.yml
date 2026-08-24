@@ -313,11 +313,18 @@ script_flavours:
 # long wait, which is the opposite failure and harder to notice. These name the
 # steps whose duration scales with the input, and leave everything else short.
 step_timeouts:
+  # Named tiers. Every prompt step declares one of these values, because
+  # guessing a step's cost from its id does not work: the first attempt keyed
+  # on `create-` and the very next step, `apply-greenfield-bootstrap`, timed
+  # out (#117). An author choosing a tier is reliable; a check inferring one
+  # from a name is not.
+  #
   # Builds a whole artifact from a product context or a codebase: a spec, a
-  # plan, a task breakdown, an implementation, a bootstrap.
+  # plan, a task breakdown, an implementation, a bootstrap, an apply phase.
   artifact_synthesis: 1800
   # Reads and reports. Duration depends on the repository, not on how much
   # reasoning was asked for.
   inspection: 600
-  # The runner's own default, stated so a reader knows it was not chosen.
-  default: 300
+  # States something, records a decision, or names what happens next. Short by
+  # construction.
+  statement: 300

@@ -1,11 +1,13 @@
 ---
 description: Hold each measurable gate to the best it has ever done.
+scripts:
+  py: scripts/ratchet.py
 ---
 
 # GitHub Lifecycle Ratchet
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/ratchet.py \
+{SCRIPT} \
   --gate lint_or_static_analysis --measurement 41 \
   --produced-by "<commit or PR>" --write
 ```

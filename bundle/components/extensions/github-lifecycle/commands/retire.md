@@ -1,5 +1,7 @@
 ---
 description: Retire a Story that will not be delivered, or supersede one another carries.
+scripts:
+  py: scripts/retire.py
 ---
 
 # GitHub Lifecycle Retire
@@ -10,7 +12,7 @@ carries. Both set no delivery state, because requiring one the work did not
 earn is how a board starts recording fiction.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/retire.py \
+{SCRIPT} \
   --issue <n> --route <not_planned|duplicate> --reason "<why>" \
   [--superseded-by <n>]
 ```

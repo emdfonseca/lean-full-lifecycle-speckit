@@ -1,5 +1,7 @@
 ---
 description: Check at bootstrap that the project defines the verification commands the workflows run.
+scripts:
+  py: scripts/verify_bootstrap.py
 ---
 
 # GitHub Lifecycle Verify Bootstrap
@@ -9,7 +11,7 @@ Five workflows shell out to `devbox run verify` and one to
 permits anywhere. Nothing has ever checked that the target project defines them.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/verify_bootstrap.py \
+{SCRIPT} \
   --path . --format json
 ```
 

@@ -1,5 +1,7 @@
 ---
 description: Refuse unauthorized production data, and keep credentials out of framework evidence.
+scripts:
+  py: scripts/sensitive.py
 ---
 
 # GitHub Lifecycle Sensitive
@@ -9,14 +11,14 @@ Two checks, both against `sensitive-data.yml`.
 **Before reading a data source:**
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+{SCRIPT} \
   --source production_database --authorization .specify/lifecycle/auth-<id>.yml
 ```
 
 **Before committing a record the framework wrote:**
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+{SCRIPT} \
   --record .specify/lifecycle/brownfield-discovery.md --format json
 ```
 
@@ -44,7 +46,7 @@ what makes a denial policy decorative.
 ## Refuse a secret file before it is read
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+{SCRIPT} \
   --path <path> --format json
 ```
 
@@ -64,7 +66,7 @@ Say so. The command emitted no rules, so nothing is denied.
 ## Redact a record
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+{SCRIPT} \
   --record <path> --redact --out <path> --format json
 ```
 

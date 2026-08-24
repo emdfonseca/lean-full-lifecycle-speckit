@@ -1,5 +1,7 @@
 ---
 description: Run read-only GitHub lifecycle diagnostics.
+scripts:
+  py: scripts/doctor.py
 ---
 
 # GitHub Lifecycle Doctor
@@ -7,7 +9,7 @@ description: Run read-only GitHub lifecycle diagnostics.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/doctor.py
+{SCRIPT}
 ```
 
 Summarize the read-only report. Do not repair automatically.

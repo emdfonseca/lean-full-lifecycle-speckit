@@ -1,5 +1,7 @@
 ---
 description: Generate Claude Code settings from policy, and report what does not map.
+scripts:
+  py: scripts/claude_config.py
 ---
 
 # GitHub Lifecycle Claude Config
@@ -7,12 +9,12 @@ description: Generate Claude Code settings from policy, and report what does not
 Two steps, because this writes the file that decides what an agent may do.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/claude_config.py \
+{SCRIPT} \
   propose --out .specify/lifecycle/claude-settings-<run-id>.json
 ```
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/claude_config.py \
+{SCRIPT} \
   apply --proposal .specify/lifecycle/claude-settings-<run-id>.json \
   --out .claude/settings.json
 ```

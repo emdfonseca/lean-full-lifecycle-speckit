@@ -1,11 +1,13 @@
 ---
 description: Verify every role's model against the installed OpenCode inventory.
+scripts:
+  py: scripts/opencode_models.py
 ---
 
 # GitHub Lifecycle Models
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/opencode_models.py --format json
+{SCRIPT} --format json
 ```
 
 `model-routing.yml` names seven roles. This checks that every model those roles
@@ -38,7 +40,7 @@ Once a mapping verifies, record it with the date it was evaluated and the date
 it expires:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/opencode_models.py \
+{SCRIPT} \
   --format json
 ```
 

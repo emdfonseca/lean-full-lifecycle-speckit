@@ -1,11 +1,13 @@
 ---
 description: Validate an exception against the exception policy.
+scripts:
+  py: scripts/exception.py
 ---
 
 # GitHub Lifecycle Exception
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/exception.py \
+{SCRIPT} \
   --record .specify/lifecycle/exceptions/<id>.md
 ```
 

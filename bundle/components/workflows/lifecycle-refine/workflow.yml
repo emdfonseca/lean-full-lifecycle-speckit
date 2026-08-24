@@ -38,6 +38,7 @@ steps:
         Report the backend selected and whether the target is usable. Stop if it is not.
 
   - id: assess-readiness
+    timeout: 600
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -114,6 +115,7 @@ steps:
         evidence the plan requires. Report the value before and after.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

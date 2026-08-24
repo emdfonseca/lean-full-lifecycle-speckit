@@ -1,5 +1,7 @@
 ---
 description: Generate the OpenCode configuration from policy, and report what it cannot enforce.
+scripts:
+  py: scripts/opencode_config.py
 ---
 
 # GitHub Lifecycle OpenCode Config
@@ -7,14 +9,14 @@ description: Generate the OpenCode configuration from policy, and report what it
 Two steps, because this writes the file that decides what an agent may do.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/opencode_config.py \
+{SCRIPT} \
   propose --out .specify/lifecycle/opencode-config-<run-id>.json
 ```
 
 Propose writes a proposal and changes no configuration. Show it at a gate.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/opencode_config.py \
+{SCRIPT} \
   apply --proposal .specify/lifecycle/opencode-config-<run-id>.json \
   --out opencode.json
 ```

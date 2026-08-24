@@ -1,5 +1,7 @@
 ---
 description: Report an Epic's decomposition horizon and create approved children.
+scripts:
+  py: scripts/decompose.py
 ---
 
 # GitHub Lifecycle Decompose
@@ -11,7 +13,7 @@ is actually startable rather than the calendar.
 Read the horizon first. This writes nothing:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/decompose.py \
+{SCRIPT} \
   --repo <owner>/<name> --epic <number> --target <n> status
 ```
 
@@ -23,7 +25,7 @@ children are all unrefined needs refinement, not more decomposition.
 Create only from an approved proposal file:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/decompose.py \
+{SCRIPT} \
   --repo <owner>/<name> --epic <number> --target <n> \
   apply --proposals <approved proposals path>
 ```

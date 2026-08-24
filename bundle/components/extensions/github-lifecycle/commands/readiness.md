@@ -1,5 +1,7 @@
 ---
 description: Validate a readiness verdict before an item may become Ready.
+scripts:
+  py: scripts/readiness.py
 ---
 
 # GitHub Lifecycle Readiness
@@ -11,7 +13,7 @@ requirement mean something.
 Run:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/readiness.py \
+{SCRIPT} \
   --verdict <verdict path> \
   --issue <number> --repo <owner>/<name>
 ```

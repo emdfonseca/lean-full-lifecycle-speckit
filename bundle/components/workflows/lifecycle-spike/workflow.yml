@@ -29,6 +29,7 @@ inputs:
       - reject
 steps:
   - id: bound-the-spike
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -46,6 +47,7 @@ steps:
       it, because that is the outcome most likely to be argued away.
 
   - id: investigate
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -57,6 +59,7 @@ steps:
       that quietly ran long has destroyed the boundary that made it a spike.
 
   - id: record-disposal
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -95,6 +98,7 @@ steps:
       deliberate.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

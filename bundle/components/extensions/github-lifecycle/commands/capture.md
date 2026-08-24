@@ -1,5 +1,7 @@
 ---
 description: Deduplicate and create an approved backlog finding.
+scripts:
+  py: scripts/capture.py
 ---
 
 # GitHub Lifecycle Capture
@@ -11,7 +13,7 @@ mid-flight, during delivery or review or an incident, and losing them is silent
 Search first:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/capture.py \
+{SCRIPT} \
   --repo <owner>/<name> --title "<proposed title>"
 ```
 
@@ -22,7 +24,7 @@ duplicate report is for.
 Create only after a person has seen the candidates and said to proceed:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/capture.py \
+{SCRIPT} \
   --repo <owner>/<name> --title "<title>" --type <story|bug|spike> \
   --body "<body meeting the type's content contract>" --create
 ```
@@ -37,7 +39,7 @@ A duplicate report is a question for a person, and the answer belongs in the
 record rather than in whoever remembers making it:
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/capture.py \
+{SCRIPT} \
   --repo <owner>/<name> --title "<title>" --type <story|bug|spike> \
   --body "<body>" --considered <n> --considered <n> --create
 ```

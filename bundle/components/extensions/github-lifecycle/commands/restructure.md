@@ -1,5 +1,7 @@
 ---
 description: Split a Story too large to start, or merge two that turned out to be one.
+scripts:
+  py: scripts/restructure.py
 ---
 
 # GitHub Lifecycle Restructure
@@ -9,10 +11,10 @@ loses: what became of it. A split that leaves the original open has produced
 three items where there was one, and nobody can tell which carries the work.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/restructure.py \
+{SCRIPT} \
   split --issue <n> --proposals <path> --reason "<why>"
 
-python .specify/extensions/github-lifecycle/scripts/restructure.py \
+{SCRIPT} \
   merge --keep <n> --drop <n> --reason "<why>"
 ```
 

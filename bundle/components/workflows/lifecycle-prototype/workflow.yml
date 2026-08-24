@@ -26,6 +26,7 @@ inputs:
       - reject
 steps:
   - id: state-questions
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -45,6 +46,7 @@ steps:
       data are out of scope, and no question worth asking requires them.
 
   - id: build-prototype
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -59,6 +61,7 @@ steps:
       continuing until it feels complete is not.
 
   - id: record-disposal
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -98,6 +101,7 @@ steps:
       deliberate.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

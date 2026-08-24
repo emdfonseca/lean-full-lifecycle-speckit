@@ -32,6 +32,7 @@ steps:
         type, candidate duplicates, and missing evidence.
 
   - id: interpret-assessment
+    timeout: 600
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-
@@ -88,6 +89,7 @@ steps:
         .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
 
   - id: report
+    timeout: 300
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

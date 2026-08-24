@@ -30,6 +30,7 @@ inputs:
     enum: *id001
 steps:
 - id: assess-bug
+  timeout: 600
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Assess issue {{ inputs.issue_ref }}: {{ inputs.bug }}

@@ -195,9 +195,10 @@ def test_a_readable_inventory_is_parsed_into_provider_model_ids():
 
 # --- the inventory is asked for, not maintained here --------------------------
 
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
 @pytest.mark.req("REQ-CORE-MODELS-001")
 def test_the_inventory_command_comes_from_policy():
-    assert POLICY["resolution"]["inventory_command"] == ["opencode", "models"]
+    assert om.inventory_command(POLICY, "opencode") == ["opencode", "models"]
     source = (SCRIPTS / "opencode_models.py").read_text(encoding="utf-8")
     # A model list maintained in this repository would be a second copy that
     # drifts, and the copy that drifts is the one nobody is testing.
@@ -354,3 +355,45 @@ def test_the_record_path_comes_from_policy():
     assert POLICY["resolution"]["record_path"].startswith(".specify/")
     source = (SCRIPTS / "opencode_models.py").read_text(encoding="utf-8")
     assert POLICY["resolution"]["record_path"] not in source
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
+def test_claude_has_no_inventory_command_and_says_so():
+    # Declared null rather than omitted: absent reads as an oversight and a
+    # wrong command reads as a capability. Neither is true.
+    assert POLICY["resolution"]["inventory_command"]["claude"] is None
+    with pytest.raises(om.InventoryError, match="no inventory command"):
+        om.inventory_command(POLICY, "claude")
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
+def test_an_unreadable_inventory_refuses_rather_than_approving_everything():
+    # Approving every model because the inventory could not be read is how
+    # require_approved_provider becomes decorative.
+    assert POLICY["resolution"]["unreadable_inventory"] == "refuse"
+    assert POLICY["resolution"]["require_approved_provider"] is True
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
+def test_an_unknown_integration_is_named_not_guessed():
+    with pytest.raises(om.InventoryError, match="declares no inventory command"):
+        om.inventory_command(POLICY, "some-other-agent")
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
+def test_an_older_flat_policy_still_works():
+    # A preset predating the per-integration form keeps working rather than
+    # breaking on upgrade.
+    flat = {"resolution": {"inventory_command": ["opencode", "models"]}}
+    assert om.inventory_command(flat, "claude") == ["opencode", "models"]
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-001")
+def test_every_claimed_integration_is_declared():
+    # compatibility.yml is the list of shapes this bundle claims. Each needs an
+    # entry, even if the entry is null.
+    import yaml
+    matrix = yaml.safe_load((ROOT / "tooling/compatibility.yml").read_text())
+    claimed = set(matrix.get("agents") or matrix.get("integrations") or [])
+    declared = set(POLICY["resolution"]["inventory_command"])
+    assert claimed <= declared, f"undeclared: {sorted(claimed - declared)}"

@@ -1,5 +1,7 @@
 ---
 description: Validate the disposal decision for a prototype or spike.
+scripts:
+  py: scripts/disposal.py
 ---
 
 # GitHub Lifecycle Disposal
@@ -8,7 +10,7 @@ Decide what becomes of what a prototype or spike produced, before the work it
 informed can complete.
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/disposal.py \
+{SCRIPT} \
   --record .specify/lifecycle/disposal/<issue>-<id>.md
 ```
 

@@ -1,11 +1,13 @@
 ---
 description: Detect which OpenCode layout a project uses before writing near it.
+scripts:
+  py: scripts/opencode_layout.py
 ---
 
 # GitHub Lifecycle OpenCode Layout
 
 ```bash
-python .specify/extensions/github-lifecycle/scripts/opencode_layout.py --format json
+{SCRIPT} --format json
 ```
 
 Read-only. Run it before anything writes into a project's OpenCode directory.

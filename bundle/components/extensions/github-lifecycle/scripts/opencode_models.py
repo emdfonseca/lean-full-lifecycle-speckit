@@ -61,13 +61,44 @@ def load_policy(root: Path | None = None) -> dict:
         "be installed")
 
 
-def read_inventory(policy: dict, runner=None) -> set[str]:
+def inventory_command(policy: dict, integration: str) -> list[str]:
+    """The command that lists installed models, for this integration.
+
+    Keyed by integration because there is no command that answers for both.
+    A single command was declared for every project until a `claude` project
+    inherited an `opencode` one it could not run.
+
+    An integration declared with a null command raises. That is the honest
+    response: it cannot be asked, and approving every model because the
+    inventory is unreadable is how `require_approved_provider` stops meaning
+    anything.
+    """
+    declared = policy["resolution"]["inventory_command"]
+    if isinstance(declared, list):
+        # A policy predating the per-integration form. Honoured rather than
+        # rejected, so an older preset keeps working.
+        return list(declared)
+    if integration not in declared:
+        raise InventoryError(
+            f"model-routing.yml declares no inventory command for "
+            f"{integration!r}; it has {sorted(declared)}")
+    command = declared[integration]
+    if not command:
+        raise InventoryError(
+            f"{integration!r} has no inventory command, so no model id can be "
+            f"verified against an installed inventory. model-routing.yml sets "
+            f"unreadable_inventory to "
+            f"{policy['resolution'].get('unreadable_inventory', 'refuse')!r}.")
+    return list(command)
+
+
+def read_inventory(policy: dict, runner=None, integration: str = "opencode") -> set[str]:
     """Every `provider/model` the installed CLI reports.
 
     Raises rather than returning an empty set: "no models" and "could not ask"
     are different facts, and collapsing them makes every id verifiable.
     """
-    command = list(policy["resolution"]["inventory_command"])
+    command = inventory_command(policy, integration)
     runner = runner or (lambda args: subprocess.run(
         args, capture_output=True, text=True, timeout=60))
     try:

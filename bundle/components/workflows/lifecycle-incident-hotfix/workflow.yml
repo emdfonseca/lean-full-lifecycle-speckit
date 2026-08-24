@@ -67,6 +67,7 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
       context.run_id }}-in-progress.md.'
 - id: bounded-remediation
+  timeout: 300
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Implement only the approved emergency remediation. Preserve an audit
@@ -107,6 +108,7 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done. Approved plan: .specify/github-lifecycle/plans/{{
       context.run_id }}-output-done.md.'
 - id: post-incident-reconciliation
+  timeout: 300
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Create post-incident follow-up: regression tests, spec reconciliation,
