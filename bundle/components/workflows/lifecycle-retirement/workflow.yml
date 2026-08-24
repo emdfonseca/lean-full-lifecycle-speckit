@@ -30,22 +30,26 @@ inputs:
     enum: *id001
 steps:
 - id: specify-retirement
+  timeout: 1800
   command: speckit.specify
   integration: '{{ inputs.integration }}'
   input:
     args: 'Deprecation/retirement: {{ inputs.retirement_intent }}. Source: {{ inputs.issue_ref }}'
 - id: plan-retirement
+  timeout: 1800
   command: speckit.plan
   integration: '{{ inputs.integration }}'
   input:
     args: Plan notice, replacement/migration, usage telemetry, support end, data export/retention/deletion, secret revocation,
       dependency removal, shutdown, archive, rollback, and verification.
 - id: tasks
+  timeout: 1800
   command: speckit.tasks
   integration: '{{ inputs.integration }}'
   input:
     args: Create phased, reversible retirement tasks with communication and verification.
 - id: analyze
+  timeout: 1800
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
@@ -71,6 +75,7 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
       context.run_id }}-in-progress.md.'
 - id: implement
+  timeout: 1800
   command: speckit.implement
   integration: '{{ inputs.integration }}'
   input:
@@ -79,6 +84,7 @@ steps:
   type: shell
   run: devbox run verify
 - id: converge
+  timeout: 1800
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

@@ -50,6 +50,7 @@ steps:
   input:
     args: Inspect GitHub lifecycle metadata for brownfield adoption. Read-only.
 - id: create-adoption-plan
+  timeout: 1800
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Inspect the existing repository without broad cleanup or mutation.

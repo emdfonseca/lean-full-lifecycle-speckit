@@ -30,6 +30,7 @@ inputs:
     enum: *id001
 steps:
 - id: create-incident-record
+  timeout: 1800
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Create .specify/lifecycle/incident-record.md for:
@@ -79,6 +80,7 @@ steps:
   type: shell
   run: devbox run verify
 - id: converge
+  timeout: 1800
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

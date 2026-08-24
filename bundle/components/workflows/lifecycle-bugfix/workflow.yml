@@ -66,27 +66,32 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress. Approved plan: .specify/github-lifecycle/plans/{{
       context.run_id }}-in-progress.md.'
 - id: specify-bugfix
+  timeout: 1800
   command: speckit.specify
   integration: '{{ inputs.integration }}'
   input:
     args: 'Bugfix: {{ inputs.bug }}. Reconcile an existing authoritative capability spec when appropriate; otherwise create
       the smallest durable behavioral contract. Source: {{ inputs.issue_ref }}'
 - id: plan
+  timeout: 1800
   command: speckit.plan
   integration: '{{ inputs.integration }}'
   input:
     args: Create the smallest safe bugfix plan; avoid unrelated cleanup.
 - id: tasks
+  timeout: 1800
   command: speckit.tasks
   integration: '{{ inputs.integration }}'
   input:
     args: Order regression/characterization tests before minimum fix and refactor.
 - id: analyze
+  timeout: 1800
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
     args: Check minimal scope, regression evidence, spec impact, and brownfield ratchet.
 - id: implement
+  timeout: 1800
   command: speckit.implement
   integration: '{{ inputs.integration }}'
   input:
@@ -104,6 +109,7 @@ steps:
       a pass makes every later comparison meaningless. On a refusal, report the gate,
       the baseline, and the measurement, and do not re-run hoping for a different number.'
 - id: converge
+  timeout: 1800
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

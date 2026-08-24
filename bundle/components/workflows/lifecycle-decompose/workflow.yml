@@ -84,6 +84,7 @@ steps:
       operation here, and rejecting creates nothing.
 
   - id: create-children
+    timeout: 1800
     command: speckit.github-lifecycle.decompose
     integration: '{{ inputs.integration }}'
     input:

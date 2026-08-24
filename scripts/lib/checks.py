@@ -257,6 +257,52 @@ def build_after_in_progress(ctx: Ctx) -> Iterator[Finding]:
                 f"asserted after the work started.")
 
 
+@check("INV-SYNTHESIS-STEP-TIMEOUT",
+       "A step that builds a whole artifact declares how long it may take",
+       scope="workflow")
+def synthesis_step_timeout(ctx: Ctx) -> Iterator[Finding]:
+    """The default is 300 seconds and nothing said so.
+
+    Every step in the bundle ran on it until a real product context made the
+    greenfield bootstrap plan exceed it. The workflow passed its own harness,
+    where the context was empty and there was nothing to synthesise, and failed
+    on first real use.
+
+    Only steps whose duration scales with the input are checked. A blanket
+    increase would hide a genuinely hung step behind a long wait, which is the
+    opposite failure and harder to notice.
+
+    The value comes from `bootstrap-policy.yml`, so raising it is a policy edit
+    rather than 24 separate ones.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    want = (policy.get("step_timeouts") or {}).get("artifact_synthesis")
+    if not want:
+        return
+
+    generative = {"speckit.specify", "speckit.plan", "speckit.tasks",
+                  "speckit.implement", "speckit.analyze", "speckit.converge",
+                  "speckit.checklist", "speckit.clarify"}
+    for comp in ctx.inv.by_kind("workflow"):
+        for step in _steps(comp):
+            step_id = str(step.get("id") or "")
+            command = str(step.get("command") or "")
+            builds = command in generative or step_id.startswith("create-")
+            if not builds:
+                continue
+            declared = step.get("timeout")
+            if declared is None:
+                yield ctx.finding(
+                    "INV-SYNTHESIS-STEP-TIMEOUT", f"{comp.id}:{step_id}",
+                    f"builds a whole artifact and declares no timeout, so it "
+                    f"runs on the runner's 300s default")
+            elif declared != want:
+                yield ctx.finding(
+                    "INV-SYNTHESIS-STEP-TIMEOUT", f"{comp.id}:{step_id}",
+                    f"declares timeout {declared!r}; bootstrap-policy.yml sets "
+                    f"artifact_synthesis to {want}")
+
+
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",
        scope="workflow")
 def gate_verdict(ctx: Ctx) -> Iterator[Finding]:

@@ -127,6 +127,7 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back.
       Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-in-progress.md.'
 - id: specify
+  timeout: 1800
   command: speckit.specify
   integration: '{{ inputs.integration }}'
   input:
@@ -330,11 +331,13 @@ steps:
     If nothing was learned because the mode was none, say so. Skipping this step silently is how a guess
     becomes a requirement.'
 - id: plan
+  timeout: 1800
   command: speckit.plan
   integration: '{{ inputs.integration }}'
   input:
     args: '{{ inputs.intent }}'
 - id: checklist
+  timeout: 1800
   command: speckit.checklist
   integration: '{{ inputs.integration }}'
   input:
@@ -348,11 +351,13 @@ steps:
   on_reject: abort
   verdict_input: plan_verdict
 - id: tasks
+  timeout: 1800
   command: speckit.tasks
   integration: '{{ inputs.integration }}'
   input:
     args: '{{ inputs.intent }}'
 - id: analyze
+  timeout: 1800
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
@@ -366,6 +371,7 @@ steps:
   on_reject: abort
   verdict_input: tasks_verdict
 - id: implement
+  timeout: 1800
   command: speckit.implement
   integration: '{{ inputs.integration }}'
   input:
@@ -438,6 +444,7 @@ steps:
       State which was assumed and why. A default that says nothing leaves a reader
       unable to tell a decision from an omission.'
 - id: converge
+  timeout: 1800
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

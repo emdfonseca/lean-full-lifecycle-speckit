@@ -56,11 +56,17 @@ def check(record: dict, contract: dict) -> list[str]:
             continue
         entry = metrics[name]
         value = entry.get("value") if isinstance(entry, dict) else entry
-        if spec["source"] == "witnessed" and value is None:
+        if spec["source"] in ("operator", "human") and value is None:
             problems.append(
-                f"{name!r} is witnessed and has no value. Nobody can "
-                f"reconstruct it afterwards, so a null here is a gap in the "
-                f"pilot rather than a gap in the data.")
+                f"{name!r} is {spec['source']}-recorded and has no value. "
+                f"Nobody can reconstruct it afterwards, so a null here is a "
+                f"gap in the pilot rather than a gap in the data.")
+        if spec["source"] == "human" and isinstance(entry, dict) \
+                and str(entry.get("recorded_by", "")).strip().lower() == "agent":
+            problems.append(
+                f"{name!r} needs a person. An agent reporting it would be "
+                f"inventing a reading nobody had, which is worse than leaving "
+                f"the pilot visibly unfinished.")
         if value is None and isinstance(entry, dict) and not entry.get("why"):
             problems.append(
                 f"{name!r} is null with no reason. Not measured and zero are "

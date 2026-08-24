@@ -16,10 +16,18 @@ named owner, so a run with no owner is not a pilot however good its numbers.
 
 ## During
 
-Record the six **witnessed** metrics as they happen. They are observations
-about a person working — how often you stepped in, whether the run needed
-repair, what you made of it — and none can be reconstructed afterwards. That is
-why `pilot_record.py` refuses a null for them and accepts one for the others.
+Record the five **operator** metrics as they happen — how often the run was
+repaired, what was changed out of scope, how many interventions. None can be
+reconstructed afterwards, so `pilot_record.py` refuses a null for them and
+accepts one, with a reason, for the observed ones.
+
+The operator can be an agent. An agent driving a pilot observes its own
+interventions and counts them, and `recorded_by: agent` is a fair answer.
+
+`developer_satisfaction` is the one metric that needs a person. Not because it
+is harder to observe but because it is a judgement about the experience of
+doing the work, and an agent reporting one would be inventing a reading nobody
+had. The validator refuses `recorded_by: agent` on it.
 
 Zero is a legitimate value. An unrecorded zero is not: write `0` and say that
 none occurred.

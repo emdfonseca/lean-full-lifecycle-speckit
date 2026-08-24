@@ -76,6 +76,7 @@ steps:
   verdict_input: mismatch_verdict
   show_file: .specify/lifecycle/greenfield-mismatch-{{ context.run_id }}.md
 - id: create-bootstrap-plan
+  timeout: 1800
   type: prompt
   integration: '{{ inputs.integration }}'
   prompt: 'Inspect the current repository, Devbox, Git, Spec Kit, agent configuration,

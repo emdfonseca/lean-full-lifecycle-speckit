@@ -57,14 +57,14 @@ def test_no_failures_is_an_explicit_claim_not_an_omission():
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")
 @pytest.mark.parametrize("metric", [m["id"] for m in CONTRACT["metrics"]
-                                    if m["source"] == "witnessed"])
-def test_a_witnessed_metric_cannot_be_null(metric):
+                                    if m["source"] in ("operator", "human")])
+def test_an_operator_or_human_metric_cannot_be_null(metric):
     # Nobody can reconstruct it afterwards, so a null is a gap in the pilot
     # rather than a gap in the data.
     record = filled()
     record["metrics"][metric] = {"value": None, "why": "forgot"}
     problems = pr.check(record, CONTRACT)
-    assert any(metric in p and "witnessed" in p for p in problems)
+    assert any(metric in p and "recorded" in p for p in problems)
 
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")
@@ -125,4 +125,28 @@ def test_every_roadmap_metric_is_declared():
     # nothing silently.
     ids = {m["id"] for m in CONTRACT["metrics"]}
     assert len(ids) == len(CONTRACT["metrics"]), "duplicate metric id"
-    assert {m["source"] for m in CONTRACT["metrics"]} == {"observed", "witnessed"}
+    assert {m["source"] for m in CONTRACT["metrics"]} <= {
+        "observed", "operator", "human"}
+    assert set(CONTRACT["sources"]) == {"observed", "operator", "human"}
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_an_agent_may_not_supply_a_human_metric():
+    # Categorically different from the rest: a judgement about the experience
+    # of doing the work. An agent reporting one invents a reading nobody had.
+    human = [m["id"] for m in CONTRACT["metrics"] if m["source"] == "human"]
+    assert human == ["developer_satisfaction"], human
+    record = filled()
+    record["metrics"]["developer_satisfaction"] = {
+        "value": 4, "why": "went fine", "recorded_by": "agent"}
+    assert any("needs a person" in p for p in pr.check(record, CONTRACT))
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_an_operator_metric_may_be_recorded_by_an_agent():
+    # The distinction the first version got wrong: an agent driving a pilot
+    # observes its own interventions and can count them.
+    record = filled()
+    record["metrics"]["human_interventions"] = {
+        "value": 2, "why": "re-ran twice", "recorded_by": "agent"}
+    assert pr.check(record, CONTRACT) == []

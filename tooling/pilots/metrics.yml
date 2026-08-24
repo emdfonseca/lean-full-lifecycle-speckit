@@ -13,14 +13,20 @@ sources:
   observed: >-
     Read from the run by a script or from the board. Absent means not
     collected, never zero.
-  witnessed: >-
-    Recorded by the pilot owner during the run. Cannot be reconstructed
-    afterwards, and cannot be defaulted: a value nobody witnessed is not a
-    measurement.
+  operator: >-
+    Recorded by whoever drove the run, agent or person. Cannot be
+    reconstructed afterwards -- nobody can count later how often the run was
+    repaired -- so it cannot be null. It does not need a person: an agent
+    driving a pilot observes its own interventions and can count them.
+  human: >-
+    Needs a person, and an agent may not supply it. Not because it is harder to
+    observe but because it is categorically different: it is a judgement about
+    the experience of doing the work, and an agent reporting one would be
+    inventing a reading nobody had.
 
 metrics:
   - id: workflow_completion_without_repair
-    source: witnessed
+    source: operator
     unit: boolean
     note: >-
       Did the workflow run end to end with no manual repair. A repair the owner
@@ -28,7 +34,7 @@ metrics:
       witnessed rather than derived from exit codes.
 
   - id: human_interventions
-    source: witnessed
+    source: operator
     unit: count
     note: >-
       Every point the owner had to step in. Zero is a legitimate value and an
@@ -36,14 +42,14 @@ metrics:
       empty.
 
   - id: incorrect_or_out_of_scope_edits
-    source: witnessed
+    source: operator
     unit: count
     note: >-
       Files changed that should not have been. Judged against the approved
       target, which a script cannot know.
 
   - id: readiness_accuracy
-    source: witnessed
+    source: operator
     unit: ratio
     note: >-
       Items that were genuinely startable when marked Ready, over items marked
@@ -84,14 +90,14 @@ metrics:
     note: Tests that passed and failed on the same code within the run.
 
   - id: developer_satisfaction
-    source: witnessed
+    source: human
     unit: scale_1_5
     note: >-
       The owner's own reading. Recorded with a sentence of why, because the
       number alone tells a later reader nothing they can act on.
 
   - id: generated_artifacts_disposed
-    source: witnessed
+    source: operator
     unit: ratio
     note: >-
       Artifacts archived or deleted over artifacts generated. Left-behind

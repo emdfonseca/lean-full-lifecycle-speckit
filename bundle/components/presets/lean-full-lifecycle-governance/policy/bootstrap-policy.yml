@@ -301,3 +301,23 @@ script_flavours:
     available; what a mismatch means is that this project asked for shell and
     nothing here honours that, which the operator should learn before a
     command fails rather than during one.
+
+# How long a step may take, by the kind of work it does.
+#
+# Every step ran on the runner's 300s default until a real product context made
+# the greenfield bootstrap plan exceed it (#116). The workflow passed its own
+# harness, where the context was empty and there was nothing to synthesise, and
+# failed on first real use.
+#
+# Not a blanket increase. A long default hides a genuinely hung step behind a
+# long wait, which is the opposite failure and harder to notice. These name the
+# steps whose duration scales with the input, and leave everything else short.
+step_timeouts:
+  # Builds a whole artifact from a product context or a codebase: a spec, a
+  # plan, a task breakdown, an implementation, a bootstrap.
+  artifact_synthesis: 1800
+  # Reads and reports. Duration depends on the repository, not on how much
+  # reasoning was asked for.
+  inspection: 600
+  # The runner's own default, stated so a reader knows it was not chosen.
+  default: 300

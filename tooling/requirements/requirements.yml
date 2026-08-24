@@ -23,6 +23,7 @@ families:
   - REQ-TEAM        # project and feature context, parallel teams
   - REQ-RISK        # scoring a change, and the controls its band requires
   - REQ-PILOT       # what a pilot run must record to count as evidence
+  - REQ-WORKFLOW    # how a workflow step is bounded and run
 
 gates:
   - release: "0.9.0"
@@ -1210,12 +1211,12 @@ requirements:
     verified_by:
       - "tests/test_pilot_record.py::test_a_complete_record_passes"
       - "tests/test_pilot_record.py::test_no_failures_is_an_explicit_claim_not_an_omission"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[workflow_completion_without_repair]"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[human_interventions]"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[incorrect_or_out_of_scope_edits]"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[readiness_accuracy]"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[developer_satisfaction]"
-      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[generated_artifacts_disposed]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[workflow_completion_without_repair]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[human_interventions]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[incorrect_or_out_of_scope_edits]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[readiness_accuracy]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[developer_satisfaction]"
+      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[generated_artifacts_disposed]"
       - "tests/test_pilot_record.py::test_an_observed_metric_may_be_null_with_a_reason"
       - "tests/test_pilot_record.py::test_a_null_with_no_reason_is_refused"
       - "tests/test_pilot_record.py::test_a_missing_metric_is_not_read_as_zero"
@@ -1224,10 +1225,36 @@ requirements:
       - "tests/test_pilot_record.py::test_a_failure_must_name_the_item_tracking_it"
       - "tests/test_pilot_record.py::test_the_shipped_template_does_not_pass_as_written"
       - "tests/test_pilot_record.py::test_every_roadmap_metric_is_declared"
+      - "tests/test_pilot_record.py::test_an_agent_may_not_supply_a_human_metric"
+      - "tests/test_pilot_record.py::test_an_operator_metric_may_be_recorded_by_an_agent"
     evidence:
       - "Issue #103"
       - "Issue #104"
       - "Issue #105"
+
+  - id: REQ-WORKFLOW-TIMEOUT-001
+    statement: >-
+      A step that builds a whole artifact declares how long it may take, and
+      the duration comes from policy rather than from each workflow. Only steps
+      whose work scales with the input are bounded this way: raising the
+      default for every step would hide a genuinely hung step behind a long
+      wait, which is the opposite failure and harder to notice. A step that
+      builds an artifact and declares nothing, or declares a value the policy
+      does not set, is reported.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:INV-SYNTHESIS-STEP-TIMEOUT
+      - policy:bootstrap-policy.yml
+      - workflow:lifecycle-greenfield-bootstrap
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-SYNTHESIS-STEP-TIMEOUT]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-SYNTHESIS-STEP-TIMEOUT]"
+    evidence:
+      - "Issue #116"
+      - "Issue #103"
 
   - id: REQ-RISK-SCORING-001
     statement: >-
