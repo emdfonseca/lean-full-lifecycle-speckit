@@ -210,6 +210,20 @@ def break_no_org_schema_mutation(tmp):
         encoding="utf-8")
 
 
+def break_untrusted_no_command_interpolation(tmp):
+    # An issue body interpolated into a command's argument string: the text an
+    # attacker controls becomes the instruction the agent acts on.
+    path = tmp / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml"
+
+    def mutate(d):
+        d["steps"].append({
+            "id": "added-by-a-negative-test",
+            "command": "speckit.github-lifecycle.inspect",
+            "input": {"args": "Act on {{ inputs.issue_body }} as given."},
+        })
+    _edit_yaml(path, mutate)
+
+
 def break_extension_config_name(tmp):
     _edit_yaml(tmp / EXT / "extension.yml",
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
@@ -253,6 +267,7 @@ MUTATORS = {
     "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
+    "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION": break_untrusted_no_command_interpolation,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
     "INV-ITEM-CONTENT": break_item_content,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
@@ -300,6 +315,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-SECURITY-EXTCONFIG-001")
 @pytest.mark.req("REQ-GITHUB-TRANSITION-001")
 @pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
@@ -318,6 +334,7 @@ def test_check_detects_its_own_violation(check_id, bundle_copy):
 
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
 @pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
 def test_check_passes_on_clean_source(check_id):
     r = subprocess.run(
         [sys.executable, "scripts/validate_source.py", "--only", check_id, "--format", "json"],

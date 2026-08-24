@@ -21,6 +21,7 @@ families:
   - REQ-BACKLOG     # triage, refine, decompose, capture
   - REQ-UNCERTAINTY # discovery, prototype, spike, threat analysis
   - REQ-TEAM        # project and feature context, parallel teams
+  - REQ-RISK        # scoring a change, and the controls its band requires
 
 gates:
   - release: "0.9.0"
@@ -1010,6 +1011,83 @@ requirements:
       - "tests/test_exception.py::test_only_the_targeted_branch_validates_exceptions"
     evidence:
       - "Issue #58"
+
+  - id: REQ-RISK-SCORING-001
+    statement: >-
+      An item's risk is scored from risk-policy.yml and the score names the
+      controls that band requires. Every weight, threshold, override and
+      control set is read from the installed policy; no dimension, override or
+      band name appears in the code. A declared override escalates outright
+      regardless of the weighted total, because the dimensions describe degree
+      and the overrides describe kind. A rating outside the policy's range, a
+      dimension the policy does not declare, an override it does not declare,
+      and a total no band covers are each refused or reported rather than
+      absorbed. The escalation target is the band with the greatest minimum
+      rather than a literal name, and the report states that the controls it
+      names are required and not certified.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:risk-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/risk.py
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_risk.py::test_no_dimension_or_override_is_named_in_the_code"
+      - "tests/test_risk.py::test_a_low_item_scores_low_and_gets_the_low_controls"
+      - "tests/test_risk.py::test_the_maximum_is_every_dimension_at_its_ceiling"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[authentication_or_authorization_boundary_change]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[tenant_isolation_change]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[regulated_or_highly_sensitive_data]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[money_movement]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[remote_code_execution_or_untrusted_code]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[destructive_privileged_operation]"
+      - "tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[irreversible_high_blast_radius_migration]"
+      - "tests/test_risk.py::test_a_migration_carrying_the_override_is_high_and_carries_high_controls"
+      - "tests/test_risk.py::test_an_auth_boundary_change_is_high_and_requires_security_review"
+      - "tests/test_risk.py::test_an_override_the_policy_does_not_declare_escalates_nothing"
+      - "tests/test_risk.py::test_an_invented_dimension_is_reported_rather_than_scored"
+      - "tests/test_risk.py::test_unrated_dimensions_are_reported_because_zero_understates"
+      - "tests/test_risk.py::test_a_rating_outside_the_policy_range_is_refused"
+      - "tests/test_risk.py::test_the_controls_are_required_not_certified"
+      - "tests/test_risk.py::test_the_band_boundaries_match_the_policy_exactly"
+      - "tests/test_risk.py::test_the_escalation_target_follows_a_renamed_policy"
+      - "tests/test_risk.py::test_a_total_no_band_covers_is_an_error_not_a_silent_low"
+    evidence:
+      - "Issue #88"
+
+  - id: REQ-SECURITY-UNTRUSTED-001
+    statement: >-
+      agent-policy.yml's untrusted input lists are read rather than shipped as
+      prose. No workflow step interpolates a source the policy names untrusted
+      into a command's argument string or prompt, checked in parallel to the
+      existing shell-interpolation rule; the issue reference remains usable,
+      because what is untrusted is the content and not the address. Of the
+      eight actions untrusted input may never authorize, those with a
+      permission primitive become generated deny rules and the rest are
+      reported as unenforced rather than approximated, so the configuration is
+      never read as stricter than it is. The shell is not denied outright: it
+      is already ask, and denying it would stop the workflows the bundle ships.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:agent-policy.yml
+      - check:SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION
+      - command:speckit.github-lifecycle.claude-config
+    verified_by:
+      - "tests/test_claude_config.py::test_the_never_authorize_list_reaches_the_deny_rules"
+      - "tests/test_claude_config.py::test_what_cannot_be_expressed_is_reported_not_approximated"
+      - "tests/test_claude_config.py::test_every_listed_action_is_either_a_rule_or_reported"
+      - "tests/test_claude_config.py::test_the_shell_is_not_denied_outright"
+      - "tests/test_docs.py::test_no_workflow_interpolates_untrusted_content_into_a_command"
+      - "tests/test_docs.py::test_the_issue_reference_is_still_usable"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION]"
+    evidence:
+      - "Issue #88"
 
   - id: REQ-SECURITY-ORGSCHEMA-001
     statement: >-

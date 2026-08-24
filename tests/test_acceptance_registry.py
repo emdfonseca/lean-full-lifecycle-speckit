@@ -68,7 +68,10 @@ def test_wording_evidence_is_rejected(tmp_path, pytest_evidence):
 @pytest.mark.req("REQ-TOOLING-ACCEPTANCE-001")
 def test_blocked_metadata_is_required(tmp_path, pytest_evidence):
     def change(rows):
-        blocked = scenario(rows, "Data migration")
+        # Any scenario still phase: blocked. Named rather than found by
+        # scanning so the test says which case it is exercising; if this one
+        # is ever delivered, point it at another blocked scenario.
+        blocked = scenario(rows, "Split/merge/retire Story")
         blocked.pop("missing")
         blocked["tracked_by"] = 0
 

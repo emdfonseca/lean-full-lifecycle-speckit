@@ -155,6 +155,47 @@ def secret_path_rules(sensitive: dict | None) -> list[str]:
     return rules
 
 
+# What each forbidden authorization looks like as a rule the agent enforces.
+# Only the ones with a primitive: the rest are reported as unmappable rather
+# than emitted as rules that would look like enforcement and be none.
+NEVER_AUTHORIZE_RULES = {
+    "secret_access": [],          # covered by secret_path_rules from the policy
+    "mcp_installation": ["Bash(claude mcp add:*)", "Bash(npx:* @modelcontextprotocol/*)"],
+    "plugin_installation": ["Bash(claude plugin install:*)"],
+    "skill_installation": ["Bash(claude skill install:*)"],
+    "deployment": ["Bash(kubectl apply:*)", "Bash(terraform apply:*)",
+                   "Bash(helm upgrade:*)"],
+}
+
+
+def never_authorize_rules(agent: dict) -> tuple[list[str], list[str]]:
+    """Deny rules for what untrusted input may never authorize, and what is left.
+
+    `agent-policy.yml` lists eight actions untrusted input must never
+    authorize, and nothing read the list. Five have a rule a permission system
+    can express. Three do not:
+
+    `shell_execution` is already `shell_default: ask` -- denying the shell
+    outright would stop the workflows this bundle ships. `production_access`
+    names an environment, not a command. `policy_change` is a file edit whose
+    danger is semantic, not syntactic.
+
+    Those three are returned as unenforced rather than approximated. A rule
+    that half-covers one of them would make the generated configuration look
+    stricter than it is, which is the failure this whole issue is about.
+    """
+    listed = list((agent.get("untrusted_inputs_never_authorize") or []))
+    rules: list[str] = []
+    unenforced: list[str] = []
+    for action in listed:
+        mapped = NEVER_AUTHORIZE_RULES.get(action)
+        if mapped is None:
+            unenforced.append(action)
+            continue
+        rules.extend(mapped)
+    return rules, unenforced
+
+
 def build(bootstrap: dict, agent: dict, routing: dict,
           sensitive: dict | None = None) -> Proposal:
     spec = bootstrap["integrations"]["claude"]
@@ -180,6 +221,28 @@ def build(bootstrap: dict, agent: dict, routing: dict,
     if secret_rules:
         lists["deny"].extend(secret_rules)
         proposal.by_rule["secret_file_read"] = list(secret_rules)
+
+    never_rules, never_unenforced = never_authorize_rules(agent)
+    if never_rules:
+        lists["deny"].extend(never_rules)
+        proposal.by_rule["untrusted_inputs_never_authorize"] = list(never_rules)
+    for action in never_unenforced:
+        proposal.unmappable.append(Unmappable(
+            f"untrusted_inputs_never_authorize:{action}",
+            {
+                "shell_execution":
+                    "The shell is already `ask` by policy. Denying it outright "
+                    "would stop the workflows this bundle ships, so the "
+                    "protection is the prompt, not a rule.",
+                "production_access":
+                    "Names an environment rather than a command. No permission "
+                    "primitive addresses it.",
+                "policy_change":
+                    "A file edit whose danger is semantic. A path rule would "
+                    "deny editing policy at all, which the lifecycle requires.",
+            }.get(action, "No permission primitive expresses this."),
+            "Reported here rather than approximated, so the generated config "
+            "is not read as stricter than it is."))
 
     for name, values in lists.items():
         if values:

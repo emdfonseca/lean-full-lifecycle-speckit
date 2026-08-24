@@ -210,19 +210,26 @@ scenarios:
     group: brownfield
     name: Data migration
     priority: must
-    phase: blocked
+    phase: p12
     expected: A high-blast-radius or irreversible migration requires explicit risk evidence and an authorized override before execution.
-    missing: policy/risk-policy.yml is loaded by no script, so migration complexity and irreversible-migration overrides are dead.
-    tracked_by: 88
+    status: covered
+    verified_by:
+      - tests/test_risk.py::test_a_migration_carrying_the_override_is_high_and_carries_high_controls
+      - tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[irreversible_high_blast_radius_migration]
+      - tests/test_risk.py::test_an_override_the_policy_does_not_declare_escalates_nothing
+      - tests/test_risk.py::test_the_controls_are_required_not_certified
 
   - id: AC-BROWNFIELD-006
     group: brownfield
     name: Security-sensitive change
     priority: must
-    phase: blocked
+    phase: p12
     expected: An authentication or authorization boundary change requires threat analysis, security tests, and authorized security review.
-    missing: policy/risk-policy.yml is loaded by no script, so threat-analysis and security-review requirements are dead.
-    tracked_by: 88
+    status: covered
+    verified_by:
+      - tests/test_risk.py::test_an_auth_boundary_change_is_high_and_requires_security_review
+      - tests/test_risk.py::test_every_declared_override_makes_an_otherwise_zero_item_high[authentication_or_authorization_boundary_change]
+      - tests/test_risk.py::test_no_dimension_or_override_is_named_in_the_code
 
   - id: AC-BROWNFIELD-007
     group: brownfield
@@ -348,12 +355,17 @@ scenarios:
 
   - id: AC-SECURITY-001
     group: security
-    name: Issue-body prompt injection
+    name: Untrusted text is not interpolated into a command
     priority: must
-    phase: blocked
-    expected: Untrusted issue-body text cannot authorize an action or override workflow and policy constraints.
-    missing: policy/agent-policy.yml untrusted-input rules are read by no script.
-    tracked_by: 88
+    phase: p12
+    expected: No workflow step interpolates a policy-named untrusted source into a command argument or prompt, and the actions untrusted input may never authorize are emitted as deny rules or reported as unenforced.
+    status: covered
+    verified_by:
+      - tests/test_docs.py::test_no_workflow_interpolates_untrusted_content_into_a_command
+      - tests/test_docs.py::test_the_issue_reference_is_still_usable
+      - tests/test_claude_config.py::test_the_never_authorize_list_reaches_the_deny_rules
+      - tests/test_claude_config.py::test_what_cannot_be_expressed_is_reported_not_approximated
+      - tests/test_claude_config.py::test_every_listed_action_is_either_a_rule_or_reported
 
   - id: AC-SECURITY-002
     group: security

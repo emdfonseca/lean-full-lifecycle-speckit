@@ -47,6 +47,9 @@ provides:
   - name: speckit.github-lifecycle.triage
     file: commands/triage.md
     description: Assess an incoming item and propose what happens to it next.
+  - name: speckit.github-lifecycle.risk
+    file: commands/risk.md
+    description: Score a change's risk from policy and name the controls it requires.
   - name: speckit.github-lifecycle.discover
     file: commands/discover.md
     description: Validate a bounded discovery record.

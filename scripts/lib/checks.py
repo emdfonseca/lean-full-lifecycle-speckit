@@ -155,6 +155,53 @@ def shell_no_interpolation(ctx: Ctx) -> Iterator[Finding]:
                                   "shell command contains template interpolation")
 
 
+@check("SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION",
+       "No workflow step interpolates untrusted text into a command",
+       scope="workflow")
+def untrusted_no_command_interpolation(ctx: Ctx) -> Iterator[Finding]:
+    """The enforceable half of "untrusted input never authorizes an action".
+
+    No Python check stops prompt injection reaching an agent's context, and
+    a check that claimed to would be worse than none. What is checkable is
+    narrower and real: text that arrives from an issue body, a comment or a
+    log must not be interpolated into the argument string of a command step.
+
+    Parallel to SEC-SHELL-NO-INTERPOLATION, which guards `type: shell`. This
+    guards command steps, where the interpolated value becomes the
+    instruction an agent acts on.
+
+    A step naming the issue *reference* -- `inputs.issue_ref` -- is fine and
+    is how nearly every step addresses its work. What is refused is
+    interpolating the untrusted *content*.
+    """
+    import re
+
+    # ctx.root, not the module ROOT: a check that reads the real tree cannot
+    # be exercised against a mutated copy, which is how its negative test works.
+    policy = load_yaml(ctx.root / "policy" / "agent-policy.yml") or {}
+    sources = {str(s) for s in (policy.get("untrusted_inputs") or [])}
+    if not sources:
+        return
+    # `{{ ... issue_body ... }}` and friends: the untrusted source named
+    # inside an interpolation, not merely mentioned in prose.
+    pattern = re.compile(
+        r"\{\{[^}]*\b(" + "|".join(re.escape(s) for s in sorted(sources)) + r")\b[^}]*\}\}")
+    for comp in ctx.inv.by_kind("workflow"):
+        for step in _steps(comp):
+            if step.get("type") in ("shell", "gate"):
+                continue          # shell has its own check; a gate shows, it does not execute
+            args = str(((step.get("input") or {}).get("args")) or "")
+            prompt = str(step.get("prompt") or "")
+            for field_name, text in (("input.args", args), ("prompt", prompt)):
+                found = pattern.search(text)
+                if found:
+                    yield ctx.finding(
+                        "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION",
+                        f"{comp.id}:{step.get('id')}:{field_name}",
+                        f"interpolates {found.group(1)!r}, which agent-policy.yml "
+                        f"lists as an untrusted input")
+
+
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",
        scope="workflow")
 def gate_verdict(ctx: Ctx) -> Iterator[Finding]:

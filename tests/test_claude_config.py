@@ -298,3 +298,49 @@ def test_the_secret_rules_are_attributed_to_a_rule_name():
     built = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE)
     assert "secret_file_read" in built.by_rule
     assert "Read(**/.env)" in built.by_rule["secret_file_read"]
+
+
+# --- what untrusted input may never authorize ---------------------------------
+
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+def test_the_never_authorize_list_reaches_the_deny_rules():
+    # agent-policy.yml listed eight forbidden authorizations and nothing read
+    # the list.
+    built = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE)
+    deny = built.settings["permissions"]["deny"]
+    assert "Bash(claude mcp add:*)" in deny
+    assert "Bash(claude plugin install:*)" in deny
+    assert "untrusted_inputs_never_authorize" in built.by_rule
+
+
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+def test_what_cannot_be_expressed_is_reported_not_approximated():
+    # A rule half-covering production_access would make the config look
+    # stricter than it is, which is the failure this issue is about.
+    _, unenforced = cc.never_authorize_rules(AGENT)
+    assert set(unenforced) == {"shell_execution", "production_access",
+                               "policy_change"}
+    built = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE)
+    reported = {u.rule.split(":", 1)[1] for u in built.unmappable
+                if u.rule.startswith("untrusted_inputs_never_authorize:")}
+    assert reported == set(unenforced)
+
+
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+def test_every_listed_action_is_either_a_rule_or_reported():
+    # The whole list is accounted for. An action silently dropped would be a
+    # policy line nobody reads, again.
+    listed = set(AGENT["untrusted_inputs_never_authorize"])
+    mapped = {a for a in listed if cc.NEVER_AUTHORIZE_RULES.get(a) is not None}
+    _, unenforced = cc.never_authorize_rules(AGENT)
+    assert mapped | set(unenforced) == listed
+
+
+@pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+def test_the_shell_is_not_denied_outright():
+    # shell_default is `ask`. Denying Bash entirely would stop the workflows
+    # this bundle ships, so the protection there is the prompt, not a rule.
+    deny = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE) \
+             .settings["permissions"]["deny"]
+    assert "Bash" not in deny
+    assert "Bash(*)" not in deny
