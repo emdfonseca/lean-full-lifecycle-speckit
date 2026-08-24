@@ -1776,11 +1776,12 @@ requirements:
     statement: >-
       The install lifecycle must be verified by its effects, not by exit
       codes. The official validator runs in the suite and is shown able to
-      fail; an update restores a component that was changed or deleted, so an
-      update that refreshed nothing cannot pass; a reinstall is asserted to
-      have restored the presets, components, and files removal took; the
-      behaviour of installing from a built archive is pinned; and a failed
-      install leaves no partial component and is not recorded as installed.
+      fail; a local source install materializes every declared component; an
+      update restores a component that was changed or deleted, so an update
+      that refreshed nothing cannot pass; a reinstall is asserted to have
+      restored the presets, components, and files removal took; the behaviour
+      of installing from a built archive is pinned; and a failed install leaves
+      no partial component and is not recorded as installed.
     priority: must
     owner: framework
     release: "0.9.0"
@@ -1791,6 +1792,7 @@ requirements:
     verified_by:
       - "tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_runs_and_passes"
       - "tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_rejects_a_broken_manifest"
+      - "tests/sandbox/test_bundle_mechanics.py::test_dev_install_loads_every_source_component"
       - "tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_component_that_was_changed"
       - "tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_deleted_component_file"
       - "tests/sandbox/test_bundle_mechanics.py::test_reinstall_restores_presets_commands_and_components"
@@ -1798,3 +1800,25 @@ requirements:
       - "tests/sandbox/test_bundle_mechanics.py::test_a_failed_install_leaves_no_partial_component"
     evidence:
       - "Issue #83"
+
+  - id: REQ-TOOLING-ACCEPTANCE-001
+    statement: >-
+      The acceptance registry has a strict schema and resolves behavioral test
+      evidence against pytest collection. Wording-only tests cannot count as
+      behavioral evidence, blocked and pilot scenarios remain distinct from
+      test gaps, and the P12 exit gate rejects every must scenario not covered.
+    priority: must
+    owner: framework
+    release: "0.9.0"
+    status: verified
+    components:
+      - script:scripts/validate_acceptance.py
+      - script:tooling/acceptance-scenarios.yml
+      - script:tooling/schemas/acceptance-scenarios.schema.json
+    verified_by:
+      - "tests/test_acceptance_registry.py::test_registry_is_consistent"
+      - "tests/test_acceptance_registry.py::test_unknown_test_evidence_is_rejected"
+      - "tests/test_acceptance_registry.py::test_missing_test_evidence_is_rejected"
+      - "tests/test_acceptance_registry.py::test_wording_evidence_is_rejected"
+      - "tests/test_acceptance_registry.py::test_blocked_metadata_is_required"
+      - "tests/test_acceptance_registry.py::test_p12_gate_rejects_partial_and_absent_but_ignores_other_phases"

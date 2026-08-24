@@ -1014,8 +1014,10 @@ Also test:
 
 ## Phase 9 exit gate
 
-All `must` acceptance scenarios pass, and every failure produces a regression
-test before its fix is accepted.
+Run `make p12-exit`. Only `p12` registry rows participate in this gate, and all
+`must` rows must be covered. Route `p13` rows to controlled pilots and blocked
+rows to their `tracked_by` issues. Every behavioral failure produces a
+regression test before its fix is accepted.
 
 ---
 

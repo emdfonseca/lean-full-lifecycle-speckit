@@ -79,7 +79,31 @@ def test_the_official_validator_rejects_a_broken_manifest(tmp_path):
     assert result.returncode != 0
 
 
-# --- AC2: an update that refreshes nothing fails ------------------------------
+# --- AC2: local source installation materializes every component -------------
+
+@pytest.mark.req("REQ-PACKAGE-MECHANICS-001")
+def test_dev_install_loads_every_source_component(tmp_path, inv):
+    import local_catalog
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    initialized = run(["specify", "init", "--here", "--force",
+                       "--non-interactive", "--integration", "opencode",
+                       "--script", "py"], tmp_path)
+    assert initialized.returncode == 0, initialized.stderr
+
+    assert local_catalog.dev_install(tmp_path) == 0
+    assert (tmp_path / PRESET).is_dir()
+    assert (tmp_path / EXTENSION / "scripts" / "doctor.py").is_file()
+
+    workflows = run(["specify", "workflow", "list"], tmp_path).stdout
+    for component in inv.by_kind("workflow"):
+        assert component.id in workflows
+
+    # Source installs deliberately install components without bundle ownership.
+    assert BUNDLE not in run(["specify", "bundle", "list"], tmp_path).stdout
+
+
+# --- AC3: an update that refreshes nothing fails ------------------------------
 
 @pytest.mark.req("REQ-PACKAGE-MECHANICS-001")
 def test_update_restores_a_component_that_was_changed(tmp_path_factory, served):
@@ -107,7 +131,7 @@ def test_update_restores_a_deleted_component_file(tmp_path_factory, served):
     assert target.is_file(), "update did not restore a deleted file"
 
 
-# --- AC3: a reinstall is asserted to have restored what removal took ---------
+# --- AC4: a reinstall is asserted to have restored what removal took ---------
 
 @pytest.mark.req("REQ-PACKAGE-MECHANICS-001")
 def test_reinstall_restores_presets_commands_and_components(tmp_path_factory,
@@ -139,7 +163,7 @@ def test_reinstall_restores_presets_commands_and_components(tmp_path_factory,
     assert components(project) == before
 
 
-# --- AC4: installing from a built archive ------------------------------------
+# --- AC5: installing from a built archive ------------------------------------
 
 @pytest.mark.req("REQ-PACKAGE-MECHANICS-001")
 def test_installing_from_a_built_archive_is_recorded(tmp_path_factory, served):
@@ -170,7 +194,7 @@ def test_installing_from_a_built_archive_is_recorded(tmp_path_factory, served):
     assert not (project / EXTENSION).is_dir()
 
 
-# --- AC5: a failed install leaves the project clean --------------------------
+# --- AC6: a failed install leaves the project clean --------------------------
 
 @pytest.mark.req("REQ-PACKAGE-MECHANICS-001")
 def test_a_failed_install_leaves_no_partial_component(tmp_path_factory):

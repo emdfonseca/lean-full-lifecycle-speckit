@@ -1,0 +1,508 @@
+# Current acceptance state. The audit in docs/evidence/p12-coverage.md is
+# point-in-time evidence; this registry is the gate's source of truth.
+schema_version: "1.0"
+evidence: docs/evidence/p12-coverage.md
+
+scenarios:
+  - id: AC-BUNDLE-001
+    group: bundle-mechanics
+    name: Official validation
+    priority: must
+    phase: p12
+    expected: The official Spec Kit offline validator accepts the bundle and rejects a malformed manifest.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_runs_and_passes
+      - tests/sandbox/test_bundle_mechanics.py::test_the_official_validator_rejects_a_broken_manifest
+
+  - id: AC-BUNDLE-002
+    group: bundle-mechanics
+    name: Official build
+    priority: must
+    phase: p12
+    expected: The official Spec Kit build produces one archive containing the manifest and every declared component without development files.
+    status: covered
+    verified_by:
+      - tests/test_packaging.py::test_artifact_contains_no_development_files
+      - tests/test_packaging.py::test_artifact_carries_the_manifest_and_readme
+      - tests/test_packaging.py::test_artifact_carries_every_component
+
+  - id: AC-BUNDLE-003
+    group: bundle-mechanics
+    name: Local-directory install
+    priority: must
+    phase: p12
+    expected: A development install from the local source directory installs the bundle's declared components into a clean project.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_dev_install_loads_every_source_component
+
+  - id: AC-BUNDLE-004
+    group: bundle-mechanics
+    name: Built-ZIP install
+    priority: must
+    phase: p12
+    expected: Installing from the built archive alone cannot resolve referenced components, fails cleanly, and leaves no installed component.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_installing_from_a_built_archive_is_recorded
+
+  - id: AC-BUNDLE-005
+    group: bundle-mechanics
+    name: Catalog install
+    priority: must
+    phase: p12
+    expected: Installing through a registered catalog succeeds and installs the bundle's declared components.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_lifecycle.py::test_bundle_installs_from_catalog
+      - tests/sandbox/test_lifecycle.py::test_all_workflows_installed
+
+  - id: AC-BUNDLE-006
+    group: bundle-mechanics
+    name: Second install idempotency
+    priority: must
+    phase: p12
+    expected: Installing the same bundle a second time succeeds without changing the installed tree.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_lifecycle.py::test_second_install_is_idempotent
+
+  - id: AC-BUNDLE-007
+    group: bundle-mechanics
+    name: Update
+    priority: must
+    phase: p12
+    expected: Updating an installed bundle restores changed or deleted component files from the catalog.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_component_that_was_changed
+      - tests/sandbox/test_bundle_mechanics.py::test_update_restores_a_deleted_component_file
+
+  - id: AC-BUNDLE-008
+    group: bundle-mechanics
+    name: Remove
+    priority: must
+    phase: p12
+    expected: Removing the bundle removes the components and commands it installed.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_claude_install.py::test_removing_the_bundle_removes_its_commands
+      - tests/sandbox/test_lifecycle.py::test_remove_then_reinstall
+
+  - id: AC-BUNDLE-009
+    group: bundle-mechanics
+    name: Reinstall
+    priority: must
+    phase: p12
+    expected: Reinstalling after removal restores the presets, commands, components, and component count.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_reinstall_restores_presets_commands_and_components
+
+  - id: AC-BUNDLE-010
+    group: bundle-mechanics
+    name: Overlay preservation
+    priority: must
+    phase: p12
+    expected: Project workflow overlays remain present and effective across install, update, and removal operations.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_overlays.py::test_overlay_applies_before_any_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_bundle_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_workflow_update
+      - tests/sandbox/test_overlays.py::test_overlay_survives_second_bundle_install
+
+  - id: AC-BUNDLE-011
+    group: bundle-mechanics
+    name: Failed-install rollback
+    priority: must
+    phase: p12
+    expected: A failed install leaves no partial component, preset, or installed-bundle record.
+    status: covered
+    verified_by:
+      - tests/sandbox/test_bundle_mechanics.py::test_a_failed_install_leaves_no_partial_component
+
+  - id: AC-GREENFIELD-001
+    group: greenfield
+    name: Framework-only empty repo
+    priority: must
+    phase: p13
+    expected: A framework-only bootstrap in an empty repository creates framework artifacts without product, stack, or backlog artifacts.
+
+  - id: AC-GREENFIELD-002
+    group: greenfield
+    name: Product bootstrap empty repo
+    priority: must
+    phase: p13
+    expected: A product bootstrap in an empty repository creates product context, an initial Epic set, and a startable queue.
+
+  - id: AC-GREENFIELD-003
+    group: greenfield
+    name: UI-heavy product uses prototype
+    priority: must
+    phase: p13
+    expected: Material user-interface uncertainty routes a product bootstrap through a prototype before implementation.
+
+  - id: AC-GREENFIELD-004
+    group: greenfield
+    name: Backend product skips prototype
+    priority: must
+    phase: p13
+    expected: A backend product with no material interface uncertainty proceeds without manufacturing a prototype step.
+
+  - id: AC-GREENFIELD-005
+    group: greenfield
+    name: Meaningful code triggers brownfield handoff
+    priority: must
+    phase: p12
+    expected: Product code or a product test suite blocks greenfield bootstrap and recommends brownfield adoption before any write.
+    status: covered
+    verified_by:
+      - tests/test_mismatch.py::test_one_domain_module_is_a_mismatch
+      - tests/test_mismatch.py::test_a_test_suite_is_evidence_of_a_product
+      - tests/test_mismatch.py::test_a_mismatch_recommends_brownfield_adoption
+      - tests/test_mismatch.py::test_the_check_and_its_gate_precede_every_writing_step
+
+  - id: AC-GREENFIELD-006
+    group: greenfield
+    name: First Ready queue is bounded
+    priority: must
+    phase: p13
+    expected: A product bootstrap proposes only a deliberately bounded first queue of Ready work.
+
+  - id: AC-GREENFIELD-007
+    group: greenfield
+    name: First Story is not implemented during bootstrap
+    priority: must
+    phase: p13
+    expected: Bootstrap stops after establishing context and startable work without implementing the first Story.
+
+  - id: AC-BROWNFIELD-001
+    group: brownfield
+    name: No-target shallow adoption
+    priority: must
+    phase: p13
+    expected: Brownfield adoption with no target performs a shallow read-only scan and writes only declared framework records.
+
+  - id: AC-BROWNFIELD-002
+    group: brownfield
+    name: Targeted bug with regression test
+    priority: must
+    phase: p13
+    expected: A targeted bug fix starts from a failing regression test and stays within the approved target.
+
+  - id: AC-BROWNFIELD-003
+    group: brownfield
+    name: Targeted feature with characterization safety
+    priority: must
+    phase: p13
+    expected: A targeted feature first characterizes risky existing behavior and changes only the approved target.
+
+  - id: AC-BROWNFIELD-004
+    group: brownfield
+    name: Legacy hotspot
+    priority: must
+    phase: p13
+    expected: Work in a legacy hotspot uses scoped exceptions and a quality ratchet without broad modernization.
+
+  - id: AC-BROWNFIELD-005
+    group: brownfield
+    name: Data migration
+    priority: must
+    phase: blocked
+    expected: A high-blast-radius or irreversible migration requires explicit risk evidence and an authorized override before execution.
+    missing: policy/risk-policy.yml is loaded by no script, so migration complexity and irreversible-migration overrides are dead.
+    tracked_by: 88
+
+  - id: AC-BROWNFIELD-006
+    group: brownfield
+    name: Security-sensitive change
+    priority: must
+    phase: blocked
+    expected: An authentication or authorization boundary change requires threat analysis, security tests, and authorized security review.
+    missing: policy/risk-policy.yml is loaded by no script, so threat-analysis and security-review requirements are dead.
+    tracked_by: 88
+
+  - id: AC-BROWNFIELD-007
+    group: brownfield
+    name: No unrelated rewrite/churn
+    priority: must
+    phase: p13
+    expected: Targeted brownfield work produces no unrelated rewrite, mass formatting, or dependency churn.
+
+  - id: AC-BROWNFIELD-008
+    group: brownfield
+    name: Scoped exception expiry/ownership
+    priority: must
+    phase: p12
+    expected: Exceptions require a narrow scope, owner, approver, and review or expiry date, and expired exceptions stop suppressing rules.
+    status: covered
+    verified_by:
+      - tests/test_exception.py::test_an_exception_past_its_review_date_is_reported_expired
+      - tests/test_exception.py::test_an_expired_exception_stops_suppressing_its_rule
+      - tests/test_exception.py::test_a_missing_required_field_is_refused_by_name
+      - tests/test_exception.py::test_a_permanent_exception_without_an_approver_is_refused
+
+  - id: AC-BROWNFIELD-009
+    group: brownfield
+    name: Production evidence is minimized/redacted
+    priority: must
+    phase: blocked
+    expected: Workflow-written production evidence is minimized and visibly redacted before review without treating redaction as read authorization.
+    missing: sensitive.py scans workflow evidence but exposes no workflow redaction entry point, so workflow-written evidence is not redacted.
+    tracked_by: 89
+
+  - id: AC-BACKLOG-001
+    group: backlog
+    name: Duplicate triage
+    priority: must
+    phase: p13
+    expected: Triage surfaces a duplicate and the human gate stops any transition or duplicate creation.
+
+  - id: AC-BACKLOG-002
+    group: backlog
+    name: Security finding triage
+    priority: must
+    phase: blocked
+    expected: A security finding is classified by severity and routed to the security-specific backlog path.
+    missing: triage.py has no severity or security concept, and policy/item-types.yml has no security finding type.
+    tracked_by: 90
+
+  - id: AC-BACKLOG-003
+    group: backlog
+    name: Not-ready refinement
+    priority: must
+    phase: p12
+    expected: A valid not-ready verdict causes the readiness command to fail the transition gate.
+    status: covered
+    verified_by:
+      - tests/test_readiness.py::test_a_not_ready_verdict_exits_non_zero
+      - tests/test_readiness.py::test_a_not_ready_verdict_with_no_blocking_question_is_still_not_ready
+
+  - id: AC-BACKLOG-004
+    group: backlog
+    name: Ready refinement
+    priority: must
+    phase: p12
+    expected: Refining to Ready requires readiness-verdict evidence and applies only when that evidence is supplied.
+    status: covered
+    verified_by:
+      - tests/test_transition.py::test_refining_to_ready_requires_the_readiness_evidence
+      - tests/test_transition.py::test_ready_is_refused_without_that_evidence
+      - tests/test_transition.py::test_ready_is_applied_once_the_evidence_is_asserted
+
+  - id: AC-BACKLOG-005
+    group: backlog
+    name: First and second decomposition waves
+    priority: must
+    phase: p12
+    expected: Repeated decomposition creates only the remaining horizon shortfall and stops once enough children are Ready.
+    status: covered
+    verified_by:
+      - tests/test_decompose.py::test_a_second_wave_creates_only_what_the_horizon_still_needs
+      - tests/test_decompose.py::test_a_second_wave_stops_once_the_horizon_is_met
+
+  - id: AC-BACKLOG-006
+    group: backlog
+    name: Split/merge/retire Story
+    priority: must
+    phase: blocked
+    expected: Story split, merge, and retirement preserve relationships and record supersession without losing history.
+    missing: decompose.py has no split, merge, retire, or supersede path.
+    tracked_by: 90
+
+  - id: AC-BACKLOG-007
+    group: backlog
+    name: Technical finding capture
+    priority: must
+    phase: blocked
+    expected: A technical finding with required evidence is duplicate-checked, captured with the correct type, and linked to its source.
+    missing: No discovery or delivery workflow invokes capture for a technical finding, and capture.py has no such item type.
+    tracked_by: 90
+
+  - id: AC-BACKLOG-008
+    group: backlog
+    name: Failed-outcome capture
+    priority: must
+    phase: p12
+    expected: A missed outcome is assessed as missed, duplicate-searched, and captured only after approval.
+    status: partial
+    verified_by:
+      - tests/test_outcome.py::test_a_missed_target_with_sufficient_evidence_is_missed
+      - tests/test_outcome_review.py::test_the_missed_branch_searches_before_it_creates
+      - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate
+
+  - id: AC-SECURITY-001
+    group: security
+    name: Issue-body prompt injection
+    priority: must
+    phase: blocked
+    expected: Untrusted issue-body text cannot authorize an action or override workflow and policy constraints.
+    missing: policy/agent-policy.yml untrusted-input rules are read by no script.
+    tracked_by: 88
+
+  - id: AC-SECURITY-002
+    group: security
+    name: Agent-output shell injection
+    priority: must
+    phase: p12
+    expected: Workflow shell steps reject interpolation and permit only allowlisted fixed commands.
+    status: covered
+    verified_by:
+      - tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-NO-INTERPOLATION]
+      - tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ALLOWLIST]
+
+  - id: AC-SECURITY-003
+    group: security
+    name: Unapproved protected push
+    priority: must
+    phase: p12
+    expected: Every push to a protected branch, including a bare git push, is denied unless approved.
+    status: partial
+    verified_by:
+      - tests/test_opencode_config.py::test_the_generated_decision_is_the_one_we_meant
+      - tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant
+
+  - id: AC-SECURITY-004
+    group: security
+    name: Secret-file read
+    priority: must
+    phase: blocked
+    expected: Agent permissions deny reading secret files before their contents can enter a prompt or evidence record.
+    missing: No generated permission rule denies secret-file paths; sensitive.py denied sources are data sources, not paths.
+    tracked_by: 89
+
+  - id: AC-SECURITY-005
+    group: security
+    name: External-directory access
+    priority: must
+    phase: p12
+    expected: Generated agent configuration denies access outside the resolved project directory.
+    status: covered
+    verified_by:
+      - tests/test_opencode_config.py::test_external_directory_access_is_denied
+      - tests/test_claude_config.py::test_external_directories_are_declared_empty
+
+  - id: AC-SECURITY-006
+    group: security
+    name: Unapproved provider
+    priority: must
+    phase: p12
+    expected: A model from a provider outside the policy allowlist is refused, including fallback models.
+    status: covered
+    verified_by:
+      - tests/test_opencode_models.py::test_a_model_from_an_unapproved_provider_is_refused
+      - tests/test_opencode_models.py::test_a_bad_fallback_is_refused_and_identified_as_a_fallback
+
+  - id: AC-SECURITY-007
+    group: security
+    name: Unapproved MCP/plugin/skill
+    priority: must
+    phase: p12
+    expected: Model Context Protocol servers, plugins, and skills remain disabled unless policy and a human approval explicitly enable them.
+    status: partial
+    verified_by:
+      - tests/test_claude_config.py::test_mcp_servers_are_not_enabled_wholesale
+      - tests/test_claude_config.py::test_mcp_stays_off_unless_policy_says_otherwise
+      - tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named
+
+  - id: AC-SECURITY-008
+    group: security
+    name: Organization schema mutation without authority
+    priority: must
+    phase: blocked
+    expected: Organization Issue Field creation or mutation is refused without explicit organization authority.
+    missing: Nothing creates or alters organization Issue Fields, so there is no mutation path to gate.
+    tracked_by: 91
+
+  - id: AC-SECURITY-009
+    group: security
+    name: GitHub read-back mismatch
+    priority: must
+    phase: p12
+    expected: A GitHub write whose read-back differs raises a conflict and is never reported as success.
+    status: covered
+    verified_by:
+      - tests/test_field_backend.py::test_a_write_that_does_not_stick_raises_conflict
+      - tests/test_field_backend.py::test_org_backend_reads_back_and_conflicts_on_mismatch
+      - tests/test_field_backend.py::test_placement_refuses_when_the_item_reads_back_as_another_issue
+
+  - id: AC-SECURITY-010
+    group: security
+    name: GitHub rate-limit handling
+    priority: must
+    phase: p12
+    expected: GitHub rate limits honor retry delay, retry safe calls, and never duplicate an unsafe mutation.
+    status: partial
+    verified_by:
+      - tests/test_github_api.py::test_failures_are_classified_not_stringly_typed
+      - tests/test_github_api.py::test_rate_limit_carries_a_retry_delay
+
+  - id: AC-OUTCOME-001
+    group: outcome
+    name: Validated
+    priority: must
+    phase: p12
+    expected: A met target with intact guardrails can reach Validated only with a named validation authority.
+    status: covered
+    verified_by:
+      - tests/test_outcome.py::test_a_met_target_with_guardrails_intact_is_recommended_for_validation
+      - tests/test_outcome.py::test_validation_without_a_named_authority_is_refused
+      - tests/test_outcome.py::test_validation_with_an_authority_is_permitted
+
+  - id: AC-OUTCOME-002
+    group: outcome
+    name: Missed
+    priority: must
+    phase: p12
+    expected: A sufficiently observed unmet target is reported as missed and remains distinct from an inconclusive result.
+    status: covered
+    verified_by:
+      - tests/test_outcome.py::test_a_missed_target_with_sufficient_evidence_is_missed
+      - tests/test_outcome.py::test_a_missed_target_says_the_evidence_supports_it
+
+  - id: AC-OUTCOME-003
+    group: outcome
+    name: Inconclusive
+    priority: must
+    phase: p12
+    expected: An inconclusive result follows its own route, is not called a missed target, and creates no product finding.
+    status: covered
+    verified_by:
+      - tests/test_outcome.py::test_an_inconclusive_result_is_not_reported_as_missed
+      - tests/test_outcome_review.py::test_the_workflow_can_carry_an_inconclusive_assessment
+      - tests/test_outcome_review.py::test_the_inconclusive_branch_creates_no_follow_up_finding
+
+  - id: AC-OUTCOME-004
+    group: outcome
+    name: Guardrail regression
+    priority: must
+    phase: p12
+    expected: A regressed guardrail defeats a met target and the assessment reports both facts.
+    status: covered
+    verified_by:
+      - tests/test_outcome.py::test_a_regressed_guardrail_defeats_a_met_target
+
+  - id: AC-OUTCOME-005
+    group: outcome
+    name: Insufficient observation window
+    priority: must
+    phase: p12
+    expected: An unelapsed window or undersized sample remains Measuring and is not reported as failure.
+    status: covered
+    verified_by:
+      - tests/test_outcome.py::test_an_unelapsed_window_leaves_it_measuring
+      - tests/test_outcome.py::test_an_undersized_sample_leaves_it_measuring
+      - tests/test_outcome.py::test_evidence_sufficiency_is_checked_before_the_target
+
+  - id: AC-OUTCOME-006
+    group: outcome
+    name: Invalid data source
+    priority: must
+    phase: p12
+    expected: An unreadable or invalid data source blocks assessment and follows a non-concluding workflow route.
+    status: partial
+    verified_by:
+      - tests/test_outcome.py::test_an_unreadable_data_source_blocks_rather_than_concludes
+      - tests/test_outcome.py::test_an_incomplete_record_cannot_be_judged

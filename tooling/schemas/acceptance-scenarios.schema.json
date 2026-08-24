@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Acceptance scenario registry",
+  "type": "object",
+  "required": ["schema_version", "evidence", "scenarios"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "evidence": { "type": "string", "minLength": 1 },
+    "scenarios": {
+      "type": "array",
+      "minItems": 51,
+      "maxItems": 51,
+      "items": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "required": ["id", "group", "name", "priority", "phase", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^AC-[A-Z]+-[0-9]{3}$" },
+        "group": {
+          "enum": ["bundle-mechanics", "greenfield", "brownfield", "backlog", "security", "outcome"]
+        },
+        "name": { "type": "string", "minLength": 3 },
+        "priority": { "enum": ["must", "should", "may"] },
+        "phase": { "enum": ["p12", "p13", "blocked"] },
+        "expected": { "type": "string", "minLength": 20 },
+        "status": { "enum": ["covered", "partial", "absent"] },
+        "verified_by": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^tests/.+::.+" }
+        },
+        "missing": { "type": "string", "minLength": 10 },
+        "tracked_by": { "type": "integer", "minimum": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "phase": { "const": "p12" } }, "required": ["phase"] },
+          "then": {
+            "required": ["status"],
+            "not": {
+              "anyOf": [
+                { "required": ["missing"] },
+                { "required": ["tracked_by"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["covered", "partial"] } },
+            "required": ["status"]
+          },
+          "then": { "required": ["verified_by"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "absent" } }, "required": ["status"] },
+          "then": { "not": { "required": ["verified_by"] } }
+        },
+        {
+          "if": { "properties": { "phase": { "const": "p13" } }, "required": ["phase"] },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["status"] },
+                { "required": ["verified_by"] },
+                { "required": ["missing"] },
+                { "required": ["tracked_by"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "properties": { "phase": { "const": "blocked" } }, "required": ["phase"] },
+          "then": {
+            "required": ["missing", "tracked_by"],
+            "not": {
+              "anyOf": [
+                { "required": ["status"] },
+                { "required": ["verified_by"] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
