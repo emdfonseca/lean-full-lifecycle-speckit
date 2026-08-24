@@ -36,7 +36,7 @@
       "effect": "read-write",
       "download_url": "UNSET",
       "provides": {
-        "commands": 23,
+        "commands": 24,
         "hooks": 0
       }
     }

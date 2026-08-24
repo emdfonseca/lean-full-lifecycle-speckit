@@ -900,6 +900,40 @@ requirements:
     evidence:
       - "Issue #108"
 
+  - id: REQ-BACKLOG-RESTRUCTURE-001
+    statement: >-
+      A Story too large to start is replaced by the Stories it should have
+      been, and two that turned out to be one leave one carrying the work.
+      Both end the original through a declared closure route rather than
+      leaving it open, and the reason names every successor. A split creates
+      siblings taking the original's parent, never children of it, because
+      item-types.yml declares only Epics decomposable; these operations are
+      kept out of decompose, whose model is the opposite. A split into one item
+      is refused as a rewrite, a merge requires distinct keep and drop rather
+      than inferring survival from argument order, and either operation on an
+      item with open children is refused with the children named.
+    priority: should
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.restructure
+      - script:bundle/components/extensions/github-lifecycle/scripts/restructure.py
+      - policy:item-types.yml
+    verified_by:
+      - "tests/test_restructure.py::test_a_split_creates_siblings_never_children"
+      - "tests/test_restructure.py::test_a_split_ends_the_original_naming_its_successors"
+      - "tests/test_restructure.py::test_a_split_into_one_is_refused"
+      - "tests/test_restructure.py::test_a_split_with_no_reason_is_refused"
+      - "tests/test_restructure.py::test_a_split_that_would_strand_children_is_refused"
+      - "tests/test_restructure.py::test_merging_supersedes_the_dropped_item"
+      - "tests/test_restructure.py::test_merging_an_item_with_itself_is_refused"
+      - "tests/test_restructure.py::test_merging_with_no_reason_is_refused"
+      - "tests/test_restructure.py::test_merging_does_not_strand_the_dropped_items_children"
+      - "tests/test_restructure.py::test_split_and_merge_are_not_in_decompose"
+    evidence:
+      - "Issue #109"
+
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
       A finding is searched for duplicates before it is created, including

@@ -68,12 +68,17 @@ def test_wording_evidence_is_rejected(tmp_path, pytest_evidence):
 @pytest.mark.req("REQ-TOOLING-ACCEPTANCE-001")
 def test_blocked_metadata_is_required(tmp_path, pytest_evidence):
     def change(rows):
-        # Any scenario still phase: blocked. Named rather than found by
-        # scanning so the test says which case it is exercising; if this one
-        # is ever delivered, point it at another blocked scenario.
-        blocked = scenario(rows, "Split/merge/retire Story")
-        blocked.pop("missing")
-        blocked["tracked_by"] = 0
+        # Constructs the blocked scenario rather than borrowing a real one.
+        # The registry now has none, which is the goal, and a test needing one
+        # to exist would fight that -- it had to be repointed twice already as
+        # blocked scenarios were delivered.
+        rows.append({
+            "id": "AC-TEST-001", "group": "backlog",
+            "name": "Constructed by a test", "priority": "must",
+            "phase": "blocked",
+            "expected": "A blocked scenario names what is missing and what tracks it.",
+            "tracked_by": 0,
+        })
 
     result, _ = acceptance.validate_registry(
         changed_registry(tmp_path, change), collected=pytest_evidence)

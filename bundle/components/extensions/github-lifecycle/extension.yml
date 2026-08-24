@@ -43,6 +43,9 @@ provides:
   - name: speckit.github-lifecycle.retire
     file: commands/retire.md
     description: Retire a Story that will not be delivered, or supersede one another carries.
+  - name: speckit.github-lifecycle.restructure
+    file: commands/restructure.md
+    description: Split a Story too large to start, or merge two that turned out to be one.
   - name: speckit.github-lifecycle.triage
     file: commands/triage.md
     description: Assess an incoming item and propose what happens to it next.

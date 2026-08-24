@@ -323,10 +323,16 @@ scenarios:
     group: backlog
     name: Split/merge/retire Story
     priority: must
-    phase: blocked
+    phase: p12
     expected: Story split, merge, and retirement preserve relationships and record supersession without losing history.
-    missing: decompose.py has no split, merge, retire, or supersede path.
-    tracked_by: 90
+    status: covered
+    verified_by:
+      - tests/test_restructure.py::test_a_split_creates_siblings_never_children
+      - tests/test_restructure.py::test_a_split_ends_the_original_naming_its_successors
+      - tests/test_restructure.py::test_merging_supersedes_the_dropped_item
+      - tests/test_restructure.py::test_merging_does_not_strand_the_dropped_items_children
+      - tests/test_retire.py::test_superseding_references_both_ends
+      - tests/test_retire.py::test_open_children_are_not_stranded
 
   - id: AC-BACKLOG-007
     group: backlog
