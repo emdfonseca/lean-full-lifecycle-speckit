@@ -83,14 +83,18 @@ def create(owner: str, repo: str, title: str, root: Path,
     gh = gh or GitHub()
     name, options = delivery_field(root)
 
+    # Boards this repository is linked to, not boards the owner has. Asking
+    # the owner meant nobody with an existing project could ever create one
+    # for a second repository -- the same confusion #120 fixed in inspection,
+    # reached from the other side.
     existing = inspect_target.discover_projects(
-        gh, owner, "org" if _is_org(gh, owner) else "user")
+        gh, owner, "org" if _is_org(gh, owner) else "user", repo)
     if existing:
         listed = ", ".join(f"#{p['number']} {p['title']!r}" for p in existing)
         return {"action": "refused", "problems": [
-            f"{owner} already has {len(existing)} board(s): {listed}. This "
-            f"creates the first one only; pass --project to use an existing "
-            f"board, or say which is authoritative."]}
+            f"{owner}/{repo} is already linked to {len(existing)} board(s): "
+            f"{listed}. This creates the first one only; pass --project to use "
+            f"an existing board, or say which is authoritative."]}
 
     if dry_run:
         return {"action": "dry-run", "would_create": title,

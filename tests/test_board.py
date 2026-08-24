@@ -80,11 +80,15 @@ class Calls:
         return subprocess.CompletedProcess(args, 0, "{}", "")
 
 
-def wire(monkeypatch, existing=(), accepted=True):
+def wire(monkeypatch, existing=(), accepted=True, owner_has=()):
+    """`existing` is what the repository is linked to; `owner_has` is noise."""
     monkeypatch.setattr(board, "_is_org", lambda gh, owner: False)
-    monkeypatch.setattr(it, "discover_projects", lambda gh, o, k: list(existing))
-    monkeypatch.setattr(board.inspect_target, "discover_projects",
-                        lambda gh, o, k: list(existing))
+
+    def discover(gh, o, k, repo=None):
+        return list(existing) if repo else list(owner_has or existing)
+
+    monkeypatch.setattr(it, "discover_projects", discover)
+    monkeypatch.setattr(board.inspect_target, "discover_projects", discover)
     result = type("I", (), {
         "backend": it.BACKEND_PROJECT if accepted else None,
         "roles": {"delivery_state": "Status"} if accepted else {},
@@ -243,3 +247,42 @@ def test_a_board_whose_items_cannot_be_listed_reports_every_issue(monkeypatch):
     orphans = board._unplaced_issues(
         _repo_issues(monkeypatch, [1, 2]), "acme", "widgets", 7, calls)
     assert orphans == [1, 2]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_the_owners_other_boards_do_not_block_creation(monkeypatch):
+    # Whether the owner has other boards is not a fact about this repository.
+    # Owner-scope refused for every owner past their first repository.
+    wire(monkeypatch, existing=[], owner_has=[{"number": 3, "title": "Someone else's"}])
+    result = board.create("acme", "widgets", "Widgets", ROOT,
+                          runner=Calls(), gh=_repo_issues(None, []))
+    assert result["action"] == "created"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_a_repository_already_linked_to_a_board_is_still_refused(monkeypatch):
+    wire(monkeypatch, existing=[{"number": 9, "title": "Its own"}])
+    result = board.create("acme", "widgets", "Widgets", ROOT,
+                          runner=Calls(), gh=_repo_issues(None, []))
+    assert result["action"] == "refused"
+    assert "#9" in result["problems"][0]
+    assert "is already linked to" in result["problems"][0]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_project_discovery_is_repository_scoped_everywhere_it_can_be():
+    # The class, not the instance. The same owner-vs-repository confusion
+    # appeared in inspection (#120), config resolution (#121) and here (#122).
+    # Take a window after each call site rather than trying to balance
+    # parentheses: the argument list contains a nested call, and a naive
+    # regex stops at its closing bracket.
+    source = (SCRIPTS / "board.py").read_text()
+    start = 0
+    seen = 0
+    while (idx := source.find("discover_projects(", start)) != -1:
+        seen += 1
+        window = source[idx:idx + 200]
+        assert "repo)" in window or "repo," in window, (
+            f"owner-scoped discovery at offset {idx}: {window[:90]!r}")
+        start = idx + 1
+    assert seen, "no discovery call found; the check would pass vacuously"

@@ -1547,7 +1547,7 @@ requirements:
       refused, a field that cannot be created or reshaped is reported rather
       than returned as success, and the board is read back by fetching the
       field again rather than by asking which backend the repository would
-      resolve to. An owner with no board is an inspection refusal, not a note. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
+      resolve to. An owner with no board is an inspection refusal, not a note. Whether the owner has other boards is not a fact about this repository: creation is refused only when the repository is already linked to one, and every discovery call that can be repository-scoped is. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
     priority: must
     owner: framework
     release: "0.3.0"
@@ -1570,9 +1570,13 @@ requirements:
       - "tests/test_board.py::test_existing_issues_are_reported_as_not_on_the_board"
       - "tests/test_board.py::test_adopt_places_them_and_reports_what_landed"
       - "tests/test_board.py::test_a_board_whose_items_cannot_be_listed_reports_every_issue"
+      - "tests/test_board.py::test_the_owners_other_boards_do_not_block_creation"
+      - "tests/test_board.py::test_a_repository_already_linked_to_a_board_is_still_refused"
+      - "tests/test_board.py::test_project_discovery_is_repository_scoped_everywhere_it_can_be"
     evidence:
       - "Issue #119"
       - "Issue #103"
+      - "Issue #122"
 
   - id: REQ-GITHUB-BACKENDS-001
     statement: >-
