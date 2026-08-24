@@ -129,8 +129,15 @@ def test_creating_makes_the_field_and_links_the_repo(monkeypatch):
     verbs = [a[2] for a in calls.args]
     # GitHub pre-creates a reserved Status field, so the existing one is
     # reshaped by GraphQL rather than a new one created.
-    assert "graphql" in verbs and "field-create" not in verbs
+    # The reserved delivery field is reshaped by GraphQL; the other carriable
+    # fields are created. A board with only the delivery field is what #124
+    # was about.
+    assert "graphql" in verbs
     assert "link" in verbs
+    created = [a[a.index("--name") + 1] for a in calls.args
+               if a[2] == "field-create" and "--name" in a]
+    assert "Outcome Status" in created, created
+    assert result["fields_created"] == created
     assert result["reshaped_existing_field"] is True
     assert any("acme/widgets" in " ".join(a) for a in calls.args)
 
@@ -286,3 +293,42 @@ def test_project_discovery_is_repository_scoped_everywhere_it_can_be():
             f"owner-scoped discovery at offset {idx}: {window[:90]!r}")
         start = idx + 1
     assert seen, "no discovery call found; the check would pass vacuously"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_every_carriable_field_comes_from_the_schema():
+    # A list here would be a second copy of github-schema.yml.
+    import yaml
+    schema = yaml.safe_load((ROOT / "policy/github-schema.yml").read_text())
+    made = {f["name"]: f["options"] for f in board.carriable_fields(ROOT)}
+    assert "Outcome Status" in made and "Risk" in made and "Severity" in made
+    assert made["Risk"] == schema["issue_fields"]["Risk"]["values"]
+    source = (SCRIPTS / "board.py").read_text()
+    for name in ("Outcome Status", "Risk", "Severity"):
+        assert f'"{name}"' not in source, f"{name} is hardcoded in board.py"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_a_field_the_policy_leaves_to_a_strategy_is_not_invented():
+    # Priority is reused from GitHub's own and Capability is an organization
+    # choice. Inventing options for either decides something policy left open.
+    made = {f["name"] for f in board.carriable_fields(ROOT)}
+    assert "Priority" not in made
+    assert "Capability" not in made
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_the_backend_matrix_narrows_what_is_created():
+    # A role the matrix says a backend cannot carry is not attempted there.
+    org = board.carriable_fields(ROOT, backend="issue-fields")
+    assert {f["role"] for f in org} <= {"delivery_state"}
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-003")
+def test_a_field_that_cannot_be_added_is_reported_not_left(monkeypatch):
+    # A board missing a field a workflow writes reads as finished.
+    wire(monkeypatch)
+    calls = Calls(fail_at="field-create")
+    with pytest.raises(gh_api.GitHubError, match="could not be added"):
+        board.create("acme", "widgets", "Widgets", ROOT,
+                     runner=calls, gh=_repo_issues(None, []))

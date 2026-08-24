@@ -306,9 +306,21 @@ def test_a_role_nothing_writes_says_nothing_is_blocked():
 
 @pytest.mark.req("REQ-GITHUB-BACKENDS-001")
 def test_an_older_preset_loses_the_explanation_not_the_inspection(monkeypatch):
+    # Without the matrix the backend-specific half is gone, but whether a
+    # workflow writes the role is read from the workflows and survives. A
+    # role two workflows write must not be called harmless in either case.
     monkeypatch.setattr(it, "_backend_matrix", lambda: {})
     said = it._role_consequence("issue-fields", "outcome_status")
-    assert said and "nothing is blocked" in said.lower()
+    assert said
+    assert "nothing is blocked" not in said.lower()
+    assert "cannot complete without it" in said
+
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_a_role_no_workflow_writes_is_harmless_even_with_no_matrix(monkeypatch):
+    monkeypatch.setattr(it, "_backend_matrix", lambda: {})
+    assert "nothing is blocked" in it._role_consequence(
+        "projects-v2", "capability").lower()
 
 
 # --- a repository does not inherit its owner's board -------------------------

@@ -1547,7 +1547,7 @@ requirements:
       refused, a field that cannot be created or reshaped is reported rather
       than returned as success, and the board is read back by fetching the
       field again rather than by asking which backend the repository would
-      resolve to. An owner with no board is an inspection refusal, not a note. Whether the owner has other boards is not a fact about this repository: creation is refused only when the repository is already linked to one, and every discovery call that can be repository-scoped is. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
+      resolve to. An owner with no board is an inspection refusal, not a note. Whether the owner has other boards is not a fact about this repository: creation is refused only when the repository is already linked to one, and every discovery call that can be repository-scoped is. A created board carries every field the matrix says the backend carries, with names and options from the schema; a field the policy leaves to a strategy is not invented, and one that cannot be added is reported rather than leaving a board that reads as finished. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
     priority: must
     owner: framework
     release: "0.3.0"
@@ -1573,6 +1573,10 @@ requirements:
       - "tests/test_board.py::test_the_owners_other_boards_do_not_block_creation"
       - "tests/test_board.py::test_a_repository_already_linked_to_a_board_is_still_refused"
       - "tests/test_board.py::test_project_discovery_is_repository_scoped_everywhere_it_can_be"
+      - "tests/test_board.py::test_every_carriable_field_comes_from_the_schema"
+      - "tests/test_board.py::test_a_field_the_policy_leaves_to_a_strategy_is_not_invented"
+      - "tests/test_board.py::test_the_backend_matrix_narrows_what_is_created"
+      - "tests/test_board.py::test_a_field_that_cannot_be_added_is_reported_not_left"
     evidence:
       - "Issue #119"
       - "Issue #103"
@@ -1587,7 +1591,7 @@ requirements:
       four roles cannot be created there. Silence about a role reads as support
       for it, so every backend accounts for the same set, an unavailable role
       carries a reason, and a backend with unavailable roles carries a remedy.
-      Inspection reports the consequence rather than the bare absence, and a
+      Inspection reports the consequence rather than the bare absence, and whether a workflow writes the role is derived from the workflows rather than inferred from the backend: a backend able to carry a role says nothing about whether its absence costs anything, and conflating them reported a role two workflows write as harmless. and a
       preset without the matrix loses the explanation rather than the
       inspection.
     priority: must
@@ -1604,6 +1608,7 @@ requirements:
       - "tests/test_inspect.py::test_a_missing_role_says_what_the_project_loses"
       - "tests/test_inspect.py::test_a_role_nothing_writes_says_nothing_is_blocked"
       - "tests/test_inspect.py::test_an_older_preset_loses_the_explanation_not_the_inspection"
+      - "tests/test_inspect.py::test_a_role_no_workflow_writes_is_harmless_even_with_no_matrix"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-ROLE-REACHABLE]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-ROLE-REACHABLE]"
     evidence:

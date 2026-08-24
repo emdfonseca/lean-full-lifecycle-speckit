@@ -333,7 +333,15 @@ def _finalize(result: Inspection) -> Inspection:
 
 
 def _role_consequence(backend: str | None, role: str) -> str:
-    """What a project loses without this role, read from the matrix."""
+    """What a project loses without this role.
+
+    Two questions, and the first version answered only one. Whether the
+    *backend* can carry the role comes from the matrix. Whether anything is
+    blocked by its absence depends on whether a workflow writes it, and those
+    are independent: on a project board every role is carriable, so the matrix
+    said nothing was unavailable and the message concluded nothing was lost --
+    while lifecycle-release-outcome writes Outcome Status at three steps.
+    """
     entry = (_backend_matrix().get(str(backend)) or {})
     reason = (entry.get("unavailable") or {}).get(role)
     if reason:
@@ -341,7 +349,44 @@ def _role_consequence(backend: str | None, role: str) -> str:
         return (f"On the {backend} backend it cannot be created by this "
                 f"bundle: {str(reason).strip()}"
                 + (f" Remedy: {remedy}" if remedy else ""))
+    writers = _role_writers().get(role) or []
+    if writers:
+        return (f"The {backend} backend can carry it and this board does not. "
+                f"{', '.join(writers)} writes it and cannot complete without "
+                f"it; create the field with the board command.")
     return "Nothing writes it, so nothing is blocked by its absence."
+
+
+def _role_writers() -> dict[str, list[str]]:
+    """Which workflows write each role, read from the workflows themselves.
+
+    Derived rather than listed: a list here would be a second copy that drifts
+    the first time a workflow gains a transition, and the wrong half of it
+    would be the half claiming nothing is blocked.
+    """
+    import re
+
+    import yaml
+
+    root = project_root.resolve(required=False) or Path.cwd()
+    found: dict[str, list[str]] = {}
+    for base in (root / "bundle/components/workflows", root / ".specify/workflows"):
+        if not base.is_dir():
+            continue
+        for path in sorted(base.glob("*/workflow.yml")):
+            text = path.read_text(encoding="utf-8")
+            for role, names in ROLE_CANDIDATES.items():
+                for field_name in names:
+                    # A step naming the field and an arrow is a transition of
+                    # it. Matching the name alone would count prose.
+                    if re.search(rf"{re.escape(field_name)}\s*(?:→|->)", text):
+                        found.setdefault(role, [])
+                        if path.parent.name not in found[role]:
+                            found[role].append(path.parent.name)
+                        break
+        if found:
+            break
+    return found
 
 
 def _backend_matrix() -> dict:

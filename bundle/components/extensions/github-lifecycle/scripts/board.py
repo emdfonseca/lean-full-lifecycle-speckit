@@ -55,6 +55,61 @@ def _load(root: Path, candidates) -> dict:
         f"none of {list(candidates)} found; the governance preset must be installed")
 
 
+def carriable_fields(root: Path, backend: str = "projects-v2") -> list[dict]:
+    """Fields this backend should carry, from the schema and the matrix.
+
+    `board` created only the delivery field, so every board it made lacked the
+    four roles the matrix records this backend as carrying -- and inspection
+    then reported their absence as harmless (#124). The names and option sets
+    come from `github-schema.yml`; a list here would be a second copy.
+
+    A field the schema leaves to a strategy rather than declaring values for
+    is skipped: `Priority` is reused from GitHub's own, and `Capability` is an
+    organization choice. Inventing options for either would decide something
+    the policy deliberately left open.
+    """
+    import yaml
+
+    schema = _load(root, SCHEMA_CANDIDATES)
+    matrix = _load_matrix(root).get(backend) or {}
+    carries = set(matrix.get("carries") or [])
+    machine = _load(root, MACHINE_CANDIDATES)
+
+    out = []
+    for name, spec in (schema.get("issue_fields") or {}).items():
+        if not isinstance(spec, dict) or spec.get("strategy"):
+            continue
+        role = _role_of(name)
+        if role and carries and role not in carries:
+            continue
+        values = list(spec.get("values") or [])
+        if role == "delivery_state":
+            # The states come from the machine, which is authoritative for
+            # what a delivery state is.
+            values = list(machine["delivery_status"]["values"])
+        if spec.get("type") == "single_select" and values:
+            out.append({"name": name, "role": role, "options": values})
+    return out
+
+
+def _role_of(field_name: str) -> str | None:
+    for role, names in inspect_target.ROLE_CANDIDATES.items():
+        if field_name in names:
+            return role
+    return None
+
+
+def _load_matrix(root: Path) -> dict:
+    import yaml
+
+    for rel in ("tooling/compatibility.yml", ".specify/tooling/compatibility.yml"):
+        path = root / rel
+        if path.is_file():
+            return (yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                    ).get("backends") or {}
+    return {}
+
+
 def delivery_field(root: Path) -> tuple[str, list[str]]:
     """The field name and its options, both from policy.
 
@@ -156,10 +211,28 @@ def create(owner: str, repo: str, title: str, root: Path,
     # created after the backlog leaves every existing item off, and an empty
     # board reads as a working one -- the failure this whole issue is about,
     # one layer down.
+    # Every other field the backend carries. The delivery field is done above
+    # because it is the reserved one that must be reshaped; these are created.
+    extra, failed = [], []
+    for spec in carriable_fields(root):
+        if spec["role"] == "delivery_state":
+            continue
+        made = run(["gh", "project", "field-create", str(number), "--owner", owner,
+                    "--name", spec["name"], "--data-type", "SINGLE_SELECT",
+                    "--single-select-options", ",".join(spec["options"]),
+                    "--format", "json"], runner)
+        (extra if made.returncode == 0 else failed).append(spec["name"])
+    if failed:
+        raise GitHubError(
+            f"board #{number} carries {name!r} but these could not be added: "
+            f"{failed}. A workflow that writes one of them cannot complete, "
+            f"and a board missing them reads as finished.")
+
     orphans = _unplaced_issues(gh, owner, repo, number, runner)
     result = {"action": "created", "project_number": number, "field": name,
               "options": got, "linked_to": f"{owner}/{repo}",
               "reshaped_existing_field": existing_field is not None,
+              "fields_created": extra,
               "issues_not_on_the_board": orphans}
     if orphans and adopt:
         placed = _adopt(gh, owner, repo, number, orphans, runner)
