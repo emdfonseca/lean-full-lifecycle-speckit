@@ -24,6 +24,7 @@ families:
   - REQ-RISK        # scoring a change, and the controls its band requires
   - REQ-PILOT       # what a pilot run must record to count as evidence
   - REQ-WORKFLOW    # how a workflow step is bounded and run
+  - REQ-PRODUCT     # the documents a project must have, and how terse
 
 gates:
   - release: "0.9.0"
@@ -1312,6 +1313,46 @@ requirements:
     evidence:
       - "Issue #115"
       - "Issue #103"
+
+  - id: REQ-PRODUCT-DOCUMENTS-001
+    statement: >-
+      The documents a bootstrapped project must have are declared in policy, not
+      in one workflow's prompt: a set that lives in prose is a convention, and
+      the workflow that did not read that prose omitted four of five while
+      writing hundreds of lines about what the code does. Each declares what it
+      answers, the sections it carries, and a line budget, because a document
+      nobody reads has recorded nothing and length is the one quality property a
+      script can judge. A log declares a budget of zero rather than leaving it
+      unsaid. Architecture carries observation and decision as separate named
+      sections, since the gap between them is where specs come from. Every
+      workflow that bootstraps or adopts produces the whole set, and a
+      document over budget is reported with the overage rather than truncated.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.documents
+      - policy:bootstrap-policy.yml
+      - check:INV-BOOTSTRAP-DOCUMENTS
+      - workflow:lifecycle-brownfield-adoption
+      - workflow:lifecycle-greenfield-bootstrap
+    verified_by:
+      - "tests/test_documents.py::test_a_complete_project_reports_nothing"
+      - "tests/test_documents.py::test_a_missing_document_names_what_it_answers"
+      - "tests/test_documents.py::test_a_document_over_budget_names_the_overage"
+      - "tests/test_documents.py::test_a_log_has_no_budget"
+      - "tests/test_documents.py::test_a_missing_section_is_named"
+      - "tests/test_documents.py::test_bold_headings_count_as_sections"
+      - "tests/test_documents.py::test_architecture_separates_observation_from_decision"
+      - "tests/test_documents.py::test_every_declared_document_states_what_it_answers"
+      - "tests/test_documents.py::test_both_bootstrap_workflows_produce_the_documents"
+      - "tests/test_documents.py::test_the_style_rules_are_policy_not_prose_in_the_script"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BOOTSTRAP-DOCUMENTS]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-BOOTSTRAP-DOCUMENTS]"
+    evidence:
+      - "Issue #126"
+      - "Issue #104"
 
   - id: REQ-RISK-SCORING-001
     statement: >-

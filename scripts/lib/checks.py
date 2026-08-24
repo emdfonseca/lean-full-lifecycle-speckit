@@ -405,6 +405,57 @@ def role_reachable(ctx: Ctx) -> Iterator[Finding]:
                 "way to reach them")
 
 
+@check("INV-BOOTSTRAP-DOCUMENTS",
+       "A workflow that bootstraps a project produces the declared documents",
+       scope="workflow")
+def bootstrap_documents(ctx: Ctx) -> Iterator[Finding]:
+    """A document set living in one workflow's prompt is a convention.
+
+    `PRODUCT.md` existed only because greenfield asked for it, so brownfield
+    adoption omitted it and three others while writing 937 lines about what the
+    code does, and nothing noticed. Declaring the set makes the omission
+    checkable; this is the check.
+
+    Both directions are wrong. A workflow that bootstraps and does not produce
+    the documents leaves a project nothing can write a spec against. A document
+    declared and produced by nobody is a requirement on paper.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    contract = policy.get("product_documents") or {}
+    required = contract.get("required") or []
+    if not required:
+        return
+
+    for spec in required:
+        if not str(spec.get("answers") or "").strip():
+            yield ctx.finding(
+                "INV-BOOTSTRAP-DOCUMENTS", str(spec.get("path")),
+                "is declared with no `answers`; a document whose question is "
+                "unstated cannot be judged complete")
+        if spec.get("max_lines") is None:
+            yield ctx.finding(
+                "INV-BOOTSTRAP-DOCUMENTS", str(spec.get("path")),
+                "declares no max_lines; state 0 for a log that grows by "
+                "design rather than leaving the budget unsaid")
+
+    if not (contract.get("style") or []):
+        yield ctx.finding(
+            "INV-BOOTSTRAP-DOCUMENTS", "product_documents",
+            "declares no style rules, so terseness is an aspiration")
+
+    bootstrapping = [comp for comp in ctx.inv.by_kind("workflow")
+                     if "bootstrap" in comp.id or "adoption" in comp.id]
+    for comp in bootstrapping:
+        writes = any(str(step.get("command") or "").endswith(".documents")
+                     for step in _steps(comp))
+        if not writes:
+            yield ctx.finding(
+                "INV-BOOTSTRAP-DOCUMENTS", comp.id,
+                f"bootstraps a project and never produces the "
+                f"{len(required)} declared documents, so the project it "
+                f"leaves behind has nothing to write a spec against")
+
+
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",
        scope="workflow")
 def gate_verdict(ctx: Ctx) -> Iterator[Finding]:

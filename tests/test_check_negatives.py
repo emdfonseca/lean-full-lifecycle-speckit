@@ -268,6 +268,17 @@ def break_role_reachable(tmp):
     _edit_yaml(tmp / "tooling/compatibility.yml", mutate)
 
 
+def break_bootstrap_documents(tmp):
+    # Remove the document step from a workflow that bootstraps. Before #126
+    # brownfield looked exactly like this and nothing objected.
+    path = tmp / "bundle/components/workflows/lifecycle-brownfield-adoption/workflow.yml"
+
+    def mutate(d):
+        d["steps"] = [s for s in d["steps"]
+                      if not str(s.get("command") or "").endswith(".documents")]
+    _edit_yaml(path, mutate)
+
+
 def break_extension_config_name(tmp):
     _edit_yaml(tmp / EXT / "extension.yml",
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
@@ -311,6 +322,7 @@ MUTATORS = {
     "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
+    "INV-BOOTSTRAP-DOCUMENTS": break_bootstrap_documents,
     "INV-ROLE-REACHABLE": break_role_reachable,
     "INV-COMMAND-SCRIPT-INVOCATION": break_command_script_invocation,
     "INV-STEP-TIMEOUT-TIER": break_step_timeout_tier,
@@ -368,6 +380,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-001")
 @pytest.mark.req("REQ-GITHUB-INVOCATION-001")
 @pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
@@ -391,6 +404,7 @@ def test_check_detects_its_own_violation(check_id, bundle_copy):
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-001")
 @pytest.mark.req("REQ-GITHUB-INVOCATION-001")
 @pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_check_passes_on_clean_source(check_id):
     r = subprocess.run(
         [sys.executable, "scripts/validate_source.py", "--only", check_id, "--format", "json"],

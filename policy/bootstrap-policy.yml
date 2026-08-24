@@ -328,3 +328,69 @@ step_timeouts:
   # States something, records a decision, or names what happens next. Short by
   # construction.
   statement: 300
+
+# The documents a bootstrapped project must have, whichever route it took.
+#
+# Declared here because a set that lives in one workflow's prompt is a
+# convention rather than a contract: `PRODUCT.md` existed only because
+# greenfield asked for it, and brownfield adoption produced none of it while
+# writing 937 lines about what the code does (#126).
+#
+# Every budget is a maximum, not a target. A document nobody reads has not
+# recorded anything, and the pilot's four artefacts averaged 234 lines each --
+# accurate, well-reasoned, and too long to be read before writing a spec.
+# Evidence belongs in the evidence records; these carry decisions.
+product_documents:
+  style:
+    - Terse. Shortest text that a reader can act on, and nothing past it.
+    - One idea per sentence. No clause explaining the obvious.
+    - >-
+      State the decision, not the reasoning that reached it. Reasoning belongs
+      in the decision log, where it is dated and attributable.
+    - >-
+      A table beats a paragraph wherever the content is facts. Prose is for
+      the one thing a table cannot hold: why.
+    - >-
+      No summary of what the document contains. A reader who needs a summary
+      of forty lines has been given the wrong forty lines.
+
+  required:
+    - path: PRODUCT.md
+      max_lines: 60
+      answers: What this is for, and how anyone tells it is done.
+      sections: [Intent, Users, Constraints, Definition of done, Non-goals]
+      note: >-
+        For an adopted project this is archaeology: intent is recovered from
+        the README, the release notes, and merged pull requests. Where it
+        cannot be recovered, the section says so rather than inventing one.
+
+    - path: .specify/memory/constitution.md
+      max_lines: 200
+      answers: The rules this project's work obeys.
+      sections: []
+      note: >-
+        The one document allowed to be long, because every line is a rule
+        somebody must follow. Even so, a rule nobody can check is prose.
+
+    - path: .specify/lifecycle/architecture.md
+      max_lines: 80
+      answers: How it is built now, and how it should be.
+      sections: [As built, Intended, Seams, Boundaries]
+      note: >-
+        Two sections that must not be confused. `As built` is observation and
+        carries evidence; `Intended` is a decision and carries an owner. The
+        gap between them is where specs come from, which is why they belong in
+        one document rather than two that drift.
+
+    - path: .specify/lifecycle/stack-decision.md
+      max_lines: 40
+      answers: What it is built with, and what that commits the project to.
+      sections: [Chosen, Rejected, Consequences]
+
+    - path: .specify/lifecycle/product-decisions.md
+      max_lines: 0
+      answers: What was decided, when, and by whom.
+      sections: []
+      note: >-
+        No budget: a log grows by design. Each entry is bounded instead --
+        decision, date, owner, and one line of why.

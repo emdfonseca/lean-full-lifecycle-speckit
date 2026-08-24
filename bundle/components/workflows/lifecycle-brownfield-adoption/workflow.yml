@@ -223,6 +223,25 @@ steps:
   integration: '{{ inputs.integration }}'
   input:
     args: Read-only final lifecycle configuration check.
+- id: write-product-documents
+  command: speckit.github-lifecycle.documents
+  integration: '{{ inputs.integration }}'
+  timeout: 1800
+  input:
+    args: 'Write every document bootstrap-policy.yml declares under product_documents,
+      then run the command again to check them. Obey the budgets: they are maxima
+      somebody chose, and a document that needs more room usually needs less content.
+      Obey the style rules the contract states, in particular that a table beats a
+      paragraph wherever the content is facts, and that a document does not summarise
+      itself. Evidence belongs in the evidence records, not in these: the discovery
+      record and the adoption or bootstrap report already hold it, and repeating it
+      here makes the one document a reader must read the one nobody finishes. For a
+      project being adopted rather than started, intent is recovered from the README,
+      the release notes, and merged pull requests; where it cannot be recovered the
+      section says so rather than inventing one. architecture.md carries As built and
+      Intended separately: the first is observation and carries evidence, the second
+      is a decision and carries an owner. Do not proceed while the check reports a
+      problem.'
 - id: validate-adoption
   timeout: 600
   type: prompt
