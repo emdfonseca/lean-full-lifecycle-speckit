@@ -202,6 +202,61 @@ def untrusted_no_command_interpolation(ctx: Ctx) -> Iterator[Finding]:
                         f"lists as an untrusted input")
 
 
+@check("INV-BUILD-AFTER-IN-PROGRESS",
+       "A workflow transitions an item to In Progress before it implements it",
+       scope="workflow")
+def build_after_in_progress(ctx: Ctx) -> Iterator[Finding]:
+    """The ordering `state-machine.yml` implies and nothing asserted.
+
+    `Ready -> In Progress` takes the evidence `work_started`, which only means
+    something if work has not already started. A workflow that implemented
+    before transitioning would make that evidence retroactive, and a
+    transition asserted after the fact is not evidence.
+
+    `lifecycle-story-delivery` has this order today. It held by construction
+    rather than by assertion, so reordering the file would have broken the
+    guarantee with nothing failing -- which is the shape of defect #93 is
+    about, one layer up.
+
+    Steps are identified by what they do, not by their id: a step is the
+    transition if it invokes the transition command and names the start state,
+    and the build if it invokes an implementing command. Matching on
+    `id: transition-in-progress` would let a rename defeat the check.
+    """
+    machine = load_yaml(ctx.root / "policy" / "state-machine.yml") or {}
+    start = None
+    for edge in (machine.get("delivery_status") or {}).get("transitions") or []:
+        if "work_started" in (edge.get("evidence") or []):
+            start = edge["to"]
+    if not start:
+        return
+
+    building = {"speckit.implement"}
+    for comp in ctx.inv.by_kind("workflow"):
+        steps = list(_steps(comp))
+        transition_at = build_at = None
+        for index, step in enumerate(steps):
+            command = str(step.get("command") or "")
+            args = str(((step.get("input") or {}).get("args")) or "")
+            if (command.endswith(".transition") and start in args
+                    and transition_at is None):
+                transition_at = index
+            if command in building and build_at is None:
+                build_at = index
+        if build_at is None or transition_at is None:
+            # A workflow that does not build, or does not transition, has no
+            # ordering to get wrong. Reported by nothing: not every workflow
+            # is a delivery workflow.
+            continue
+        if transition_at > build_at:
+            yield ctx.finding(
+                "INV-BUILD-AFTER-IN-PROGRESS",
+                f"{comp.id}:{steps[build_at].get('id')}",
+                f"implements at step {build_at} but only reaches {start!r} at "
+                f"step {transition_at}. The evidence `work_started` would be "
+                f"asserted after the work started.")
+
+
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",
        scope="workflow")
 def gate_verdict(ctx: Ctx) -> Iterator[Finding]:

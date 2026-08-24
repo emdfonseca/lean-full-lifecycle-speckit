@@ -40,3 +40,20 @@ success while the read disagrees is not a success.
 - Infer that work is complete because an issue was closed. Closure follows the
   delivery state and never sets it.
 - Change more than the one value the plan names.
+
+## What the audit adds
+
+`transition_plan.py audit` compares the board to the policy, and also to the
+working tree. A tree carrying tracked modifications while no open item is
+`In Progress` is reported as `working tree: ...`, because `Ready` → `In
+Progress` takes the evidence `work_started` and that means nothing if the work
+started first.
+
+It reports rather than refuses. An extension `events:` guard could refuse an
+agent's tool call, but `specify bundle install` does not arm one — the user
+must run `specify integration upgrade --force` — so a bundle cannot ship
+prevention here. Inside a workflow the ordering *is* enforced, and
+`INV-BUILD-AFTER-IN-PROGRESS` asserts it.
+
+Untracked files do not count: a scratch file is not evidence that delivery
+began. Git being unable to answer is reported as unknown rather than as clean.

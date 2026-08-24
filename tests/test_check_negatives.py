@@ -224,6 +224,20 @@ def break_untrusted_no_command_interpolation(tmp):
     _edit_yaml(path, mutate)
 
 
+def break_build_after_in_progress(tmp):
+    # Move the implement step ahead of the transition. The ordering holds by
+    # construction today, so this is the reorder nothing would have caught.
+    path = tmp / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml"
+
+    def mutate(d):
+        steps = d["steps"]
+        build = next(i for i, s in enumerate(steps)
+                     if s.get("command") == "speckit.implement")
+        moved = steps.pop(build)
+        steps.insert(0, moved)
+    _edit_yaml(path, mutate)
+
+
 def break_extension_config_name(tmp):
     _edit_yaml(tmp / EXT / "extension.yml",
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
@@ -267,6 +281,7 @@ MUTATORS = {
     "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
+    "INV-BUILD-AFTER-IN-PROGRESS": break_build_after_in_progress,
     "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION": break_untrusted_no_command_interpolation,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
     "INV-ITEM-CONTENT": break_item_content,
@@ -316,6 +331,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-GITHUB-TRANSITION-001")
 @pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
 @pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
@@ -335,6 +351,7 @@ def test_check_detects_its_own_violation(check_id, bundle_copy):
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
 @pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
 @pytest.mark.req("REQ-SECURITY-UNTRUSTED-001")
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
 def test_check_passes_on_clean_source(check_id):
     r = subprocess.run(
         [sys.executable, "scripts/validate_source.py", "--only", check_id, "--format", "json"],

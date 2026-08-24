@@ -611,6 +611,101 @@ def test_a_delivered_child_is_not_asked_about_blockers():
     assert not any("/issues/2/dependencies" in " ".join(c) for c in gh.audit and [] or [])
 
 
+# --- the board against the working tree -------------------------------------
+#
+# Every other rule compares the board to the policy. This one compares it to
+# what was actually built, which is the comparison #93 found missing.
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_the_audit_reports_the_tree_when_nothing_is_in_progress(monkeypatch, tmp_path):
+    # End to end through audit_board: the board says Refining, the tree says
+    # two files changed, and the audit is what reconciles them.
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py", "b.py"])
+    gh, insp, be = audit_setup({1: "open"}, {1: "Refining"})
+    problems = [p for p in tp.audit_board(gh, be, insp, root=tmp_path)
+                if p.issue is None]
+    assert len(problems) == 1
+    assert "no item is In Progress" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_the_audit_stays_silent_when_an_item_is_in_progress(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
+    gh, insp, be = audit_setup({1: "open"}, {1: "In Progress"})
+    assert [p for p in tp.audit_board(gh, be, insp, root=tmp_path)
+            if p.issue is None] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_a_closed_item_in_progress_does_not_silence_it(monkeypatch, tmp_path):
+    # A closed issue is not somebody working. Counting it would let a stale
+    # board silence the rule permanently.
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"})
+    assert [p for p in tp.audit_board(gh, be, insp, root=tmp_path)
+            if p.issue is None] != []
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_without_a_root_the_tree_is_not_consulted():
+    # Every other caller of audit_board passes no root and must be unaffected.
+    gh, insp, be = audit_setup({1: "open"}, {1: "Refining"})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue is None] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_an_item_in_progress_silences_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
+    assert tp.working_tree_disagreement(tmp_path, [42]) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_nothing_in_progress_with_a_modified_tree_reports(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "modified_tracked_files",
+                        lambda root: ["a.py", "b.py"])
+    drift = tp.working_tree_disagreement(tmp_path, [])
+    assert drift and "a.py" in drift and "b.py" in drift
+    assert "work_started" in drift, "the refusal does not say why it matters"
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_a_clean_tree_reports_nothing(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: [])
+    assert tp.working_tree_disagreement(tmp_path, []) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_git_being_unable_to_answer_is_not_reported_as_clean(monkeypatch, tmp_path):
+    # "nothing changed" and "we could not look" are different answers, and
+    # reporting the second as the first is how a check quietly stops working.
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: None)
+    assert tp.working_tree_disagreement(tmp_path, []) is None
+    assert tp.modified_tracked_files(tmp_path) is None, \
+        "a non-repository should answer None, not []"
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_untracked_files_do_not_trigger_it(tmp_path):
+    # A scratch file is not evidence that delivery began. Counting it would
+    # make the rule fire constantly and then be ignored.
+    import subprocess as sp
+    sp.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "tracked.txt").write_text("one\n")
+    sp.run(["git", "add", "."], cwd=tmp_path, check=True)
+    sp.run(["git", "-c", "user.email=t@t", "-c", "user.name=t",
+            "commit", "-qm", "init"], cwd=tmp_path, check=True)
+    (tmp_path / "scratch.tmp").write_text("noise\n")
+    assert tp.modified_tracked_files(tmp_path) == []
+    (tmp_path / "tracked.txt").write_text("two\n")
+    assert tp.modified_tracked_files(tmp_path) == ["tracked.txt"]
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_the_finding_is_attributed_to_the_tree_not_to_an_issue():
+    assert str(tp.Inconsistency(None, "x")) == "working tree: x"
+    assert str(tp.Inconsistency(7, "x")) == "#7: x"
+
+
 def test_an_item_with_no_delivery_state_is_reported():
     gh, insp, be = audit_setup({1: "open"}, {1: None})
     problems = tp.audit_board(gh, be, insp)

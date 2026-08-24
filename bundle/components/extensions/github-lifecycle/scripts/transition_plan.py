@@ -33,6 +33,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -292,16 +293,22 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
 
 @dataclass(frozen=True)
 class Inconsistency:
-    issue: int
+    issue: int | None
     problem: str
 
     def __str__(self) -> str:
-        return f"#{self.issue}: {self.problem}"
+        # `None` is the working tree rather than an issue. The audit compared
+        # the board to the policy and never to what had actually been built,
+        # so the one finding that is about no single item needed somewhere to
+        # live.
+        where = f"#{self.issue}" if self.issue is not None else "working tree"
+        return f"{where}: {self.problem}"
 
 
 def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                 role: str = "delivery_state",
-                machine: dict | None = None) -> list[Inconsistency]:
+                machine: dict | None = None,
+                root: Path | None = None) -> list[Inconsistency]:
     """Board state that contradicts the policy.
 
     The transition command enforces these for anyone who uses it, but
@@ -324,6 +331,7 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
     if isinstance(issues, dict):
         issues = [issues]
 
+    in_progress: list[int] = []
     for issue in issues:
         number = issue.get("number")
         if number is None or issue.get("pull_request"):
@@ -333,6 +341,8 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
         except NotFound:
             continue                      # not on the board; not this check's concern
 
+        if value == START_STATE and issue.get("state") != "closed":
+            in_progress.append(int(number))
         if value is None:
             found.append(Inconsistency(number, "on the board with no delivery state"))
             continue
@@ -362,7 +372,62 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                 is_epic)
             if problem:
                 found.append(Inconsistency(number, problem))
+
+    drift = working_tree_disagreement(root, in_progress)
+    if drift:
+        found.append(Inconsistency(None, drift))
     return found
+
+
+def modified_tracked_files(root: Path) -> list[str] | None:
+    """Tracked files with uncommitted changes, or None if git cannot answer.
+
+    None rather than an empty list when git is unavailable or the directory is
+    not a repository: "nothing changed" and "we could not look" are different
+    answers, and reporting the second as the first is how a check quietly
+    stops working.
+
+    Untracked files are excluded. A scratch file is not evidence that delivery
+    began, and counting it would make the rule fire constantly and then be
+    ignored.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "diff", "--name-only", "HEAD"],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def working_tree_disagreement(root: Path | None,
+                              in_progress: list[int]) -> str | None:
+    """Work that has been built while the board says nothing was started.
+
+    The audit's other rules compare the board to the policy. This one compares
+    it to the working tree, which is the comparison that was missing: the board
+    records what is claimed and the tree records what was done, and nothing
+    reconciled them.
+
+    Reports rather than prevents. #99 established that an events guard is not
+    installable by the bundle, so refusing the commit is not available; saying
+    the two disagree is.
+    """
+    if root is None:
+        return None
+    changed = modified_tracked_files(root)
+    if not changed:
+        return None
+    if in_progress:
+        return None
+    listed = ", ".join(sorted(changed)[:5])
+    more = f" and {len(changed) - 5} more" if len(changed) > 5 else ""
+    return (f"{len(changed)} tracked file(s) modified while no item is "
+            f"{START_STATE}: {listed}{more}. `Ready` -> `{START_STATE}` takes "
+            f"the evidence `work_started`, which means nothing if the work "
+            f"started first. Move the item, or say which item this is.")
 
 
 def blockers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[dict]:
@@ -671,7 +736,8 @@ def main() -> int:
             return 0
 
         if args.cmd == "audit":
-            problems = audit_board(gh, backend, inspection, machine=machine)
+            problems = audit_board(gh, backend, inspection, machine=machine,
+                                   root=args.policy_root)
             for item in problems:
                 print(item)
             print(f"\n{len(problems)} inconsistencies")
