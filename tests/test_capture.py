@@ -87,6 +87,24 @@ def client(repo):
     return gh_api.GitHub(runner=repo, sleep=lambda _: None, max_attempts=1)
 
 
+GOOD_BODY = ("**Reproduction**\nx\n**Expected**\ny\n"
+             "**Actual**\nz\n**Regression test**\nt")
+
+
+def _run(monkeypatch, repo, argv):
+    """Drive main() the way a person does, with the API faked underneath.
+
+    Exercised through the CLI rather than the functions because the refusal
+    text is what a person reads, and it is the refusal text this change is
+    about.
+    """
+    monkeypatch.setattr(cap, "GitHub", lambda **kw: gh_api.GitHub(
+        runner=repo, sleep=lambda _: None, max_attempts=1,
+        dry_run=kw.get("dry_run", False)))
+    monkeypatch.setattr(sys, "argv", ["capture.py"] + list(argv))
+    return cap.main()
+
+
 # --- similarity ---------------------------------------------------------------
 
 @pytest.mark.req("REQ-BACKLOG-CAPTURE-001")
@@ -339,3 +357,91 @@ def test_a_dry_run_places_nothing(monkeypatch):
                              "**Actual**\nz\n**Regression test**\nt", "bug")
     assert result.get("dry_run") is True
     assert stub.placed == []
+
+
+# --- recording a duplicate decision -------------------------------------------
+#
+# The refusal used to name --threshold as the way through, which capture.md
+# forbids. That left the only sanctioned route being the one the documentation
+# said never to take, and nothing recorded what a person had decided.
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_every_candidate_must_be_named_not_merely_one():
+    # A flag that cleared the whole report once one item was named would let
+    # the second duplicate through unseen.
+    cands = [cap.Candidate(7, "a", "open", 0.9), cap.Candidate(8, "b", "closed", 0.6)]
+    assert cap.unconsidered(cands, [7]) == [8]
+    assert cap.unconsidered(cands, [7, 8]) == []
+    assert cap.unconsidered(cands, []) == [7, 8]
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_a_number_the_search_never_raised_is_refused():
+    # A decision recorded against an item the search did not surface is a
+    # typo or a claim about something else. Both need correcting.
+    cands = [cap.Candidate(7, "a", "open", 0.9)]
+    assert cap.phantom_considerations(cands, [7]) == []
+    assert cap.phantom_considerations(cands, [7, 41]) == [41]
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_the_refusal_names_the_flag_and_not_the_threshold(monkeypatch, capsys):
+    repo = Repo()
+    repo.issues.append({"number": 7, "id": 7007, "state": "open",
+                        "title": "A new finding", "labels": []})
+    _run(monkeypatch, repo, ["--repo", "acme/widgets", "--title", "A new finding",
+                             "--type", "bug", "--body", GOOD_BODY, "--create"])
+    report = json.loads(capsys.readouterr().out)
+    assert report["action"] == "refused"
+    reason = report["reason"]
+    assert "--considered 7" in reason, "the refusal does not say what to run"
+    assert "raise the threshold" not in reason.lower()
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_naming_every_candidate_lets_the_creation_proceed(monkeypatch, capsys):
+    _wire(monkeypatch, StubBackend())
+    repo = Repo()
+    repo.issues.append({"number": 7, "id": 7007, "state": "open",
+                        "title": "A new finding", "labels": []})
+    _run(monkeypatch, repo, ["--repo", "acme/widgets", "--title", "A new finding",
+                             "--type", "bug", "--body", GOOD_BODY,
+                             "--considered", "7", "--create"])
+    report = json.loads(capsys.readouterr().out)
+    assert report["action"] == "created"
+    assert report["considered"] == [7]
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_the_decision_is_readable_back_off_the_result(monkeypatch):
+    # Without this the decision is a flag someone passed and nothing anyone
+    # can read afterwards.
+    stub = StubBackend()
+    _wire(monkeypatch, stub)
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             GOOD_BODY, "bug", project=3, policy_root=ROOT,
+                             considered=[63, 94])
+    assert result["considered"] == [63, 94]
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_threshold_remains_available_and_is_no_longer_the_only_route():
+    # The decision was to keep --threshold. What made it a problem was being
+    # the sole lever, which capture.md forbids using.
+    source = (SCRIPTS / "capture.py").read_text()
+    assert "--threshold" in source
+    assert "--considered" in source
+    doc = (ROOT / "bundle/components/extensions/github-lifecycle/commands/capture.md").read_text()
+    assert "--considered" in doc, "the command doc does not mention the flag"
+
+
+@pytest.mark.req("REQ-BACKLOG-DUPLICATE-001")
+def test_the_documentation_and_the_refusal_agree():
+    # They contradicted each other: the Never bullet forbade --threshold and
+    # the refusal named it as the remedy.
+    doc = (ROOT / "bundle/components/extensions/github-lifecycle/commands/capture.md").read_text()
+    never = doc.split("## Never", 1)[1]
+    assert "--threshold" in never, "the prohibition was dropped rather than resolved"
+    source = (SCRIPTS / "capture.py").read_text()
+    refusal = source.split("not yet decided", 1)[1].split(")", 1)[0]
+    assert "--considered" in refusal

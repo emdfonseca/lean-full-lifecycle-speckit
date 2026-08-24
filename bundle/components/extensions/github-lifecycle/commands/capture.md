@@ -31,6 +31,33 @@ The script refuses to create when a candidate duplicate exists, or when the
 body lacks what the type requires. Both refusals are findings to report, not
 obstacles to work around by raising the threshold.
 
+## Recording the decision a person made
+
+A duplicate report is a question for a person, and the answer belongs in the
+record rather than in whoever remembers making it:
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/capture.py \
+  --repo <owner>/<name> --title "<title>" --type <story|bug|spike> \
+  --body "<body>" --considered <n> --considered <n> --create
+```
+
+Every candidate the search raised must be named. Not any — every. A flag that
+cleared the whole report once one item was named would let the second duplicate
+through unseen, which is what the report exists to prevent. The refusal lists
+the exact flags to add, so the answer is never a guess.
+
+A number the search did not raise is refused too. A decision recorded against
+an item nobody surfaced is either a typo or a comparison against something
+else, and both should be corrected before the record is written.
+
+The numbers travel into the result as `considered`, which is what makes the
+decision readable afterwards rather than a flag somebody once passed.
+
+This follows how the extension records every other human decision: a structured
+record passed by flag, as with `ratchet --exception` and
+`sensitive --authorization`.
+
 ## Creating also places the item on the board
 
 Pass `--project <n>`. Delivery state lives on the board, and every transition,
@@ -63,7 +90,8 @@ backlog with a duplicate search. Do not use one for the other's job.
 ## Never
 
 - Create without searching.
-- Raise `--threshold` to get past a duplicate report. Decide instead: link to
-  the existing item, or state why this is genuinely different.
+- Raise `--threshold` to get past a duplicate report. It hides the report
+  rather than answering it. Decide instead: link to the existing item, or
+  record the comparison with `--considered`.
 - File an observation with no reproduction and no stated outcome. That is a
   discovery note, and the script will say so.

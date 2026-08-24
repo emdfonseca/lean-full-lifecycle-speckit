@@ -124,10 +124,34 @@ def has_evidence(body: str, item_type: str) -> list[str]:
     return [name for name in required if name not in lowered]
 
 
+def unconsidered(candidates: list["Candidate"], considered: list[int]) -> list[int]:
+    """Candidates the caller has not said anything about.
+
+    Every candidate, not any candidate. A flag that cleared the whole report
+    once one item was named would let the second duplicate through unseen,
+    which is the failure the report exists to prevent.
+    """
+    seen = set(considered or [])
+    return [c.number for c in candidates if c.number not in seen]
+
+
+def phantom_considerations(candidates: list["Candidate"], considered: list[int]) -> list[int]:
+    """Numbers named as considered that the search never raised.
+
+    Refused rather than ignored. A decision recorded against an item the
+    search did not surface is either a typo or a claim about something the
+    author never actually compared, and both should be corrected before the
+    record is written.
+    """
+    raised = {c.number for c in candidates}
+    return [n for n in (considered or []) if n not in raised]
+
+
 def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
                 parent: int | None = None, operation_id: str | None = None,
                 project: int | None = None,
-                policy_root: Path | None = None) -> dict:
+                policy_root: Path | None = None,
+                considered: list[int] | None = None) -> dict:
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
@@ -154,6 +178,10 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
         relationships.link_child(gh, repo, parent, number)
 
     result = {"number": number, "type": item_type, "parent": parent}
+    if considered:
+        # The decision travels with the creation it authorized. Without this
+        # the record is a flag someone passed and nothing anyone can read back.
+        result["considered"] = sorted(considered)
     result.update(place_on_board(gh, repo, number, check, project,
                                  operation_id=operation_id,
                                  policy_root=policy_root))
@@ -252,6 +280,12 @@ def main() -> int:
                     help="Project to place the item on. Omit to let inspection choose,\n"
                          "which fails when the owner has more than one.")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    ap.add_argument("--considered", type=int, action="append", default=[],
+                    metavar="N",
+                    help="Issue number a person compared this against and "
+                         "judged different. Repeatable. Every candidate the "
+                         "search raises must be named before --create "
+                         "proceeds.")
     ap.add_argument("--policy-root", type=Path, default=None,
                     help="Spec Kit project root. Defaults to SPECIFY_INIT_DIR, "
                          "then the nearest ancestor with a .specify/ directory.")
@@ -295,18 +329,38 @@ def main() -> int:
             print(json.dumps(report, indent=2))
             return 1
 
-        if candidates:
+        invented = phantom_considerations(candidates, args.considered)
+        if invented:
             report["action"] = "refused"
             report["reason"] = (
-                f"{len(candidates)} candidate duplicate(s) found. Decide "
-                f"explicitly: raise the threshold, or link to the existing item.")
+                f"--considered names {invented}, which the search did not "
+                f"raise. Either the number is wrong or the comparison was "
+                f"against something else; correct it rather than recording "
+                f"a decision nobody can check.")
             print(json.dumps(report, indent=2))
             return 1
+
+        outstanding = unconsidered(candidates, args.considered)
+        if outstanding:
+            report["action"] = "refused"
+            report["reason"] = (
+                f"{len(candidates)} candidate duplicate(s) found and "
+                f"{len(outstanding)} not yet decided: {outstanding}. Look at "
+                f"each, then either link to it, or record the decision: "
+                + " ".join(f"--considered {n}" for n in outstanding)
+                + ". Raising --threshold hides the report instead of "
+                  "answering it.")
+            print(json.dumps(report, indent=2))
+            return 1
+
+        if args.considered:
+            report["considered"] = sorted(args.considered)
 
         report.update(create_item(gh, args.repo, args.title, args.body,
                                   args.item_type, args.parent,
                                   project=args.project,
-                                  policy_root=args.policy_root))
+                                  policy_root=args.policy_root,
+                                  considered=args.considered))
         report["action"] = "created"
         print(json.dumps(report, indent=2))
         return 0
