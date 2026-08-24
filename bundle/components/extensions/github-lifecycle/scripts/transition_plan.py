@@ -291,6 +291,30 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
                          operation_id=plan.operation_id)
 
 
+def closure_exempt_reasons(machine: dict) -> set[str]:
+    """Close reasons that do not require the terminal delivery state.
+
+    Derived from `state-machine.yml`'s `closure` block rather than listed here.
+    A route declaring `set_output_done: false` closes work that never reached
+    Output Done and must not be made to -- requiring a delivery state the work
+    did not earn is how a board starts recording fiction.
+
+    Exemption is the allowlist, not the denylist. A reason the policy has not
+    considered is reported and looked at rather than silently permitted because
+    nobody wrote it down, which is the conservative direction for a rule whose
+    whole job is to notice a board that stopped being true.
+    """
+    exempt = set()
+    for route in (machine.get("closure") or {}).values():
+        if not isinstance(route, dict):
+            continue
+        if route.get("set_output_done") is False:
+            name = str(route.get("close_reason") or "")
+            if name:
+                exempt.add(name)
+    return exempt
+
+
 @dataclass(frozen=True)
 class Inconsistency:
     issue: int | None
@@ -321,9 +345,10 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
     copy of that order is the copy that drifts.
     """
     found: list[Inconsistency] = []
-    values = (machine or load_state_machine(
+    machine = machine or load_state_machine(
         project_root.resolve(None, required=False) or Path.cwd())
-    )["delivery_status"]["values"]
+    values = machine["delivery_status"]["values"]
+    exempt_reasons = closure_exempt_reasons(machine)
     issues = gh.rest(
         "GET", f"repos/{inspection.owner}/{inspection.repo}/issues?state=all",
         paginate=True,
@@ -347,10 +372,15 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
             found.append(Inconsistency(number, "on the board with no delivery state"))
             continue
         if issue.get("state") == "closed" and value != TERMINAL_STATE:
-            found.append(Inconsistency(
-                number,
-                f"closed while delivery state is {value!r}. "
-                f"Closure follows completion; it cannot precede it."))
+            reason = str(issue.get("state_reason") or "completed")
+            # Only the routes the policy says require delivery. Reporting a
+            # not_planned closure would report the policy's own sanctioned
+            # route as a contradiction of the policy.
+            if reason not in exempt_reasons:
+                found.append(Inconsistency(
+                    number,
+                    f"closed as {reason!r} while delivery state is {value!r}. "
+                    f"Closure follows completion; it cannot precede it."))
         if value == "Ready":
             blocking = blockers(gh, inspection.owner, inspection.repo, int(number))
             if blocking:

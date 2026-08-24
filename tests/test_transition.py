@@ -376,9 +376,11 @@ def test_non_terminal_transitions_do_not_inspect_children():
 class AuditBoard(Board):
     """A board plus an issue list, so closure and delivery state can disagree."""
 
-    def __init__(self, issues, states, children_of=None, labels=None, blocked=None):
+    def __init__(self, issues, states, children_of=None, labels=None,
+                 blocked=None, reasons=None):
         super().__init__(None)
         self.issues = issues                        # number -> open | closed
+        self.reasons = reasons or {}                # number -> state_reason
         self.children_of = children_of or {}        # parent -> [child numbers]
         self.labels = labels or {}                  # number -> [label]
         self.blocked = blocked or {}                # number -> [(repo, number, state)]
@@ -404,6 +406,10 @@ class AuditBoard(Board):
         if url.endswith("/issues"):
             return self._ok([
                 {"number": n, "state": s,
+                 # The real API sends this on every closed issue; a fake that
+                 # omitted it would test a payload GitHub does not send.
+                 "state_reason": self.reasons.get(n,
+                                                  "completed" if s == "closed" else None),
                  "labels": [{"name": lbl} for lbl in self.labels.get(n, [])]}
                 for n, s in self.issues.items()])
         if url.endswith("/items"):
@@ -412,8 +418,9 @@ class AuditBoard(Board):
         return super().__call__(args, stdin)
 
 
-def audit_setup(issues, states, children_of=None, labels=None, blocked=None):
-    board = AuditBoard(issues, states, children_of, labels, blocked)
+def audit_setup(issues, states, children_of=None, labels=None, blocked=None,
+                reasons=None):
+    board = AuditBoard(issues, states, children_of, labels, blocked, reasons)
     gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
     insp = inspection()
     return gh, insp, fb.ProjectFieldBackend(gh, insp)
@@ -426,12 +433,14 @@ def test_a_clean_board_reports_nothing():
 
 
 @pytest.mark.req("REQ-BACKLOG-AUDIT-001")
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
 def test_closed_while_not_output_done_is_reported():
     # The failure that happened three times: closed with gh, never transitioned.
     gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"})
     problems = tp.audit_board(gh, be, insp)
     assert len(problems) == 1
-    assert "closed while delivery state is 'In Progress'" in problems[0].problem
+    assert "closed as 'completed' while delivery state is 'In Progress'" \
+        in problems[0].problem
 
 
 @pytest.mark.req("REQ-BACKLOG-AUDIT-001")
@@ -704,6 +713,66 @@ def test_untracked_files_do_not_trigger_it(tmp_path):
 def test_the_finding_is_attributed_to_the_tree_not_to_an_issue():
     assert str(tp.Inconsistency(None, "x")) == "working tree: x"
     assert str(tp.Inconsistency(7, "x")) == "#7: x"
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_a_not_planned_closure_is_not_reported():
+    # state-machine.yml declares set_output_done: false for this route.
+    # Reporting it would report the policy's own sanctioned route as a
+    # contradiction of the policy.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Refining"},
+                               reasons={1: "not_planned"})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_a_duplicate_closure_is_not_reported():
+    # Superseded work is carried by the item that supersedes it. GitHub
+    # records `duplicate` natively, verified against the live API.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"},
+                               reasons={1: "duplicate"})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_a_completed_closure_short_of_output_done_is_still_reported():
+    # The rule that mattered must survive the exemption.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"},
+                               reasons={1: "completed"})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems and "closed as 'completed'" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_an_unknown_close_reason_is_reported_rather_than_exempted():
+    # The conservative direction: a reason the policy has not considered gets
+    # looked at, rather than silently exempted because nobody wrote it down.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Refining"},
+                               reasons={1: "invented_by_someone"})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] != []
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_the_exempt_reasons_come_from_policy_not_from_the_audit():
+    machine = tp.load_state_machine(ROOT)
+    assert tp.closure_exempt_reasons(machine) == {"not_planned", "duplicate"}
+    # A route the policy adds must not need the audit edited to match.
+    extended = {"closure": dict(machine["closure"],
+                                archived={"set_output_done": False,
+                                          "close_reason": "archived"})}
+    assert tp.closure_exempt_reasons(extended) == {
+        "not_planned", "duplicate", "archived"}
+    source = (SCRIPTS / "transition_plan.py").read_text()
+    body = source.split("def closure_exempt_reasons(")[1].split("\ndef ")[0]
+    assert '"not_planned"' not in body and '"duplicate"' not in body, \
+        "close reasons are hardcoded in the audit"
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-001")
+def test_the_policy_declares_the_route_supersession_will_use():
+    machine = tp.load_state_machine(ROOT)
+    routes = {r.get("close_reason") for r in machine["closure"].values()}
+    assert {"completed", "not_planned", "duplicate"} <= routes
 
 
 def test_an_item_with_no_delivery_state_is_reported():

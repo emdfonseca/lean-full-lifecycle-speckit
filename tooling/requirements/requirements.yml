@@ -833,6 +833,36 @@ requirements:
     evidence:
       - "Issue #106"
 
+  - id: REQ-BACKLOG-CLOSURE-001
+    statement: >-
+      Closure is judged against the route it was closed by. `state-machine.yml`
+      declares each route and whether it requires the terminal delivery state;
+      a route declaring set_output_done false closes work that never reached
+      Output Done and is not reported, because requiring a state the work did
+      not earn is how a board starts recording fiction. The exempt reasons are
+      derived from the policy rather than listed in the audit, so adding a
+      route is a policy edit alone. Exemption is an allowlist: a close reason
+      the policy has not considered is reported rather than silently permitted.
+      A completed closure short of Output Done is still reported, which is the
+      rule the exemption must not weaken.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:state-machine.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_transition.py::test_closed_while_not_output_done_is_reported"
+      - "tests/test_transition.py::test_a_not_planned_closure_is_not_reported"
+      - "tests/test_transition.py::test_a_duplicate_closure_is_not_reported"
+      - "tests/test_transition.py::test_a_completed_closure_short_of_output_done_is_still_reported"
+      - "tests/test_transition.py::test_an_unknown_close_reason_is_reported_rather_than_exempted"
+      - "tests/test_transition.py::test_the_exempt_reasons_come_from_policy_not_from_the_audit"
+      - "tests/test_transition.py::test_the_policy_declares_the_route_supersession_will_use"
+    evidence:
+      - "Issue #107"
+
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
       A finding is searched for duplicates before it is created, including

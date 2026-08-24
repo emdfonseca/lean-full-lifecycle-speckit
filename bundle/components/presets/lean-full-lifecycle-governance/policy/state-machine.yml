@@ -86,9 +86,20 @@ blocked:
   add_delivery_status: false
 
 closure:
+  # Two questions per route: what delivery state closure requires, and what
+  # GitHub records as the reason. The audit reads this rather than carrying
+  # its own list, so adding a route here is the whole change.
   completed:
     require_delivery_status: Output Done
     close_reason: completed
   not_planned:
+    # Retired, abandoned, or decided against. It never reached Output Done and
+    # must not be made to: requiring a delivery state the work did not earn is
+    # how a board starts recording fiction.
     set_output_done: false
     close_reason: not_planned
+  duplicate:
+    # Superseded by another item, which carries the work. GitHub records this
+    # natively, so the marking is the platform's rather than a label of ours.
+    set_output_done: false
+    close_reason: duplicate
