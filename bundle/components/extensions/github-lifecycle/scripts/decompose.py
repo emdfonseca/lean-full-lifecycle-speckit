@@ -24,6 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import config  # noqa: E402
+
 import capture as capture_mod  # noqa: E402
 import relationships  # noqa: E402
 from field_backend import FieldBackend, for_inspection  # noqa: E402
@@ -168,7 +170,8 @@ def apply_proposals(gh: GitHub, backend: FieldBackend, inspection: Inspection,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--repo", required=True, help="owner/name")
+    ap.add_argument("--repo", default=None,
+                    help="owner/name. Defaults to the repository the extension config declares.")
     ap.add_argument("--project", type=int, default=None)
     ap.add_argument("--epic", type=int, required=True)
     ap.add_argument("--target", type=int, default=3,
@@ -183,6 +186,14 @@ def main() -> int:
     p_apply.add_argument("--dry-run", action="store_true")
 
     args = ap.parse_args()
+    try:
+        target = config.resolve_target(args.repo, getattr(args, "project", None))
+        args.repo = target.repo
+        if hasattr(args, "project"):
+            args.project = target.project
+    except config.ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     owner, _, name = args.repo.partition("/")
     gh = GitHub(audit_path=args.audit, dry_run=getattr(args, "dry_run", False))
     try:

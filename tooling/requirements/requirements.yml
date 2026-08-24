@@ -1822,3 +1822,36 @@ requirements:
       - "tests/test_acceptance_registry.py::test_wording_evidence_is_rejected"
       - "tests/test_acceptance_registry.py::test_blocked_metadata_is_required"
       - "tests/test_acceptance_registry.py::test_p12_gate_rejects_partial_and_absent_but_ignores_other_phases"
+
+  - id: REQ-GITHUB-CONFIG-001
+    statement: >-
+      A command must read the target from the configuration the project
+      already declared rather than requiring it on every invocation. An
+      explicit flag wins, then the environment, then the scaffolded config with
+      its local sibling preferred; a present-but-null value is not a value; an
+      unparseable config refuses rather than falling through to another source;
+      and with nothing declared anywhere the command names the file to edit
+      instead of guessing a repository.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - extension:github-lifecycle
+      - command:speckit.github-lifecycle.doctor
+    verified_by:
+      - "tests/test_config.py::test_the_repository_is_resolved_from_the_config"
+      - "tests/test_config.py::test_an_explicit_flag_wins_over_the_config"
+      - "tests/test_config.py::test_the_local_sibling_is_preferred"
+      - "tests/test_config.py::test_the_environment_beats_the_config_and_loses_to_the_flag"
+      - "tests/test_config.py::test_no_repository_anywhere_is_refused"
+      - "tests/test_config.py::test_the_refusal_names_the_file_to_edit"
+      - "tests/test_config.py::test_a_null_repository_is_not_a_repository"
+      - "tests/test_config.py::test_a_malformed_repository_is_refused"
+      - "tests/test_config.py::test_an_unparseable_config_refuses_rather_than_falling_through"
+      - "tests/test_config.py::test_a_missing_project_number_is_none_not_an_error"
+      - "tests/test_config.py::test_declared_field_names_are_readable"
+      - "tests/test_config.py::test_declared_safety_switches_are_readable"
+      - "tests/test_config.py::test_the_scripts_no_longer_require_the_flag"
+    evidence:
+      - "Issue #92"

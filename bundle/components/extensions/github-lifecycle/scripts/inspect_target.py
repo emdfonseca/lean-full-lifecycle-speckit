@@ -37,6 +37,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import config  # noqa: E402
+
 from github_api import GitHub, GitHubError, NotFound  # noqa: E402
 
 BACKEND_ISSUE_FIELDS = "issue-fields"
@@ -287,12 +289,21 @@ def _finalize(result: Inspection) -> Inspection:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--repo", required=True, help="owner/name")
+    ap.add_argument("--repo", default=None,
+                    help="owner/name. Defaults to the repository the extension config declares.")
     ap.add_argument("--project", type=int, default=None)
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--audit", type=Path, default=None)
     ap.add_argument("--quiet", action="store_true", help="Print a summary, not the record.")
     args = ap.parse_args()
+    try:
+        target = config.resolve_target(args.repo, getattr(args, "project", None))
+        args.repo = target.repo
+        if hasattr(args, "project"):
+            args.project = target.project
+    except config.ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     owner, _, repo = args.repo.partition("/")
     if not owner or not repo:

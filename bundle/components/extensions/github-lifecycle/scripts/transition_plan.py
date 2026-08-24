@@ -40,6 +40,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import config  # noqa: E402
 import project_root  # noqa: E402
 import yaml  # noqa: E402
 
@@ -485,7 +486,8 @@ def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = F
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--repo", required=True, help="owner/name")
+    ap.add_argument("--repo", default=None,
+                    help="owner/name. Defaults to the repository the extension config declares.")
     ap.add_argument("--project", type=int, default=None)
     ap.add_argument("--audit", type=Path, default=None)
     ap.add_argument("--policy-root", type=Path, default=None,
@@ -513,6 +515,14 @@ def main() -> int:
                          help="Desired number of startable items.")
 
     args = ap.parse_args()
+    try:
+        target = config.resolve_target(args.repo, getattr(args, "project", None))
+        args.repo = target.repo
+        if hasattr(args, "project"):
+            args.project = target.project
+    except config.ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     try:
         args.policy_root = project_root.resolve(
             args.policy_root, required=False) or Path.cwd()

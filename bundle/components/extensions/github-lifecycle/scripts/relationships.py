@@ -24,6 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import config  # noqa: E402
+
 from github_api import Conflict, GitHub, GitHubError, NotFound  # noqa: E402
 
 
@@ -141,7 +143,8 @@ def add_blocker(gh: GitHub, repo: str, issue: int, blocker_repo: str,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--repo", required=True, help="owner/name")
+    ap.add_argument("--repo", default=None,
+                    help="owner/name. Defaults to the repository the extension config declares.")
     ap.add_argument("--audit", type=Path, default=None)
     ap.add_argument("--dry-run", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -160,6 +163,14 @@ def main() -> int:
     p_show.add_argument("--issue", type=int, required=True)
 
     args = ap.parse_args()
+    try:
+        target = config.resolve_target(args.repo, getattr(args, "project", None))
+        args.repo = target.repo
+        if hasattr(args, "project"):
+            args.project = target.project
+    except config.ConfigError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     gh = GitHub(audit_path=args.audit, dry_run=args.dry_run)
     try:
         if args.cmd == "link":
