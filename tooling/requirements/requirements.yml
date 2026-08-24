@@ -1606,6 +1606,37 @@ requirements:
       - "Issue #118"
       - "Issue #103"
 
+  - id: REQ-GITHUB-PROJECTSCOPE-001
+    statement: >-
+      A repository resolves only to a board it is linked to, never to one its
+      owner merely has. The owner-wide listing let a repository inherit an
+      unrelated board, and with exactly one board the ambiguity branch never
+      fired, so the wrong board was adopted silently and reported usable --
+      items would have been written onto another repository's roadmap.
+      authoritative_project_count reads as protection against that and is not,
+      because it counts what the owner has rather than what the repository is
+      linked to. The lookup is GraphQL because no REST endpoint answers it, and
+      the owner-wide listing survives only for discovery before a repository is
+      relevant. A repository linked to nothing is an ambiguity naming the
+      repository, not a silently chosen board.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/inspect_target.py
+      - policy:github-schema.yml
+    verified_by:
+      - "tests/test_inspect.py::test_a_repository_is_not_offered_its_owners_unlinked_board"
+      - "tests/test_inspect.py::test_a_linked_board_is_offered"
+      - "tests/test_inspect.py::test_a_second_unlinked_board_changes_nothing"
+      - "tests/test_inspect.py::test_the_repository_scoped_lookup_uses_graphql"
+      - "tests/test_inspect.py::test_owner_wide_discovery_survives_for_the_case_that_needs_it"
+      - "tests/test_inspect.py::test_no_linked_board_is_an_ambiguity_naming_the_repository"
+    evidence:
+      - "Issue #120"
+      - "Issue #104"
+
   - id: REQ-GITHUB-BOARD-001
     statement: >-
       An item the framework creates must be placed on the board, because

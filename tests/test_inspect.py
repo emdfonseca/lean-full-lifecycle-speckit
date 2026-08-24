@@ -58,6 +58,14 @@ def router(**routes):
 
     def runner(args, stdin):
         calls.append(list(args))
+        # A GraphQL call has no URL. The repository-scoped project lookup uses
+        # it, because no REST endpoint answers "which boards is this repository
+        # linked to". Served from the same projectsV2 route so a fake declaring
+        # a board still gets one.
+        if "graphql" in args:
+            linked = routes.get("projectsV2") or []
+            return subprocess.CompletedProcess(args, 0, json.dumps(
+                {"data": {"repository": {"projectsV2": {"nodes": linked}}}}), "")
         url = url_of(args)
         for needle, payload in routes.items():
             if url.endswith(needle.replace("__", "/")):
@@ -301,3 +309,68 @@ def test_an_older_preset_loses_the_explanation_not_the_inspection(monkeypatch):
     monkeypatch.setattr(it, "_backend_matrix", lambda: {})
     said = it._role_consequence("issue-fields", "outcome_status")
     assert said and "nothing is blocked" in said.lower()
+
+
+# --- a repository does not inherit its owner's board -------------------------
+
+class OwnerAndRepoProjects:
+    """Boards the owner has, and boards this repository is linked to."""
+
+    def __init__(self, owner_has, repo_linked):
+        self.owner_has = owner_has
+        self.repo_linked = repo_linked
+        self.graphql_calls = 0
+
+    def rest(self, method, url, **kw):
+        return [{"number": n, "title": f"Owner board {n}"} for n in self.owner_has]
+
+    def graphql(self, query, variables=None, **kw):
+        self.graphql_calls += 1
+        return {"data": {"repository": {"projectsV2": {"nodes": [
+            {"number": n, "title": f"Linked board {n}"} for n in self.repo_linked]}}}}
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_a_repository_is_not_offered_its_owners_unlinked_board():
+    # The owner has a board; this repository is linked to none. Adopting it
+    # would write this repository's items onto another's roadmap.
+    gh = OwnerAndRepoProjects(owner_has=[3], repo_linked=[])
+    assert it.discover_projects(gh, "acme", "User", "widgets") == []
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_a_linked_board_is_offered():
+    gh = OwnerAndRepoProjects(owner_has=[3, 9], repo_linked=[9])
+    found = it.discover_projects(gh, "acme", "User", "widgets")
+    assert [p["number"] for p in found] == [9]
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_a_second_unlinked_board_changes_nothing():
+    gh = OwnerAndRepoProjects(owner_has=[1, 2, 3, 4], repo_linked=[2])
+    assert [p["number"] for p in it.discover_projects(gh, "acme", "User", "widgets")] == [2]
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_the_repository_scoped_lookup_uses_graphql():
+    # No REST endpoint answers it: repos/{o}/{r}/projectsV2 is 404.
+    gh = OwnerAndRepoProjects(owner_has=[3], repo_linked=[3])
+    it.discover_projects(gh, "acme", "User", "widgets")
+    assert gh.graphql_calls == 1
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_owner_wide_discovery_survives_for_the_case_that_needs_it():
+    # `board` discovers before a repository is relevant, so the owner-wide
+    # listing stays reachable when no repository is given.
+    gh = OwnerAndRepoProjects(owner_has=[3, 4], repo_linked=[])
+    assert [p["number"] for p in it.discover_projects(gh, "acme", "User")] == [3, 4]
+    assert gh.graphql_calls == 0
+
+
+@pytest.mark.req("REQ-GITHUB-PROJECTSCOPE-001")
+def test_no_linked_board_is_an_ambiguity_naming_the_repository():
+    source = (SCRIPTS / "inspect_target.py").read_text()
+    branch = source.split("if not projects:")[1].split("return None")[0]
+    assert "is linked to no Projects v2 board" in branch
+    assert "must not inherit another" in branch

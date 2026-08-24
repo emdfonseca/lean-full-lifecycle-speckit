@@ -157,10 +157,36 @@ def organization_issue_types(gh: GitHub, owner: str) -> list[str]:
     return [r["name"] for r in rows]
 
 
-def discover_projects(gh: GitHub, owner: str, owner_kind: str) -> list[dict]:
-    root = "orgs" if owner_kind == "Organization" else "users"
-    rows = gh.rest("GET", f"{root}/{owner}/projectsV2") or []
-    return [{"number": r["number"], "title": r.get("title", "")} for r in rows]
+def discover_projects(gh: GitHub, owner: str, owner_kind: str,
+                      repo: str | None = None) -> list[dict]:
+    """Boards this repository is linked to.
+
+    Scoped to the repository, not the owner. The owner-wide listing returns
+    every board the owner has, so a repository inherited whichever one existed
+    -- and with exactly one, the ambiguity branch never fired and the wrong
+    board was adopted silently and reported usable. A new repository under an
+    owner with a board would have had its items written onto it.
+
+    `authoritative_project_count: 1` reads as protection against that and is
+    not: it counts what the owner has, not what the repository is linked to.
+
+    GraphQL because no REST endpoint answers it -- `repos/{o}/{r}/projectsV2`
+    is 404. Falls back to the owner-wide listing only when no repository is
+    given, which is the discovery case `board` uses before a repository is
+    even relevant.
+    """
+    if repo is None:
+        root = "orgs" if owner_kind == "Organization" else "users"
+        rows = gh.rest("GET", f"{root}/{owner}/projectsV2") or []
+        return [{"number": r["number"], "title": r.get("title", "")} for r in rows]
+
+    payload = gh.graphql(
+        "query($owner:String!,$name:String!){repository(owner:$owner,name:$name)"
+        "{projectsV2(first:50){nodes{number title}}}}",
+        variables={"owner": owner, "name": repo}) or {}
+    nodes = (((payload.get("data") or {}).get("repository") or {})
+             .get("projectsV2") or {}).get("nodes") or []
+    return [{"number": n["number"], "title": n.get("title", "")} for n in nodes]
 
 
 def project_fields(gh: GitHub, owner: str, owner_kind: str,
@@ -217,7 +243,8 @@ def inspect(gh: GitHub, owner: str, repo: str,
                 "Organization Issue Fields exist but none carries the delivery "
                 "state; falling back to the project board."
             )
-        project_number = _select_project(gh, owner, kind, project_number, result)
+        project_number = _select_project(gh, owner, kind, project_number, result,
+                                         repo)
         if project_number is None:
             return _finalize(result)
         result.project_number = project_number
@@ -228,19 +255,23 @@ def inspect(gh: GitHub, owner: str, repo: str,
 
 
 def _select_project(gh: GitHub, owner: str, kind: str,
-                    chosen: int | None, result: Inspection) -> int | None:
+                    chosen: int | None, result: Inspection,
+                    repo: str | None = None) -> int | None:
     if chosen is not None:
         return chosen
-    projects = discover_projects(gh, owner, kind)
+    projects = discover_projects(gh, owner, kind, repo)
     if not projects:
         # An ambiguity, not a note. A note reads as information and this is a
         # refusal: with no board there is nowhere for delivery_state to live,
         # so nothing can be transitioned and the backlog cannot move. A
         # greenfield bootstrap produced exactly that and nothing said so.
         result.ambiguities.append(
-            f"{owner} has no Projects v2 board, so delivery_state has nowhere "
+            f"{owner}/{repo} is linked to no Projects v2 board, so "
+            f"delivery_state has nowhere "
             f"to live and no item can be transitioned. Create one with the "
-            f"board command, or pass --project if one exists elsewhere.")
+            f"board command, or pass --project to use an existing board. A "
+            f"board the owner has but this repository is not linked to is not "
+            f"offered: a repository must not inherit another's board.")
         return None
     if len(projects) == 1:
         return projects[0]["number"]
