@@ -376,10 +376,12 @@ def test_non_terminal_transitions_do_not_inspect_children():
 class AuditBoard(Board):
     """A board plus an issue list, so closure and delivery state can disagree."""
 
-    def __init__(self, issues, states, children_of=None):
+    def __init__(self, issues, states, children_of=None, labels=None, blocked=None):
         super().__init__(None)
         self.issues = issues                        # number -> open | closed
         self.children_of = children_of or {}        # parent -> [child numbers]
+        self.labels = labels or {}                  # number -> [label]
+        self.blocked = blocked or {}                # number -> [(repo, number, state)]
         self.item_of, self.values = {}, {}
         item = 900
         for number, st in states.items():
@@ -394,16 +396,24 @@ class AuditBoard(Board):
         if url.endswith("/sub_issues"):
             parent = int(url.split("/issues/")[1].split("/")[0])
             return self._ok([{"number": n} for n in self.children_of.get(parent, [])])
+        if url.endswith("/blocked_by"):
+            n = int(url.split("/issues/")[1].split("/")[0])
+            return self._ok([
+                {"number": num, "state": st, "repository": {"full_name": repo}}
+                for repo, num, st in self.blocked.get(n, [])])
         if url.endswith("/issues"):
-            return self._ok([{"number": n, "state": s} for n, s in self.issues.items()])
+            return self._ok([
+                {"number": n, "state": s,
+                 "labels": [{"name": lbl} for lbl in self.labels.get(n, [])]}
+                for n, s in self.issues.items()])
         if url.endswith("/items"):
             return self._ok([{"id": i, "content": {"number": n}}
                              for n, i in self.item_of.items()])
         return super().__call__(args, stdin)
 
 
-def audit_setup(issues, states, children_of=None):
-    board = AuditBoard(issues, states, children_of)
+def audit_setup(issues, states, children_of=None, labels=None, blocked=None):
+    board = AuditBoard(issues, states, children_of, labels, blocked)
     gh = gh_api.GitHub(runner=board, sleep=lambda _: None, max_attempts=1)
     insp = inspection()
     return gh, insp, fb.ProjectFieldBackend(gh, insp)
@@ -432,6 +442,75 @@ def test_output_done_over_an_incomplete_child_is_reported():
         children_of={1: [2]})
     problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
     assert problems and "children are not" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_in_progress_whose_every_child_is_blocked_is_reported():
+    # The shape #16 and #61 were both in: they read as active work, and no
+    # child of either could be started by anyone.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "In Progress", 2: "Refining"},
+        children_of={1: [2]}, labels={1: ["epic"], 2: ["story"]},
+        blocked={2: [("acme/widgets", 3, "open")]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems, "a stalled epic was not reported"
+    assert "no child can move" in problems[0].problem
+    assert "#2" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_with_one_movable_child_is_not_reported():
+    # One unblocked child is enough. In Progress is then a claim the board
+    # supports, and reporting it would train a reader to ignore the audit.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open", 3: "open"},
+        {1: "In Progress", 2: "Refining", 3: "Ready"},
+        children_of={1: [2, 3]}, labels={1: ["epic"]},
+        blocked={2: [("emdfonseca/lean-full-lifecycle-speckit", 9, "open")]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_whose_children_are_all_delivered_is_reported():
+    # Every child at Output Done and the epic still In Progress: nothing is
+    # left to do, so the epic is waiting on a transition nobody made.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "In Progress", 2: "Output Done"},
+        children_of={1: [2]}, labels={1: ["epic"]})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems and "delivered" in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_a_blocker_at_output_done_no_longer_stalls_its_parent():
+    # Judged by delivery state, not closure -- the same rule the terminal
+    # check uses. A blocker delivered but not yet closed blocks nothing.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open", 3: "open"},
+        {1: "In Progress", 2: "Refining", 3: "Output Done"},
+        children_of={1: [2]}, labels={1: ["epic"]},
+        blocked={2: [("acme/widgets", 3, "open")]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_a_story_in_progress_with_blocked_children_is_not_reported():
+    # The rule is about epics, whose progress derives from children.
+    # A story owns its own progress and may have children regardless.
+    gh, insp, be = audit_setup(
+        {1: "open", 2: "open"}, {1: "In Progress", 2: "Refining"},
+        children_of={1: [2]}, labels={1: ["story"]},
+        blocked={2: [("emdfonseca/lean-full-lifecycle-speckit", 9, "open")]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-AUDIT-002")
+def test_an_epic_with_no_children_is_not_reported_by_this_rule():
+    # An undecomposed epic is a decomposition gap, not a stall, and this
+    # rule must not become the place that reports it.
+    gh, insp, be = audit_setup(
+        {1: "open"}, {1: "In Progress"}, labels={1: ["epic"]})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
 
 
 def test_an_item_with_no_delivery_state_is_reported():

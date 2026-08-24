@@ -350,6 +350,15 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                 found.append(Inconsistency(
                     number,
                     f"is {TERMINAL_STATE} but these children are not: {listed}"))
+        if value == START_STATE and item_type_of(issue, {"epic"}) == "epic":
+            movable, stuck = child_mobility(gh, backend, inspection, int(number), role)
+            if stuck and not movable:
+                listed = ", ".join(f"#{n} ({why})" for n, why in stuck)
+                found.append(Inconsistency(
+                    number,
+                    f"is {START_STATE} but no child can move: {listed}. An "
+                    f"epic's progress derives from its children, so this "
+                    f"claims work that nothing on the board can do."))
     return found
 
 
@@ -406,6 +415,39 @@ def unfinished_blockers(gh: GitHub, backend: FieldBackend,
         if value != TERMINAL_STATE:
             out.append((f"#{number}", value or "not on the board"))
     return out
+
+
+def child_mobility(gh: GitHub, backend: FieldBackend, inspection: Inspection,
+                   issue_number: int, role: str = "delivery_state",
+                   ) -> tuple[list[int], list[tuple[int, str]]]:
+    """Split an item's children into those that can still move and those that cannot.
+
+    A child that is delivered has stopped moving because it is finished. A
+    child with an unresolved blocker cannot move at all. Anything else can:
+    an item in Refining is being refined, and refinement is progress even
+    though nothing has been built yet.
+
+    Blockers are judged the way `unfinished_blockers` judges them -- by
+    delivery state here, by closure elsewhere -- so a blocker sitting at
+    Output Done but not yet closed correctly stops blocking.
+    """
+    movable: list[int] = []
+    stuck: list[tuple[int, str]] = []
+    for number in child_issue_numbers(gh, inspection.owner, inspection.repo, issue_number):
+        try:
+            value = backend.read(number, role).value
+        except NotFound:
+            value = None
+        if value == TERMINAL_STATE:
+            stuck.append((number, "delivered"))
+            continue
+        waiting = unfinished_blockers(gh, backend, inspection, number, role)
+        if waiting:
+            stuck.append((number, "blocked by "
+                          + ", ".join(name for name, _ in waiting)))
+            continue
+        movable.append(number)
+    return movable, stuck
 
 
 @dataclass(frozen=True)

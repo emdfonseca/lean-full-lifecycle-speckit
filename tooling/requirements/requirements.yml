@@ -564,6 +564,31 @@ requirements:
       - "tests/test_transition.py::test_closed_while_not_output_done_is_reported"
       - "tests/test_transition.py::test_output_done_over_an_incomplete_child_is_reported"
 
+  - id: REQ-BACKLOG-AUDIT-002
+    statement: >-
+      An epic In Progress whose every child is either delivered or blocked is
+      reported. An epic's progress derives from its children, so when no child
+      can move the epic's state is a claim the board cannot support. An epic
+      with one movable child is not reported, a non-epic is not judged by this
+      rule, and an epic with no children is left to decomposition rather than
+      reported here.
+    priority: should
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+      - policy:item-types.yml
+    verified_by:
+      - "tests/test_transition.py::test_an_epic_in_progress_whose_every_child_is_blocked_is_reported"
+      - "tests/test_transition.py::test_an_epic_with_one_movable_child_is_not_reported"
+      - "tests/test_transition.py::test_an_epic_whose_children_are_all_delivered_is_reported"
+      - "tests/test_transition.py::test_a_blocker_at_output_done_no_longer_stalls_its_parent"
+      - "tests/test_transition.py::test_a_story_in_progress_with_blocked_children_is_not_reported"
+      - "tests/test_transition.py::test_an_epic_with_no_children_is_not_reported_by_this_rule"
+    evidence:
+      - "Issue #87"
+
   - id: REQ-BACKLOG-REFINE-001
     statement: >-
       An item reaches Ready only through a validated readiness verdict and two
