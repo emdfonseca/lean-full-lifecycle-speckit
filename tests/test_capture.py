@@ -14,7 +14,7 @@ import sys
 import pytest
 import yaml
 
-from lib.inventory import ROOT
+from lib.inventory import ROOT, load_yaml
 
 SCRIPTS = ROOT / "bundle/components/extensions/github-lifecycle/scripts"
 
@@ -66,6 +66,10 @@ class Repo:
             labels = [] if self.drop_label else [{"name": l} for l in body.get("labels", [])]
             self.issues.append({"number": number, "id": 10000 + number,
                                 "title": body["title"],
+                                # Stored because the real API stores it: a
+                                # fake that drops the body cannot show whether
+                                # provenance reached the issue.
+                                "body": body.get("body", ""),
                                 "state": "open", "labels": labels})
             return self._ok({"number": number})
         if url.endswith("/issues"):
@@ -445,3 +449,81 @@ def test_the_documentation_and_the_refusal_agree():
     source = (SCRIPTS / "capture.py").read_text()
     refusal = source.split("not yet decided", 1)[1].split(")", 1)[0]
     assert "--considered" in refusal
+
+
+# --- provenance ---------------------------------------------------------------
+#
+# A finding from delivery that does not say where it came from is a finding
+# nobody can put back in context.
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_a_finding_records_where_it_was_found(monkeypatch):
+    _wire(monkeypatch, StubBackend())
+    repo = Repo()
+    result = cap.create_item(client(repo), "acme/widgets", "A new finding",
+                             GOOD_BODY, "bug", project=3, policy_root=ROOT,
+                             found_in=42)
+    assert result["found_in"] == 42
+    created = next(i for i in repo.issues if i["number"] == result["number"])
+    assert "Found during #42." in created["body"], \
+        "the provenance is not in the body, so nobody reading the issue sees it"
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_the_provenance_is_a_cross_reference_not_a_private_field():
+    # GitHub renders #42 as a link from both ends, so the source issue shows
+    # the finding without this command writing to it.
+    body = cap.with_provenance("Body text.", 42)
+    assert body.rstrip().endswith("Found during #42.")
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_provenance_is_not_added_twice():
+    once = cap.with_provenance("Body text.", 42)
+    assert cap.with_provenance(once, 42) == once
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_no_source_leaves_the_body_alone():
+    assert cap.with_provenance("Body text.", None) == "Body text."
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_delivery_can_capture_a_finding_without_leaving_the_run():
+    # Before this, capture was reachable from exactly one route: the
+    # missed-outcome branch of outcome-review.
+    delivery = load_yaml(
+        ROOT / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml")
+    switch = next(s for s in delivery["steps"]
+                  if s["id"] == "capture-a-technical-finding")
+    ids = [step["id"] for step in switch["cases"]["capture"]]
+    assert ids == ["search-for-a-technical-finding",
+                   "approve-the-technical-finding",
+                   "capture-the-technical-finding"]
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_the_delivery_capture_searches_before_it_creates_and_links_its_source():
+    delivery = load_yaml(
+        ROOT / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml")
+    switch = next(s for s in delivery["steps"]
+                  if s["id"] == "capture-a-technical-finding")
+    steps = {step["id"]: step for step in switch["cases"]["capture"]}
+    assert "Write nothing" in steps["search-for-a-technical-finding"]["input"]["args"]
+    create = steps["capture-the-technical-finding"]["input"]["args"]
+    assert "--found-in" in create
+    assert "--considered" in create, \
+        "the delivery route bypasses the duplicate decision #98 added"
+
+
+@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
+def test_declining_a_finding_is_recorded_rather_than_silent():
+    # An absent finding and an unexamined one read the same afterwards, and
+    # only one of them is a fact about the delivery.
+    delivery = load_yaml(
+        ROOT / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml")
+    switch = next(s for s in delivery["steps"]
+                  if s["id"] == "capture-a-technical-finding")
+    assert "none" in switch["cases"], "the harness never reaches a default branch"
+    prompt = switch["cases"]["none"][0]["prompt"]
+    assert "no technical finding" in prompt

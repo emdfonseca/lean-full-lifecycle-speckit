@@ -169,3 +169,108 @@ def test_the_workflow_gates_before_any_write():
     ids = [s["id"] for s in steps]
     writing = ids.index("transition-refining")
     assert any(s.get("type") == "gate" for s in steps[:writing])
+
+
+# --- security findings --------------------------------------------------------
+#
+# #90 said a security finding is "a bug with no distinguishing field". A
+# Severity field exists (github-schema.yml:47, applies_to: Bug). What was
+# missing is the routing, not the field.
+
+BUG_BODY = """**Reproduction**
+x
+**Expected**
+y
+**Actual**
+z
+**Regression test**
+t"""
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_a_security_bug_is_recognised_and_routed():
+    repo = Repo(issue(labels=("bug", "security"), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert a.is_security
+    assert a.routing, "a security finding got no routing"
+    assert {r["id"] for r in a.routing} >= {
+        "severity_before_refining", "security_review_required",
+        "no_public_reproduction"}
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_an_ordinary_bug_gets_no_security_routing():
+    repo = Repo(issue(labels=("bug",), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert not a.is_security
+    assert a.routing == []
+    assert a.recommended_severity is None
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_an_unclassified_security_finding_cannot_leave_triage():
+    # Unclassified it is indistinguishable from an ordinary bug in every queue
+    # that reads the board, which is the whole reason the routing exists.
+    repo = Repo(issue(labels=("bug", "security"), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert a.severity_missing
+    assert a.proposed_transition is None
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_a_classified_security_finding_may_be_proposed_for_refining():
+    repo = Repo(issue(labels=("bug", "security"), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, severity="High", policy_root=ROOT)
+    assert not a.severity_missing
+    assert a.proposed_transition == "Refining"
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+@pytest.mark.parametrize("wording,expected", [
+    ("Remote code execution in the parser", "Critical"),
+    ("Authentication bypass on the admin route", "Critical"),
+    ("SQL injection in search", "High"),
+    ("Stored XSS in comments", "High"),
+    ("Open redirect on login", "Medium"),
+])
+def test_severity_is_recommended_from_the_wording(wording, expected):
+    repo = Repo(issue(title=wording, labels=("bug", "security"), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert a.recommended_severity == expected
+    assert a.severity_reasoning
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_nothing_recognisable_recommends_no_severity():
+    # A default of "Medium" would be a number invented by a keyword scanner
+    # and then read by a person as an assessment.
+    repo = Repo(issue(title="Something is odd", labels=("bug", "security"),
+                      body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert a.recommended_severity is None
+    assert "security owner classifies it" in a.severity_reasoning
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_the_recommendation_never_becomes_the_value():
+    # Triage decides what an item is, never how bad it is. Same split it
+    # already keeps for Priority.
+    repo = Repo(issue(title="SQL injection in search",
+                      labels=("bug", "security"), body=BUG_BODY))
+    a = tri.assess(client(repo), "o/r", 1, policy_root=ROOT)
+    assert a.recommended_severity == "High"
+    assert a.severity is None, "triage set a severity it was only to recommend"
+    assert a.to_dict()["severity_is_recommendation_only"] is True
+    assert a.severity_missing, "a recommendation satisfied a required value"
+
+
+@pytest.mark.req("REQ-BACKLOG-SECURITY-001")
+def test_the_marker_comes_from_policy_not_from_this_script():
+    import yaml
+    policy = yaml.safe_load((ROOT / "policy/item-types.yml").read_text())
+    rules = policy["security_findings"]
+    assert rules["label"] == "security"
+    assert rules["severity_required"] is True
+    source = (SCRIPTS / "triage.py").read_text()
+    assert 'get("label", "security")' in source, \
+        "the label is read from policy with a fallback, not hardcoded"

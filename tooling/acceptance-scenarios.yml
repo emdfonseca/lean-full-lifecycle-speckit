@@ -268,10 +268,15 @@ scenarios:
     group: backlog
     name: Security finding triage
     priority: must
-    phase: blocked
+    phase: p12
     expected: A security finding is classified by severity and routed to the security-specific backlog path.
-    missing: triage.py has no severity or security concept, and policy/item-types.yml has no security finding type.
-    tracked_by: 90
+    status: covered
+    verified_by:
+      - tests/test_triage.py::test_a_security_bug_is_recognised_and_routed
+      - tests/test_triage.py::test_an_unclassified_security_finding_cannot_leave_triage
+      - tests/test_triage.py::test_a_classified_security_finding_may_be_proposed_for_refining
+      - tests/test_triage.py::test_the_recommendation_never_becomes_the_value
+      - tests/test_triage.py::test_an_ordinary_bug_gets_no_security_routing
 
   - id: AC-BACKLOG-003
     group: backlog
@@ -320,10 +325,14 @@ scenarios:
     group: backlog
     name: Technical finding capture
     priority: must
-    phase: blocked
+    phase: p12
     expected: A technical finding with required evidence is duplicate-checked, captured with the correct type, and linked to its source.
-    missing: No discovery or delivery workflow invokes capture for a technical finding, and capture.py has no such item type.
-    tracked_by: 90
+    status: covered
+    verified_by:
+      - tests/test_capture.py::test_delivery_can_capture_a_finding_without_leaving_the_run
+      - tests/test_capture.py::test_the_delivery_capture_searches_before_it_creates_and_links_its_source
+      - tests/test_capture.py::test_a_finding_records_where_it_was_found
+      - tests/test_capture.py::test_an_observation_is_not_filed_as_work
 
   - id: AC-BACKLOG-008
     group: backlog

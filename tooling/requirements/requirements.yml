@@ -692,6 +692,70 @@ requirements:
     evidence:
       - "Issue #98"
 
+  - id: REQ-BACKLOG-SECURITY-001
+    statement: >-
+      A security finding is a Bug carrying the security label the policy names,
+      not a fifth item type, and triage routes it by that marking. It carries a
+      Severity before triage will propose it for Refining, because unclassified
+      it is indistinguishable from an ordinary bug in every queue that reads the
+      board. Triage recommends a severity from the wording and never sets one:
+      the classification belongs to the security owner, the same split triage
+      already keeps for Priority. Wording that indicates nothing yields no
+      recommendation rather than a default, and an ordinary bug gets no security
+      routing at all.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.triage
+      - policy:item-types.yml
+      - policy:github-schema.yml
+    verified_by:
+      - "tests/test_triage.py::test_a_security_bug_is_recognised_and_routed"
+      - "tests/test_triage.py::test_an_ordinary_bug_gets_no_security_routing"
+      - "tests/test_triage.py::test_an_unclassified_security_finding_cannot_leave_triage"
+      - "tests/test_triage.py::test_a_classified_security_finding_may_be_proposed_for_refining"
+      - "tests/test_triage.py::test_severity_is_recommended_from_the_wording[Remote code execution in the parser-Critical]"
+      - "tests/test_triage.py::test_severity_is_recommended_from_the_wording[Authentication bypass on the admin route-Critical]"
+      - "tests/test_triage.py::test_severity_is_recommended_from_the_wording[SQL injection in search-High]"
+      - "tests/test_triage.py::test_severity_is_recommended_from_the_wording[Stored XSS in comments-High]"
+      - "tests/test_triage.py::test_severity_is_recommended_from_the_wording[Open redirect on login-Medium]"
+      - "tests/test_triage.py::test_nothing_recognisable_recommends_no_severity"
+      - "tests/test_triage.py::test_the_recommendation_never_becomes_the_value"
+      - "tests/test_triage.py::test_the_marker_comes_from_policy_not_from_this_script"
+    evidence:
+      - "Issue #90"
+
+  - id: REQ-BACKLOG-CAPTURE-002
+    statement: >-
+      A technical finding is capturable during delivery without leaving the run,
+      through a search, a human gate, and a creation that names both the
+      candidates it was decided against and the issue it was found in. The
+      provenance is written into the body as a cross-reference rather than held
+      in the command's output, so the source issue shows the finding and a
+      reader of either sees the other. Declining to capture is recorded rather
+      than silent, because an absent finding and an unexamined one read the same
+      afterwards.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.capture
+      - workflow:lifecycle-story-delivery
+      - script:bundle/components/extensions/github-lifecycle/scripts/capture.py
+    verified_by:
+      - "tests/test_capture.py::test_a_finding_records_where_it_was_found"
+      - "tests/test_capture.py::test_the_provenance_is_a_cross_reference_not_a_private_field"
+      - "tests/test_capture.py::test_provenance_is_not_added_twice"
+      - "tests/test_capture.py::test_no_source_leaves_the_body_alone"
+      - "tests/test_capture.py::test_delivery_can_capture_a_finding_without_leaving_the_run"
+      - "tests/test_capture.py::test_the_delivery_capture_searches_before_it_creates_and_links_its_source"
+      - "tests/test_capture.py::test_declining_a_finding_is_recorded_rather_than_silent"
+    evidence:
+      - "Issue #90"
+
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
       A finding is searched for duplicates before it is created, including

@@ -17,6 +17,19 @@ inputs:
   intent:
     type: string
     required: true
+  technical_finding:
+    type: string
+    default: none
+    enum:
+    - none
+    - capture
+  technical_finding_verdict:
+    type: string
+    default: ''
+    enum:
+    - ''
+    - approve
+    - reject
   readiness_verdict:
     type: string
     default: ''
@@ -369,6 +382,61 @@ steps:
       baseline_established as a baseline and never as a pass: a first run that reports
       a pass makes every later comparison meaningless. On a refusal, report the gate,
       the baseline, and the measurement, and do not re-run hoping for a different number.'
+- id: capture-a-technical-finding
+  type: switch
+  expression: '{{ inputs.technical_finding }}'
+  cases:
+    capture:
+    - id: search-for-a-technical-finding
+      command: speckit.github-lifecycle.capture
+      integration: '{{ inputs.integration }}'
+      input:
+        args: 'Delivery exposes technical findings that are not this story: a latent
+          defect the change revealed, a constraint the plan assumed and the code
+          contradicted, a dependency that cannot hold. Search the backlog for anything
+          already covering what this delivery exposed, closed items included, and
+          report every candidate with its score. Write nothing.'
+    - id: approve-the-technical-finding
+      type: gate
+      integration: '{{ inputs.integration }}'
+      verdict_input: technical_finding_verdict
+      on_reject: abort
+      options:
+      - approve
+      - reject
+      message: 'Create this finding? The candidate duplicates reported above are what
+        you are deciding against, closed ones included. Reject if one already covers
+        it: a second issue for a known problem makes the backlog less trustworthy,
+        not more complete.'
+    - id: capture-the-technical-finding
+      command: speckit.github-lifecycle.capture
+      integration: '{{ inputs.integration }}'
+      input:
+        args: 'Create the approved finding with --found-in {{ inputs.issue_ref }},
+          so the story it came from links to it and it links back. Meet the type''s
+          content contract, and name every candidate the search raised with
+          --considered so the duplicate decision is recorded rather than bypassed.
+          State what was observed and where; a finding from delivery is evidence,
+          not a diagnosis, so do not write a cause the work did not establish.'
+    none:
+    - id: no-technical-finding
+      type: prompt
+      integration: '{{ inputs.integration }}'
+      prompt: 'This delivery captured no technical finding.
+
+
+        Say so in the run record. An absent finding and an unexamined one read the
+        same afterwards, and only one of them is a fact about the delivery.'
+  default:
+  - id: technical-finding-unrecognised
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: 'The technical_finding input was unset or unrecognised, so none was
+      assumed.
+
+
+      State which was assumed and why. A default that says nothing leaves a reader
+      unable to tell a decision from an omission.'
 - id: converge
   command: speckit.converge
   integration: '{{ inputs.integration }}'

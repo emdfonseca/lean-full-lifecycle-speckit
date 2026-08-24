@@ -252,3 +252,36 @@ rules:
     issue is closed. A child closed as a duplicate has not been delivered.
   - Severity applies to Bugs alone, matching github-schema.yml.
   - Outcome fields stay empty for work with no user-facing result.
+
+security_findings:
+  # A security finding is a Bug with a security label, not a separate type.
+  # Adding a fifth type would fork every content contract, every template and
+  # every generator for one boolean; the label plus a required Severity says
+  # the same thing and nothing downstream has to learn a new shape.
+  #
+  # What distinguishes it is not the marking but the routing: a security bug
+  # may not leave triage on severity alone, because who is allowed to see it
+  # and who must review it are different questions from how bad it is.
+  label: security
+  applies_to_type: bug
+  severity_required: true
+  # Severity is a recommendation from triage and a decision by this authority,
+  # the same split the rest of triage keeps between what an item is and when
+  # it will be done.
+  classified_by: security_owner
+  routing:
+    - id: severity_before_refining
+      rule: >-
+        A security finding carries a Severity before it may be proposed for
+        Refining. An unclassified security bug is indistinguishable from an
+        ordinary one in every queue that reads the board.
+    - id: security_review_required
+      rule: >-
+        A security finding is reviewed by the security owner, not only by the
+        assigned engineering owner. The ordinary review authority is not the
+        one this item needs.
+    - id: no_public_reproduction
+      rule: >-
+        A security finding does not carry a working exploit in its body. State
+        the class and the affected surface; a reproduction that is itself an
+        attack has published it.

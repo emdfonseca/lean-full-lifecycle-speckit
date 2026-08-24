@@ -147,11 +147,32 @@ def phantom_considerations(candidates: list["Candidate"], considered: list[int])
     return [n for n in (considered or []) if n not in raised]
 
 
+PROVENANCE = "Found during "
+
+
+def with_provenance(body: str, found_in: int | None) -> str:
+    """Record where a finding came from, in the body, as a real reference.
+
+    A cross-reference rather than a field: GitHub renders `#12` as a link from
+    both ends, so the source issue shows the finding without anything here
+    writing to it. A `found_in` stored only in this command's JSON output
+    would be provenance nobody reading the backlog ever sees.
+    """
+    if found_in is None:
+        return body
+    line = f"{PROVENANCE}#{found_in}."
+    if line in body:
+        return body
+    return f"{body.rstrip()}\n\n{line}\n"
+
+
 def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
                 parent: int | None = None, operation_id: str | None = None,
                 project: int | None = None,
                 policy_root: Path | None = None,
-                considered: list[int] | None = None) -> dict:
+                considered: list[int] | None = None,
+                found_in: int | None = None) -> dict:
+    body = with_provenance(body, found_in)
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
@@ -178,6 +199,8 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
         relationships.link_child(gh, repo, parent, number)
 
     result = {"number": number, "type": item_type, "parent": parent}
+    if found_in is not None:
+        result["found_in"] = found_in
     if considered:
         # The decision travels with the creation it authorized. Without this
         # the record is a flag someone passed and nothing anyone can read back.
@@ -280,6 +303,10 @@ def main() -> int:
                     help="Project to place the item on. Omit to let inspection choose,\n"
                          "which fails when the owner has more than one.")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    ap.add_argument("--found-in", type=int, default=None, metavar="N",
+                    help="Issue this finding was discovered during. Recorded "
+                         "in the body as a cross-reference, so the source "
+                         "shows it too.")
     ap.add_argument("--considered", type=int, action="append", default=[],
                     metavar="N",
                     help="Issue number a person compared this against and "
@@ -360,7 +387,8 @@ def main() -> int:
                                   args.item_type, args.parent,
                                   project=args.project,
                                   policy_root=args.policy_root,
-                                  considered=args.considered))
+                                  considered=args.considered,
+                                  found_in=args.found_in))
         report["action"] = "created"
         print(json.dumps(report, indent=2))
         return 0
