@@ -1319,11 +1319,13 @@ requirements:
       The documents a bootstrapped project must have are declared in policy, not
       in one workflow's prompt: a set that lives in prose is a convention, and
       the workflow that did not read that prose omitted four of five while
-      writing hundreds of lines about what the code does. Each declares what it
-      answers, the sections it carries, and a line budget, because a document
-      nobody reads has recorded nothing and length is the one quality property a
-      script can judge. A log declares a budget of zero rather than leaving it
-      unsaid. Architecture carries observation and decision as separate named
+      writing hundreds of lines about what the code does. Each section declares what it answers and
+      what form it takes. Length is not budgeted: a line count is wrong for
+      somebody, and the first attempt set a constitution at 200 lines, which
+      would have meant deleting principles from a real one. Form is checked
+      instead and scales on its own -- a table with one row per fact cannot
+      ramble however large the project. A section that is empty, or in a form
+      the contract did not ask for, is reported. Architecture carries observation and decision as separate named
       sections, since the gap between them is where specs come from. Every
       workflow that bootstraps or adopts produces the whole set, and a
       document over budget is reported with the overage rather than truncated.
@@ -1340,12 +1342,16 @@ requirements:
     verified_by:
       - "tests/test_documents.py::test_a_complete_project_reports_nothing"
       - "tests/test_documents.py::test_a_missing_document_names_what_it_answers"
-      - "tests/test_documents.py::test_a_document_over_budget_names_the_overage"
-      - "tests/test_documents.py::test_a_log_has_no_budget"
-      - "tests/test_documents.py::test_a_missing_section_is_named"
+      - "tests/test_documents.py::test_a_missing_section_names_what_it_answers"
+      - "tests/test_documents.py::test_prose_where_a_table_was_asked_for_is_reported"
+      - "tests/test_documents.py::test_a_paragraph_where_a_list_was_asked_for_is_reported"
+      - "tests/test_documents.py::test_an_empty_section_is_a_heading"
+      - "tests/test_documents.py::test_prose_that_runs_long_is_reported"
       - "tests/test_documents.py::test_bold_headings_count_as_sections"
+      - "tests/test_documents.py::test_no_document_is_budgeted_by_length"
       - "tests/test_documents.py::test_architecture_separates_observation_from_decision"
-      - "tests/test_documents.py::test_every_declared_document_states_what_it_answers"
+      - "tests/test_documents.py::test_the_stack_decision_records_what_was_rejected"
+      - "tests/test_documents.py::test_every_section_states_what_it_answers"
       - "tests/test_documents.py::test_both_bootstrap_workflows_produce_the_documents"
       - "tests/test_documents.py::test_the_style_rules_are_policy_not_prose_in_the_script"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BOOTSTRAP-DOCUMENTS]"

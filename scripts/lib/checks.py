@@ -432,11 +432,19 @@ def bootstrap_documents(ctx: Ctx) -> Iterator[Finding]:
                 "INV-BOOTSTRAP-DOCUMENTS", str(spec.get("path")),
                 "is declared with no `answers`; a document whose question is "
                 "unstated cannot be judged complete")
-        if spec.get("max_lines") is None:
-            yield ctx.finding(
-                "INV-BOOTSTRAP-DOCUMENTS", str(spec.get("path")),
-                "declares no max_lines; state 0 for a log that grows by "
-                "design rather than leaving the budget unsaid")
+        for section in spec.get("sections") or []:
+            if not str(section.get("answers") or "").strip():
+                yield ctx.finding(
+                    "INV-BOOTSTRAP-DOCUMENTS",
+                    f"{spec.get('path')}:{section.get('name')}",
+                    "is declared with no `answers`; a section whose question "
+                    "is unstated cannot be judged complete")
+            if not str(section.get("form") or "").strip():
+                yield ctx.finding(
+                    "INV-BOOTSTRAP-DOCUMENTS",
+                    f"{spec.get('path')}:{section.get('name')}",
+                    "declares no form; form is what keeps a section terse as a "
+                    "project grows, and a line budget is wrong for somebody")
 
     if not (contract.get("style") or []):
         yield ctx.finding(

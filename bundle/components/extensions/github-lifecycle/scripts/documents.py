@@ -5,21 +5,28 @@
 what each answers, the sections it carries, and how long it may be. This checks
 a project against that.
 
-The budgets are the point. A brownfield adoption produced four artefacts
-averaging 234 lines -- accurate, well-reasoned, and too long to read before
-writing a spec. Length is the one quality property a script can judge, so it is
-the one this enforces; the rest is stated in the style rules for a person to
-apply.
+Form is what is checked, not length. A line budget is wrong for somebody: the
+first version set the constitution at 200 lines, which would have meant deleting
+principles from a real one to fit. What scales instead is shape -- a table with
+one row per fact cannot ramble however large the project, and a section declared
+as a list shows how many entries it has.
 
-Two refusals:
+Three refusals:
 
 A missing document is a failure, not a warning. A project without a product
 definition cannot have a spec written against it, and reporting that as advice
 lets the gap survive.
 
-A document over budget is a failure with the overage named. Not truncated, not
-warned about: the budget is a maximum somebody chose, and a document that needs
-more room usually needs less content.
+An empty section is a heading. A declared section with nothing under it claims
+an answer nobody wrote.
+
+A section in the wrong form is a failure. Prose where the contract asked for a
+table is how a section of facts grows without a shape to hold it -- which is
+what this command was written after seeing.
+
+Not yet enforced: the `per_principle` and `per_entry` rules. They are declared
+for the constitution and the decision log, and read by a person until something
+checks them.
 """
 from __future__ import annotations
 
@@ -53,15 +60,62 @@ def load_contract(root: Path | None = None) -> dict:
         "preset must be installed")
 
 
-def headings(text: str) -> set[str]:
-    out = set()
+def sections_of(text: str) -> dict[str, str]:
+    """Each heading and the body under it.
+
+    Both heading styles are matched. Recognising only one would report a
+    present section as absent, which teaches an author to ignore the check.
+    """
+    out: dict[str, str] = {}
+    current = None
+    body: list[str] = []
     for line in text.splitlines():
         stripped = line.strip()
+        name = None
         if stripped.startswith("#"):
-            out.add(stripped.lstrip("#").strip().lower())
-        elif stripped.startswith("**") and stripped.endswith("**"):
-            out.add(stripped.strip("*").strip().lower())
+            name = stripped.lstrip("#").strip()
+        elif stripped.startswith("**") and stripped.endswith("**") and len(stripped) > 4:
+            name = stripped.strip("*").strip()
+        if name is not None:
+            if current:
+                out[current.lower()] = "\n".join(body)
+            current, body = name, []
+        else:
+            body.append(line)
+    if current:
+        out[current.lower()] = "\n".join(body)
     return out
+
+
+def form_problem(name: str, form: str, body: str) -> str | None:
+    """Whether the section's shape matches what the contract asked for.
+
+    Form is what makes terseness scale. A table with one row per fact cannot
+    ramble however large the project; a line budget can only be wrong for
+    somebody. This checks the shape and leaves the judgement to a reader.
+    """
+    content = [ln for ln in body.splitlines() if ln.strip()]
+    if not content:
+        return f"{name!r} is empty. A declared section with nothing in it is a heading."
+
+    if form == "table":
+        rows = [ln for ln in content if ln.strip().startswith("|")]
+        if len(rows) < 3:            # header, separator, and at least one row
+            return (f"{name!r} is declared as a table and has none. Facts go in "
+                    f"tables, one row each; prose here will grow without a shape "
+                    f"to hold it.")
+    elif form == "list":
+        if not any(ln.strip().startswith(("-", "*", "1.")) for ln in content):
+            return (f"{name!r} is declared as a list and has no items. A list "
+                    f"makes each entry stand alone; a paragraph hides how many "
+                    f"there are.")
+    elif form == "prose":
+        sentences = sum(body.count(c) for c in ".!?")
+        if sentences > 6:
+            return (f"{name!r} is prose and runs to about {sentences} sentences. "
+                    f"Prose is for the one thing a table cannot hold; if this is "
+                    f"a list of facts, it is a table.")
+    return None
 
 
 def check(root: Path, contract: dict) -> list[str]:
@@ -75,22 +129,18 @@ def check(root: Path, contract: dict) -> list[str]:
                 f"Without it nothing downstream has a product to refer to.")
             continue
 
-        text = path.read_text(encoding="utf-8")
-        budget = int(spec.get("max_lines") or 0)
-        lines = len(text.splitlines())
-        if budget and lines > budget:
-            problems.append(
-                f"{name} is {lines} lines against a budget of {budget}. "
-                f"A document that needs more room usually needs less content; "
-                f"evidence belongs in an evidence record.")
-
-        present = headings(text)
-        missing = [s for s in (spec.get("sections") or [])
-                   if s.lower() not in present]
-        if missing:
-            problems.append(
-                f"{name} is missing the section(s) {missing}. The contract "
-                f"names them because a reader looks for them by name.")
+        found = sections_of(path.read_text(encoding="utf-8"))
+        for section in spec.get("sections") or []:
+            title = section["name"]
+            body = found.get(title.lower())
+            if body is None:
+                problems.append(
+                    f"{name}: section {title!r} is missing. It answers: "
+                    f"{section.get('answers', '').strip()}")
+                continue
+            issue = form_problem(f"{name}: {title}", section.get("form", ""), body)
+            if issue:
+                problems.append(issue)
     return problems
 
 
@@ -115,7 +165,8 @@ def main() -> int:
         for problem in problems:
             print(f"MISSING {problem}")
         if not problems:
-            print("Every declared document is present and within budget.")
+            print("Every declared section is present and in the form the "
+                  "contract asks for.")
         print(f"\n{len(problems)} problem(s).")
     return 1 if problems else 0
 
