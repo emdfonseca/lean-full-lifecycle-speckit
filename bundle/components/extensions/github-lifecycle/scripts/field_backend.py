@@ -182,6 +182,37 @@ class ProjectFieldBackend(FieldBackend):
                             skipped=outcome == "skipped-already-applied")
 
 
+def _entry_field_id(entry: dict) -> str | None:
+    """The field this value belongs to.
+
+    The organization Issue Fields API names it `issue_field_id`. The earlier
+    guesses -- `field_id`, `id` -- are kept as fallbacks rather than removed,
+    because `id` is a plausible shape for a related endpoint and dropping it
+    would trade one silent mismatch for another. `issue_field_id` is first
+    because it is the one the real API sends.
+    """
+    for key in ("issue_field_id", "field_id", "id"):
+        if entry.get(key) is not None:
+            return str(entry[key])
+    return None
+
+
+def _issue_field_value(entry: dict) -> str | None:
+    """The readable value of one organization Issue Field entry.
+
+    Distinct from `_read_value`, which reads the Projects v2 shape. The two
+    APIs genuinely differ: a Projects single-select sends the option inline
+    under `value`, while an Issue Field sends the option *id* as `value` and
+    the option itself under `single_select_option`. Reading the id and
+    returning it as the value is how this backend reported `'80557703'` where
+    a caller expected `'Inbox'`.
+    """
+    option = entry.get("single_select_option")
+    if isinstance(option, dict) and option.get("name") is not None:
+        return str(option["name"])
+    return _read_value(entry)
+
+
 def _read_value(entry: dict) -> str | None:
     """Field values are scalars, {raw, html}, or a whole option object."""
     value = entry.get("value")
@@ -222,8 +253,8 @@ class IssueFieldBackend(FieldBackend):
         ref = self._field(role)
         payload = self.gh.rest("GET", f"{self._base}/{issue_number}") or {}
         for entry in payload.get("issue_field_values") or []:
-            if str(entry.get("field_id", entry.get("id"))) == ref.id:
-                return FieldValue(role, ref.name, _read_value(entry))
+            if _entry_field_id(entry) == ref.id:
+                return FieldValue(role, ref.name, _issue_field_value(entry))
         return FieldValue(role, ref.name, None)
 
     def write(self, issue_number: int, role: str, value: str, *,

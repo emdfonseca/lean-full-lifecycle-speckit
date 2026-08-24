@@ -301,12 +301,26 @@ def test_dry_run_reports_the_intent_and_writes_nothing():
 # --- organization Issue Fields backend ----------------------------------------
 
 class FakeOrgIssues:
-    """Issues carrying `issue_field_values`, as the REST API returns them."""
+    """Issues carrying `issue_field_values`, in the shape the real API sends.
+
+    Captured from `plaincodelab` during #37 and recorded in
+    docs/evidence/orgfields-round-trip.md. The previous version of this fake
+    rendered `field_id` and a plain `value`, which is a reasonable guess and
+    is not what GitHub returns -- so the backend passed every test here and
+    read `None` from every real issue.
+
+    The asymmetry is real and deliberate, not a simplification: a write sends
+    `field_id` and the option *name*, and a read returns `issue_field_id` and
+    the option *id*, with the name under `single_select_option`.
+    """
 
     def __init__(self, fields=None):
         self.fields = fields or {"501": {"name": "Delivery Status"}}
         self.values: dict[int, dict[str, str | None]] = {19: {}, 20: {}}
         self.calls: list[list[str]] = []
+
+    def _option_id(self, name):
+        return f"o{STATES.index(name)}" if name in STATES else None
 
     def __call__(self, args, stdin):
         self.calls.append(list(args))
@@ -319,8 +333,17 @@ class FakeOrgIssues:
         if method == "PATCH":
             for entry in json.loads(stdin or "{}").get("issue_field_values", []):
                 self.values[number][str(entry["field_id"])] = entry["value"]
-        rendered = [{"field_id": int(f), "value": v}
-                    for f, v in self.values[number].items()]
+        rendered = []
+        for field_id, name in self.values[number].items():
+            option_id = self._option_id(name)
+            rendered.append({
+                "data_type": "single_select",
+                "issue_field_id": int(field_id),
+                "issue_field_name": self.fields.get(field_id, {}).get("name"),
+                "single_select_option": (
+                    {"id": option_id, "name": name} if option_id else None),
+                "value": option_id,
+            })
         return subprocess.CompletedProcess(
             [], 0, json.dumps({"number": number, "issue_field_values": rendered}), "")
 
@@ -397,6 +420,7 @@ def test_org_backend_reads_back_and_conflicts_on_mismatch():
         be.write(19, "delivery_state", "Ready")
 
 
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
 def test_org_backend_never_touches_a_project():
     be, board = org_backend()
     be.write(19, "delivery_state", "Ready")
@@ -506,3 +530,58 @@ def test_placement_refuses_when_the_item_reads_back_as_another_issue():
     be, board = backend(MisreportingBoard())
     with pytest.raises(gh_api.GitHubError):
         be.place(42, board.issue_ids[42])
+
+
+# --- the shape the real API actually sends ------------------------------------
+#
+# Captured from plaincodelab during #37. These are unit tests over the readers
+# rather than the backend, so a future change to the payload shape fails on the
+# line that reads it instead of three layers up.
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_the_field_id_key_is_issue_field_id():
+    # `field_id` and `id` are reasonable guesses and neither is what GitHub
+    # sends. Matching on them meant every read returned None.
+    entry = {"issue_field_id": 46024252, "issue_field_name": "Delivery Status"}
+    assert fb._entry_field_id(entry) == "46024252"
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_the_earlier_key_guesses_still_resolve():
+    # Kept as fallbacks: `id` is plausible for a related endpoint, and
+    # dropping it would trade one silent mismatch for another.
+    assert fb._entry_field_id({"field_id": 7}) == "7"
+    assert fb._entry_field_id({"id": 7}) == "7"
+    assert fb._entry_field_id({}) is None
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_a_single_select_reads_its_name_not_its_option_id():
+    # `value` is the option id. Returning it gives '80557703' where the
+    # caller expects 'Inbox'.
+    entry = {
+        "data_type": "single_select",
+        "issue_field_id": 46024252,
+        "issue_field_name": "Delivery Status",
+        "single_select_option": {"color": "gray", "id": 80557703, "name": "Inbox"},
+        "value": 80557703,
+    }
+    assert fb._issue_field_value(entry) == "Inbox"
+    assert fb._issue_field_value(entry) != str(entry["value"])
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_a_field_with_no_option_falls_back_to_the_plain_value():
+    # Text and number fields carry no single_select_option.
+    assert fb._issue_field_value({"value": "some text"}) == "some text"
+    assert fb._issue_field_value({"value": None}) is None
+
+
+@pytest.mark.req("REQ-GITHUB-ORGFIELDS-001")
+def test_the_projects_reader_is_not_used_for_issue_fields():
+    # The two APIs differ: Projects sends the option inline under `value`,
+    # Issue Fields sends the option id there. One shared reader served both
+    # and served one of them wrongly.
+    entry = {"single_select_option": {"name": "Inbox"}, "value": 80557703}
+    assert fb._read_value(entry) == "80557703"
+    assert fb._issue_field_value(entry) == "Inbox"

@@ -361,11 +361,7 @@ requirements:
     priority: should
     owner: GitHub integration engineer
     release: "0.2.0"
-    # implemented, not verified: exercised offline against the documented wire
-    # format, but no write has been performed against a real organization.
-    # Deferred by ADR 0003 -- this is an opt-in for organizations, not the
-    # default path, so verification waits until an organization needs it.
-    status: implemented
+    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
@@ -374,6 +370,15 @@ requirements:
       - "tests/test_field_backend.py::test_org_backend_round_trips_a_value"
       - "tests/test_field_backend.py::test_org_backend_sends_the_option_name_not_its_id"
       - "tests/test_field_backend.py::test_org_backend_uses_field_id_not_id_in_the_payload"
+      - "tests/test_field_backend.py::test_org_backend_never_touches_a_project"
+      - "tests/test_field_backend.py::test_the_field_id_key_is_issue_field_id"
+      - "tests/test_field_backend.py::test_the_earlier_key_guesses_still_resolve"
+      - "tests/test_field_backend.py::test_a_single_select_reads_its_name_not_its_option_id"
+      - "tests/test_field_backend.py::test_a_field_with_no_option_falls_back_to_the_plain_value"
+      - "tests/test_field_backend.py::test_the_projects_reader_is_not_used_for_issue_fields"
+    evidence:
+      - "docs/evidence/orgfields-round-trip.md"
+      - "Issue #37"
 
   - id: REQ-GITHUB-TRANSITION-002
     statement: >-
