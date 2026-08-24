@@ -1,0 +1,108 @@
+# What a pilot run records, and who can record it.
+#
+# Roadmap Phase 10 names twelve metrics. Half are facts a script can read off
+# the run; half are observations about a person working, which no script can
+# produce. Separating them is the point of this file: a pilot that reports a
+# machine-readable zero for `human_interventions` has measured nothing, and a
+# pilot report that looks complete because the hard fields defaulted is worse
+# than one that is visibly incomplete.
+
+schema_version: "1.0"
+
+sources:
+  observed: >-
+    Read from the run by a script or from the board. Absent means not
+    collected, never zero.
+  witnessed: >-
+    Recorded by the pilot owner during the run. Cannot be reconstructed
+    afterwards, and cannot be defaulted: a value nobody witnessed is not a
+    measurement.
+
+metrics:
+  - id: workflow_completion_without_repair
+    source: witnessed
+    unit: boolean
+    note: >-
+      Did the workflow run end to end with no manual repair. A repair the owner
+      made without noticing is the observation this exists to catch, so it is
+      witnessed rather than derived from exit codes.
+
+  - id: human_interventions
+    source: witnessed
+    unit: count
+    note: >-
+      Every point the owner had to step in. Zero is a legitimate value and an
+      unrecorded zero is not; state that none occurred rather than leaving it
+      empty.
+
+  - id: incorrect_or_out_of_scope_edits
+    source: witnessed
+    unit: count
+    note: >-
+      Files changed that should not have been. Judged against the approved
+      target, which a script cannot know.
+
+  - id: readiness_accuracy
+    source: witnessed
+    unit: ratio
+    note: >-
+      Items that were genuinely startable when marked Ready, over items marked
+      Ready. Requires knowing whether the work actually could start.
+
+  - id: duplicate_backlog_rate
+    source: observed
+    unit: ratio
+    note: Items capture refused as duplicates, over items proposed.
+
+  - id: convergence_findings
+    source: observed
+    unit: count
+
+  - id: ready_to_output_done_hours
+    source: observed
+    unit: hours
+    note: Read from the transition audit trail, not estimated.
+
+  - id: failed_github_operations
+    source: observed
+    unit: count
+    note: >-
+      Read from the audit trail written by --audit. A run with no audit file
+      cannot report this and must say so.
+
+  - id: model_cost
+    source: observed
+    unit: currency
+
+  - id: model_runtime_minutes
+    source: observed
+    unit: minutes
+
+  - id: test_flakiness
+    source: observed
+    unit: count
+    note: Tests that passed and failed on the same code within the run.
+
+  - id: developer_satisfaction
+    source: witnessed
+    unit: scale_1_5
+    note: >-
+      The owner's own reading. Recorded with a sentence of why, because the
+      number alone tells a later reader nothing they can act on.
+
+  - id: generated_artifacts_disposed
+    source: witnessed
+    unit: ratio
+    note: >-
+      Artifacts archived or deleted over artifacts generated. Left-behind
+      scaffolding is the failure artifact-policy.yml exists to prevent, and
+      counting it needs someone to look.
+
+# Every pilot failure follows this loop rather than being fixed in place. A
+# pilot that fixes what it finds stops being a measurement.
+failure_loop:
+  - requirement_or_test_gap
+  - traceability_update
+  - implementation
+  - regression_test
+  - rerun

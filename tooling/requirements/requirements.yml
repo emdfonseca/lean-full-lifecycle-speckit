@@ -22,6 +22,7 @@ families:
   - REQ-UNCERTAINTY # discovery, prototype, spike, threat analysis
   - REQ-TEAM        # project and feature context, parallel teams
   - REQ-RISK        # scoring a change, and the controls its band requires
+  - REQ-PILOT       # what a pilot run must record to count as evidence
 
 gates:
   - release: "0.9.0"
@@ -1117,6 +1118,46 @@ requirements:
       - "tests/test_exception.py::test_only_the_targeted_branch_validates_exceptions"
     evidence:
       - "Issue #58"
+
+  - id: REQ-PILOT-EVIDENCE-001
+    statement: >-
+      A pilot run records every metric the contract declares, and the record is
+      refused when it does not. Metrics are split by who can produce them:
+      observed values a script or the board can read, and witnessed values that
+      are observations about a person working. A witnessed metric may not be
+      null, because nobody can reconstruct it afterwards; an observed one may
+      be, with a stated reason, because not measured and zero are different
+      results. An absent metric is not read as zero, a metric the contract does
+      not declare is refused, an empty failure list is an explicit claim rather
+      than an omission, every failure names the item tracking it, and the
+      shipped template does not validate clean.
+    priority: should
+    owner: product/process owner
+    release: "0.9.0"
+    status: verified
+    components:
+      - script:tooling/pilots/pilot_record.py
+    verified_by:
+      - "tests/test_pilot_record.py::test_a_complete_record_passes"
+      - "tests/test_pilot_record.py::test_no_failures_is_an_explicit_claim_not_an_omission"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[workflow_completion_without_repair]"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[human_interventions]"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[incorrect_or_out_of_scope_edits]"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[readiness_accuracy]"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[developer_satisfaction]"
+      - "tests/test_pilot_record.py::test_a_witnessed_metric_cannot_be_null[generated_artifacts_disposed]"
+      - "tests/test_pilot_record.py::test_an_observed_metric_may_be_null_with_a_reason"
+      - "tests/test_pilot_record.py::test_a_null_with_no_reason_is_refused"
+      - "tests/test_pilot_record.py::test_a_missing_metric_is_not_read_as_zero"
+      - "tests/test_pilot_record.py::test_an_invented_metric_is_refused"
+      - "tests/test_pilot_record.py::test_the_owner_is_required_because_the_gate_asks_for_one"
+      - "tests/test_pilot_record.py::test_a_failure_must_name_the_item_tracking_it"
+      - "tests/test_pilot_record.py::test_the_shipped_template_does_not_pass_as_written"
+      - "tests/test_pilot_record.py::test_every_roadmap_metric_is_declared"
+    evidence:
+      - "Issue #103"
+      - "Issue #104"
+      - "Issue #105"
 
   - id: REQ-RISK-SCORING-001
     statement: >-
