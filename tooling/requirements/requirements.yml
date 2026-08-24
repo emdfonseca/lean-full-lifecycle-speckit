@@ -1331,7 +1331,10 @@ requirements:
       keeps; the Nygard ADR shape for decision records; RFC 2119 keywords in
       the constitution. Both bootstrap routes produce the same set with the
       same sections, since a reader moving between projects should not have
-      to learn two shapes. Architecture carries observation and decision as separate named
+      to learn two shapes. A constitution's principles are checked one by one:
+      each states something normative in RFC 2119 terms and states it first,
+      because a principle with no MUST is an opinion and an explanatory
+      paragraph in front of a rule means the rule is not yet written. Architecture carries observation and decision as separate named
       sections, since the gap between them is where specs come from. Every
       workflow that bootstraps or adopts produces the whole set, and a
       document over budget is reported with the overage rather than truncated.
@@ -1365,6 +1368,12 @@ requirements:
       - "tests/test_documents.py::test_the_stack_decision_carries_the_four_adr_sections"
       - "tests/test_documents.py::test_architecture_delegates_decisions_rather_than_duplicating_them"
       - "tests/test_documents.py::test_seams_is_marked_as_an_addition_not_an_arc42_section"
+      - "tests/test_documents.py::test_a_principle_with_no_normative_keyword_is_an_opinion"
+      - "tests/test_documents.py::test_a_rule_stated_in_one_line_then_bullets_passes"
+      - "tests/test_documents.py::test_an_explanatory_paragraph_before_the_rule_is_reported"
+      - "tests/test_documents.py::test_a_bulleted_line_is_not_counted_as_preamble"
+      - "tests/test_documents.py::test_a_constitution_with_no_principles_is_reported"
+      - "tests/test_documents.py::test_the_keywords_are_rfc_2119"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BOOTSTRAP-DOCUMENTS]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-BOOTSTRAP-DOCUMENTS]"
     evidence:

@@ -13,28 +13,25 @@ authors.
 
 ### I. One Authoritative Source Per Mutable Fact
 
-Every fact that can change has exactly one place it is written, and every other
-mention links to that place rather than restating it.
+Every changeable fact has one home, and every other mention links to it.
 
-- Work items and their structured metadata: the GitHub issue and its Projects v2
-  fields. Not a comment, not a doc, not a task list.
-- Intended behavior: the living spec for the capability. Code is evidence of
-  current behavior, never of intended behavior.
-- Engineering policy: this constitution plus the installed policy under
-  `.specify/presets/lean-full-lifecycle-governance/policy/`.
-- Implementation: git. Verification: CI (`.github/workflows/ci.yml`).
-- Quality baselines: `.specify/lifecycle/ratchet-baselines.yml`.
-- Exceptions: their exception records; see Brownfield Ratchet.
-- Outcome evidence: the outcome record.
+| Fact | Home |
+|---|---|
+| Work items and their metadata | the GitHub issue and its Projects v2 fields |
+| Intended behaviour | the capability's spec. Code is evidence of current behaviour only |
+| Engineering policy | this constitution and `.specify/presets/lean-full-lifecycle-governance/policy/` |
+| Implementation | git |
+| Verification | CI (`.github/workflows/ci.yml`) |
+| Quality baselines | `.specify/lifecycle/ratchet-baselines.yml` |
+| Exceptions | their exception records |
+| Outcome evidence | the outcome record |
 
-Rules:
-
-- A pull request MUST NOT restate a threshold, a baseline number, or a policy
-  rule that already lives in a policy file. Reference the path.
-- Documentation states what is true now. Change history lives in git and in
-  ADRs. A doc MUST NOT carry "renamed from", "previously", or migration
+- A pull request MUST NOT restate a threshold, a baseline, or a policy rule
+  that already lives in a policy file. Reference the path.
+- Documentation MUST state what is true now. Change history lives in git and in
+  ADRs; a doc MUST NOT carry "renamed from", "previously", or migration
   narration.
-- ADRs are superseded, never rewritten (`artifact-policy.yml`, `adr`).
+- ADRs MUST be superseded, never rewritten (`artifact-policy.yml`, `adr`).
 
 ### II. Progressive Formalization, Minimum Justified Ceremony
 

@@ -48,6 +48,11 @@ def complete(**over):
         parts = [f"# {spec['path']}\n"]
         for section in spec.get("sections") or []:
             parts.append(f"## {section['name']}\n{body_for(section.get('form',''))}")
+        if spec.get("per_principle"):
+            # A conforming principle: one line stating the rule, then bullets.
+            parts.append("## Principles\n### I. A rule\n"
+                         "Every changeable fact has one home.\n\n"
+                         "- A pull request MUST NOT restate a threshold.\n")
         out[spec["path"]] = "\n".join(parts) or "# doc\n"
     out.update(over)
     return out
@@ -255,3 +260,71 @@ def test_seams_is_marked_as_an_addition_not_an_arc42_section():
                 if s["path"].endswith("architecture.md"))
     seams = next(s for s in spec["sections"] if s["name"] == "Seams")
     assert "not an arc42 section" in seams["answers"].lower()
+
+
+# --- per-principle rules -----------------------------------------------------
+#
+# Declared for the constitution and unenforced until now. A real one turned out
+# to have 11 of 23 principles stating nothing normative at all.
+
+CONSTITUTION = ".specify/memory/constitution.md"
+
+
+def constitution(body: str) -> dict:
+    files = complete()
+    files[CONSTITUTION] = body
+    return files
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_a_principle_with_no_normative_keyword_is_an_opinion(tmp_path):
+    body = "# C\n## Principles\n### I. Be nice\nNiceness is generally good.\n"
+    problems = docs.check(project(tmp_path, constitution(body)), CONTRACT)
+    assert any("states no MUST" in p and "I. Be nice" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_a_rule_stated_in_one_line_then_bullets_passes(tmp_path):
+    body = ("# C\n## Principles\n### I. One source per fact\n"
+            "Every changeable fact has one home.\n\n"
+            "- A pull request MUST NOT restate a threshold.\n"
+            "- Docs MUST state what is true now.\n")
+    assert [p for p in docs.check(project(tmp_path, constitution(body)), CONTRACT)
+            if CONSTITUTION in p] == []
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_an_explanatory_paragraph_before_the_rule_is_reported(tmp_path):
+    # More than one line before the rule means the rule is not yet written and
+    # the reader has to extract it.
+    body = ("# C\n## Principles\n### I. One source per fact\n"
+            "Duplication is the enemy of truth.\n"
+            "Teams discover this the hard way.\n"
+            "So we have a principle about it.\n\n"
+            "- A pull request MUST NOT restate a threshold.\n")
+    problems = docs.check(project(tmp_path, constitution(body)), CONTRACT)
+    assert any("lines of prose before its first rule" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_a_bulleted_line_is_not_counted_as_preamble(tmp_path):
+    # A table or list before the rule is structure, not an essay.
+    body = ("# C\n## Principles\n### I. One source per fact\n"
+            "Every changeable fact has one home.\n"
+            "- Work items: the issue.\n"
+            "- Policy: the policy file.\n"
+            "- A pull request MUST NOT restate a threshold.\n")
+    assert [p for p in docs.check(project(tmp_path, constitution(body)), CONTRACT)
+            if CONSTITUTION in p] == []
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_a_constitution_with_no_principles_is_reported(tmp_path):
+    body = "# C\n## Some prose\nNo principles here at all.\n"
+    problems = docs.check(project(tmp_path, constitution(body)), CONTRACT)
+    assert any("no `###` principles" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_the_keywords_are_rfc_2119():
+    assert set(docs.NORMATIVE) == {"MUST NOT", "MUST", "SHOULD NOT", "SHOULD", "MAY"}

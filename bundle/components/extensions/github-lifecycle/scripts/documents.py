@@ -24,9 +24,12 @@ A section in the wrong form is a failure. Prose where the contract asked for a
 table is how a section of facts grows without a shape to hold it -- which is
 what this command was written after seeing.
 
-Not yet enforced: the `per_principle` and `per_entry` rules. They are declared
-for the constitution and the decision log, and read by a person until something
-checks them.
+`per_principle` is enforced: a principle states something normative and states
+it first. Applied to a real constitution it found 11 of 23 principles with no
+MUST, SHOULD, or MAY anywhere in them -- headings over opinions.
+
+Not yet enforced: `per_entry`, for the decision log. An entry's four ADR fields
+are read by a person until something checks them.
 """
 from __future__ import annotations
 
@@ -118,6 +121,65 @@ def form_problem(name: str, form: str, body: str) -> str | None:
     return None
 
 
+NORMATIVE = ("MUST NOT", "MUST", "SHOULD NOT", "SHOULD", "MAY")
+
+
+def principles_of(text: str) -> list[tuple[str, list[str]]]:
+    """Each `###` heading and its body.
+
+    Third level because the constitutions in use put sections at `##` and
+    principles beneath them. A document with no third level has no principles
+    to check, which is reported rather than passed.
+    """
+    out: list[tuple[str, list[str]]] = []
+    name, body = None, []
+    for line in text.splitlines():
+        if line.startswith("### "):
+            if name:
+                out.append((name, body))
+            name, body = line[4:].strip(), []
+        elif name is not None:
+            body.append(line)
+    if name:
+        out.append((name, body))
+    return out
+
+
+def principle_problems(path_name: str, text: str) -> list[str]:
+    """Whether each principle is a rule or an essay with a rule in it.
+
+    Two properties, both checkable. A principle states something normative --
+    without an RFC 2119 keyword it is an opinion, however well argued. And the
+    rule comes first: at most one line before it, which is the rule statement
+    itself. An explanatory paragraph in front means the rule is not yet
+    written, and the reader has to extract it.
+    """
+    found = principles_of(text)
+    if not found:
+        return [f"{path_name} declares per-principle rules and has no `###` "
+                f"principles to apply them to."]
+
+    problems = []
+    for name, body in found:
+        lines = [ln for ln in body if ln.strip()]
+        first = next((i for i, ln in enumerate(lines)
+                      if any(k in ln for k in NORMATIVE)), None)
+        if first is None:
+            problems.append(
+                f"{path_name}: {name!r} states no MUST, SHOULD, or MAY. "
+                f"Without one it is an opinion, however well argued.")
+            continue
+        preamble = [ln for ln in lines[:first]
+                    if not ln.strip().startswith(("-", "*", "|", ">", "1."))]
+        if len(preamble) > 1:
+            problems.append(
+                f"{path_name}: {name!r} has {len(preamble)} lines of prose "
+                f"before its first rule. One line states the rule; more than "
+                f"that means the rule is not yet written and the reader has "
+                f"to extract it.")
+    return problems
+
+
 def check(root: Path, contract: dict) -> list[str]:
     problems: list[str] = []
     for spec in contract.get("required") or []:
@@ -129,7 +191,11 @@ def check(root: Path, contract: dict) -> list[str]:
                 f"Without it nothing downstream has a product to refer to.")
             continue
 
-        found = sections_of(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        if spec.get("per_principle"):
+            problems.extend(principle_problems(name, text))
+
+        found = sections_of(text)
         for section in spec.get("sections") or []:
             title = section["name"]
             body = found.get(title.lower())
