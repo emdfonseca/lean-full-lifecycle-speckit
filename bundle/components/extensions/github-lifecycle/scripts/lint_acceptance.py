@@ -50,6 +50,23 @@ class Finding:
         return f"{self.criterion}: {self.problem}"
 
 
+def load_policy(root: Path) -> dict:
+    """The whole item-types policy, not only the acceptance contract.
+
+    Which types carry acceptance criteria is a fact about the policy, and the
+    linter needs it to know whether an item has criteria to lint at all.
+    """
+    for candidate in (
+        root / ".specify/presets/lean-full-lifecycle-governance/policy/item-types.yml",
+        root / "policy/item-types.yml",
+    ):
+        if candidate.is_file():
+            return yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
+    raise FileNotFoundError(
+        "item-types.yml not found; the governance preset must be installed"
+    )
+
+
 def load_contract(root: Path) -> dict:
     for candidate in (
         root / ".specify/presets/lean-full-lifecycle-governance/policy/item-types.yml",
@@ -136,12 +153,25 @@ def main() -> int:
             return 2
         from github_api import GitHub
 
-        body = GitHub().rest("GET", f"repos/{args.repo}/issues/{args.issue}",
-                             jq=".body") or ""
-        text = extract_section(str(body))
+        issue = GitHub().rest(
+            "GET", f"repos/{args.repo}/issues/{args.issue}") or {}
+        labels = {str(l.get("name", "")).lower()
+                  for l in issue.get("labels") or []}
+        item_type = next((t for t in ("epic", "story", "bug", "spike")
+                          if t in labels), None)
+        findings, account = lint_issue(
+            str(issue.get("body") or ""), item_type, contract,
+            load_policy(args.policy_root))
+        if args.format != "json":
+            print(account)
+        return _report(findings, args.format)
 
     findings = lint(text, contract)
-    if args.format == "json":
+    return _report(findings, args.format)
+
+
+def _report(findings: list["Finding"], fmt: str) -> int:
+    if fmt == "json":
         print(json.dumps([f.__dict__ for f in findings], indent=2))
     else:
         for finding in findings:
@@ -161,13 +191,57 @@ _SECTION = re.compile(
 )
 
 
-def extract_section(body: str) -> str:
-    """The acceptance section of an issue body, or the whole body."""
+def extract_section(body: str) -> str | None:
+    """The acceptance section of an issue body, or None when there is none.
+
+    None rather than the whole body. Falling back meant a bug's Reproduction
+    and a spike's Exit criteria were split into pseudo-criteria and asked for
+    Given/When/Then clauses `item-types.yml` never requires of them, so every
+    refinement of a non-story produced advisories about prose that was never
+    criteria. Advisories that always fire teach a reader to skip them.
+    """
     match = _SECTION.search(body)
-    text = match.group(1) if match else body
+    if not match:
+        return None
     # Criteria are usually fenced so they render as written; the fences are not
     # part of them.
-    return re.sub(r"^```\w*$", "", text, flags=re.MULTILINE)
+    return re.sub(r"^```\w*$", "", match.group(1), flags=re.MULTILINE)
+
+
+def acceptance_types(policy: dict) -> set[str]:
+    """Item types whose contract includes an acceptance section.
+
+    Read from the policy rather than listed here: `item-types.yml` decides
+    which types carry criteria, and a second copy in this file is the copy
+    that drifts when a type gains or loses the section.
+    """
+    out = set()
+    for name, spec in (policy.get("types") or {}).items():
+        for section in (spec or {}).get("sections") or []:
+            if section.get("id") == "acceptance":
+                out.add(name)
+    return out
+
+
+def lint_issue(body: str, item_type: str | None, contract: dict,
+               policy: dict) -> tuple[list[Finding], str]:
+    """Lint an issue's criteria if its type has any, and say what was done.
+
+    Returns the findings and a one-line account of the decision, because
+    "no findings" and "not applicable" are different results and a report that
+    renders them identically is why this was not noticed sooner.
+    """
+    carries = acceptance_types(policy)
+    if item_type and item_type not in carries:
+        return [], (f"not linted: {item_type} has no acceptance section in "
+                    f"item-types.yml; {sorted(carries)} do")
+    section = extract_section(body)
+    if section is None:
+        if item_type in carries:
+            return ([Finding("criteria", "no Acceptance criteria section")],
+                    f"{item_type} requires acceptance criteria and has none")
+        return [], "no acceptance section, and the type is unknown; not linted"
+    return lint(section, contract), f"linted the acceptance section of a {item_type or 'item'}"
 
 
 if __name__ == "__main__":

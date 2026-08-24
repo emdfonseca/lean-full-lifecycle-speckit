@@ -801,6 +801,38 @@ requirements:
       - "Issue #93"
       - "Issue #99"
 
+  - id: REQ-BACKLOG-CRITERIA-001
+    statement: >-
+      An item is linted against its own type's contract. Only types whose
+      sections include acceptance criteria are linted, read from
+      item-types.yml rather than named in the linter, so a bug's Reproduction
+      and a spike's Exit criteria are not asked for Then clauses the policy
+      never requires of them. A missing acceptance section yields no section
+      rather than the whole body, and is a finding only for a type that
+      requires one. The report distinguishes not linted from linted and clean,
+      because a reader who cannot tell them apart learns to skip advisories.
+      Linting a story is unchanged: a criterion with no observable outcome, and
+      a set covering only success, are still reported.
+    priority: should
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.readiness
+      - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
+      - policy:item-types.yml
+    verified_by:
+      - "tests/test_acceptance_lint.py::test_only_types_with_an_acceptance_section_carry_criteria"
+      - "tests/test_acceptance_lint.py::test_a_bug_is_not_linted_and_the_report_says_so"
+      - "tests/test_acceptance_lint.py::test_a_spike_is_not_linted"
+      - "tests/test_acceptance_lint.py::test_a_story_is_still_linted"
+      - "tests/test_acceptance_lint.py::test_a_story_with_a_bad_criterion_still_reports"
+      - "tests/test_acceptance_lint.py::test_a_story_with_no_acceptance_section_is_reported"
+      - "tests/test_acceptance_lint.py::test_a_missing_section_is_none_rather_than_the_whole_body"
+      - "tests/test_acceptance_lint.py::test_the_types_come_from_policy_not_from_this_script"
+    evidence:
+      - "Issue #106"
+
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
       A finding is searched for duplicates before it is created, including

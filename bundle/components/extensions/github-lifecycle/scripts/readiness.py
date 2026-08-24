@@ -104,6 +104,7 @@ def main() -> int:
         return 2
 
     problems = check(verdict, schema)
+    lint_account = ""
     advisories: list[str] = []
 
     if args.issue:
@@ -113,14 +114,28 @@ def main() -> int:
         import lint_acceptance
         from github_api import GitHub
 
-        body = GitHub().rest("GET", f"repos/{args.repo}/issues/{args.issue}",
-                             jq=".body") or ""
+        issue = GitHub().rest(
+            "GET", f"repos/{args.repo}/issues/{args.issue}") or {}
+        labels = {str(l.get("name", "")).lower()
+                  for l in issue.get("labels") or []}
+        item_type = next((t for t in ("epic", "story", "bug", "spike")
+                          if t in labels), None)
         contract = lint_acceptance.load_contract(args.policy_root)
-        advisories = [str(f) for f in lint_acceptance.lint(
-            lint_acceptance.extract_section(str(body)), contract)]
+        # Only types whose contract has acceptance criteria are linted. A bug
+        # has a Reproduction and a spike has Exit criteria, and asking either
+        # for a Then clause invents an advisory about prose that was never
+        # criteria.
+        findings, lint_account = lint_acceptance.lint_issue(
+            str(issue.get("body") or ""), item_type, contract,
+            lint_acceptance.load_policy(args.policy_root))
+        advisories = [str(f) for f in findings]
 
     for problem in problems:
         print(f"BLOCKING {problem}")
+    if lint_account:
+        # "No findings" and "not applicable" are different results, and a
+        # report that renders them identically is why this went unnoticed.
+        print(f"CRITERIA {lint_account}")
     for advisory in advisories:
         print(f"ADVISORY {advisory}")
 

@@ -125,3 +125,116 @@ def test_section_extraction_handles_both_heading_styles():
         body = f"# Story\n\nSome scope.\n\n{heading}\n\nAC1 — x\n  Then y\n\n## Risk\n\nlow"
         section = lint_mod.extract_section(body)
         assert "AC1" in section and "low" not in section
+
+
+# --- the linter knows what kind of item it is looking at ----------------------
+#
+# It did not, so a bug's Reproduction and a spike's Exit criteria were split
+# into pseudo-criteria and asked for Then clauses item-types.yml never
+# requires of them.
+
+POLICY = lint_mod.load_policy(ROOT)
+
+BUG_BODY = """**Reproduction**
+
+Run the thing.
+
+**Expected**
+
+It works.
+
+**Actual**
+
+It does not.
+
+**Regression test**
+
+tests/test_x.py::test_y
+"""
+
+STORY_BODY = """**Scope**
+
+A change.
+
+**Acceptance criteria**
+
+AC1 — the happy path
+  Given a thing
+  When it runs
+  Then it reports success
+
+AC2 — the refusal
+  Given a thing with no name
+  When it runs
+  Then it exits non-zero and names the missing field
+
+**Risk**
+
+Low.
+"""
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_only_types_with_an_acceptance_section_carry_criteria():
+    carries = lint_mod.acceptance_types(POLICY)
+    assert "story" in carries
+    assert not carries & {"bug", "spike", "epic"}, (
+        "a type without an acceptance section is being treated as though it "
+        "had one")
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_bug_is_not_linted_and_the_report_says_so():
+    findings, account = lint_mod.lint_issue(BUG_BODY, "bug", CONTRACT, POLICY)
+    assert findings == []
+    assert "not linted" in account and "bug" in account
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_spike_is_not_linted():
+    findings, account = lint_mod.lint_issue(
+        "**Question**\n\nWhat?\n\n**Exit criteria**\n\nAn answer.\n",
+        "spike", CONTRACT, POLICY)
+    assert findings == []
+    assert "not linted" in account
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_story_is_still_linted():
+    findings, account = lint_mod.lint_issue(STORY_BODY, "story", CONTRACT, POLICY)
+    assert findings == [], f"a conforming story produced {findings}"
+    assert "linted" in account and "not linted" not in account
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_story_with_a_bad_criterion_still_reports():
+    # The fix must not silence the findings that were the point.
+    # Strip AC1's outcome entirely: "And" also satisfies the Then check, so
+    # rewording it would not have broken anything.
+    body = STORY_BODY.replace("  Then it reports success\n", "")
+    findings, _ = lint_mod.lint_issue(body, "story", CONTRACT, POLICY)
+    assert findings, "a story with no observable outcome was not reported"
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_story_with_no_acceptance_section_is_reported():
+    findings, account = lint_mod.lint_issue(
+        "**Scope**\n\nA change.\n", "story", CONTRACT, POLICY)
+    assert findings and "no Acceptance criteria section" in str(findings[0])
+    assert "requires acceptance criteria" in account
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_a_missing_section_is_none_rather_than_the_whole_body():
+    # The fallback to the whole body is the defect. Returning the body meant
+    # every non-story was linted as though its prose were criteria.
+    assert lint_mod.extract_section(BUG_BODY) is None
+    assert lint_mod.extract_section(STORY_BODY) is not None
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-001")
+def test_the_types_come_from_policy_not_from_this_script():
+    source = (SCRIPTS / "lint_acceptance.py").read_text(encoding="utf-8")
+    body = source.split("def acceptance_types(")[1].split("\ndef ")[0]
+    for name in ("story", "bug", "spike", "epic"):
+        assert f'"{name}"' not in body, f"{name} is hardcoded in acceptance_types"
