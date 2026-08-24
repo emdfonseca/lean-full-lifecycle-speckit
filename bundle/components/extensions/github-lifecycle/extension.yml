@@ -15,10 +15,6 @@ requires:
   tools:
   - name: gh
     required: true
-  # Every command in this extension invokes a Python script. Declaring it is
-  # the honest alternative to shipping shell variants: `transition_plan.py`
-  # alone does schema validation, read-back verification, and dependency
-  # resolution, and a second implementation in shell would be one nobody tests.
   - name: python3
     required: true
 provides:
@@ -44,6 +40,9 @@ provides:
   - name: speckit.github-lifecycle.decompose
     file: commands/decompose.md
     description: Report an Epic's decomposition horizon and create approved children.
+  - name: speckit.github-lifecycle.retire
+    file: commands/retire.md
+    description: Retire a Story that will not be delivered, or supersede one another carries.
   - name: speckit.github-lifecycle.triage
     file: commands/triage.md
     description: Assess an incoming item and propose what happens to it next.
@@ -82,7 +81,8 @@ provides:
     description: Check at bootstrap that the project defines the verification commands the workflows run.
   - name: speckit.github-lifecycle.mismatch
     file: commands/mismatch.md
-    description: Decide whether a repository already contains a product before greenfield bootstrap writes anything.
+    description: Decide whether a repository already contains a product before greenfield bootstrap writes
+      anything.
   - name: speckit.github-lifecycle.outcome
     file: commands/outcome.md
     description: Assess an outcome record and recommend a status.

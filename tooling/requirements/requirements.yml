@@ -864,6 +864,42 @@ requirements:
     evidence:
       - "Issue #107"
 
+  - id: REQ-BACKLOG-RETIRE-001
+    statement: >-
+      An item can be ended without being delivered, by a route the state
+      machine declares for undelivered work, and never by inventing a delivery
+      state it did not earn. The routes are read from policy, so one added
+      there needs no code change, and a route requiring a delivery state is not
+      offered here because completing work is what transition does. A
+      retirement states its reason, a supersession names the item that now
+      carries the work and both issues reference each other, and an item with
+      open children is refused rather than stranding them. Every refusal
+      happens before any write, and an undeclared route is refused without
+      reaching the API. The close is read back, because a write that reports
+      success while the read disagrees is not a success.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.retire
+      - script:bundle/components/extensions/github-lifecycle/scripts/retire.py
+      - policy:state-machine.yml
+    verified_by:
+      - "tests/test_retire.py::test_the_routes_come_from_policy"
+      - "tests/test_retire.py::test_a_completed_route_is_not_offered"
+      - "tests/test_retire.py::test_retiring_records_the_reason_and_leaves_the_delivery_state"
+      - "tests/test_retire.py::test_a_retirement_with_no_reason_is_refused"
+      - "tests/test_retire.py::test_superseding_references_both_ends"
+      - "tests/test_retire.py::test_superseding_without_naming_the_successor_is_refused"
+      - "tests/test_retire.py::test_an_item_cannot_supersede_itself"
+      - "tests/test_retire.py::test_open_children_are_not_stranded"
+      - "tests/test_retire.py::test_closed_children_do_not_block_retirement"
+      - "tests/test_retire.py::test_an_undeclared_route_is_refused_without_touching_the_api"
+      - "tests/test_retire.py::test_a_write_that_does_not_take_is_reported"
+    evidence:
+      - "Issue #108"
+
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
       A finding is searched for duplicates before it is created, including
