@@ -41,7 +41,43 @@ authorized. If a step lacks authorization for a source, it is refused whether or
 not the result would have been redacted — treating redaction as permission is
 what makes a denial policy decorative.
 
+## Refuse a secret file before it is read
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+  --path <path> --format json
+```
+
+`denied_sources` names six places production data lives and none of them is a
+file, so it never covered `.env` or a private key. `denied_paths` does. The
+refusal names the pattern that matched and why it exists, because a refusal
+that does not say what would clear it is one an author switches off.
+
+The same patterns become deny rules in the generated agent configuration —
+for the read tool and for the shell commands that would otherwise walk round
+it. Denying `Read(.env)` while allowing `Bash(cat .env)` is a rule that reads
+as protection and is not.
+
+If `rules_from_policy` is `false` the installed preset predates this policy.
+Say so. The command emitted no rules, so nothing is denied.
+
+## Redact a record
+
+```bash
+python .specify/extensions/github-lifecycle/scripts/sensitive.py \
+  --record <path> --redact --out <path> --format json
+```
+
+Redacts the file's text rather than the parsed record, so a document a person
+wrote keeps its shape and the diff stays reviewable.
+
+Report `findings_before`, `findings_after` and `changed`. **A non-zero
+`findings_after` stops the record reaching review.** Redaction is not
+authorization: it happens after the read, and a value that should never have
+been read is still a finding once the marker replaces it.
+
 ## Never
+
 
 - Report a refusal generically. Cite the rule id and text, so the reader knows
   which rule they met and who can lift it.

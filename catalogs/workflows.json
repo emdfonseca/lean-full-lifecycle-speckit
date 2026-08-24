@@ -18,7 +18,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 11
+        "steps": 12
       }
     },
     "lifecycle-bugfix": {

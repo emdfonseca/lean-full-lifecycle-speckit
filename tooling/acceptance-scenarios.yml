@@ -248,10 +248,14 @@ scenarios:
     group: brownfield
     name: Production evidence is minimized/redacted
     priority: must
-    phase: blocked
+    phase: p12
     expected: Workflow-written production evidence is minimized and visibly redacted before review without treating redaction as read authorization.
-    missing: sensitive.py scans workflow evidence but exposes no workflow redaction entry point, so workflow-written evidence is not redacted.
-    tracked_by: 89
+    status: covered
+    verified_by:
+      - tests/test_sensitive.py::test_redacting_a_record_clears_its_findings
+      - tests/test_sensitive.py::test_redaction_leaves_a_visible_marker
+      - tests/test_sensitive.py::test_the_workflow_redacts_after_scanning_and_before_review
+      - tests/test_sensitive.py::test_the_redact_step_does_not_treat_redaction_as_authorization
 
   - id: AC-BACKLOG-001
     group: backlog
@@ -368,10 +372,15 @@ scenarios:
     group: security
     name: Secret-file read
     priority: must
-    phase: blocked
+    phase: p12
     expected: Agent permissions deny reading secret files before their contents can enter a prompt or evidence record.
-    missing: No generated permission rule denies secret-file paths; sensitive.py denied sources are data sources, not paths.
-    tracked_by: 89
+    status: covered
+    verified_by:
+      - tests/test_claude_config.py::test_secret_paths_reach_the_generated_deny_list
+      - tests/test_claude_config.py::test_the_shell_route_round_a_read_rule_is_denied_too
+      - tests/test_claude_config.py::test_every_policy_pattern_becomes_a_rule
+      - tests/test_sensitive.py::test_the_refusal_names_the_pattern_that_matched
+      - tests/test_sensitive.py::test_every_denied_path_glob_is_expressible
 
   - id: AC-SECURITY-005
     group: security

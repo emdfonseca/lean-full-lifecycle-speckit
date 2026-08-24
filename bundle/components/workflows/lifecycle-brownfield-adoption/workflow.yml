@@ -172,6 +172,16 @@ steps:
       that quotes the secret has copied it somewhere new. If patterns_from_policy is
       false the governance preset is not installed and a conservative fallback ran; say
       so rather than reporting the record clean.'
+- id: redact-evidence-before-review
+  command: speckit.github-lifecycle.sensitive
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Redact .specify/lifecycle/brownfield-discovery.md in place, using --redact
+      with --out set to the same file. Run this only after the scan step above has
+      reported. Report findings_before and findings_after and whether the file changed.
+      Redaction is not authorization: a value that should never have been read is still
+      a finding after the marker replaces it, so if findings_after is not zero say which
+      fields remain and stop rather than sending the record to review.'
 - id: review-discovery
   type: gate
   message: Review .specify/lifecycle/brownfield-discovery.md and its readiness verdict.

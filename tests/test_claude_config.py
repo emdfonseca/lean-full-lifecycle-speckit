@@ -243,3 +243,58 @@ def test_a_proposal_cannot_be_written_outside_the_project(tmp_path, proposal):
     (tmp_path / ".specify").mkdir()
     with pytest.raises(pr.OutsideProjectError):
         cc.write_proposal(tmp_path.parent / "elsewhere.json", proposal, tmp_path)
+
+
+# --- secret file paths --------------------------------------------------------
+
+SENSITIVE = cc.load_sensitive(ROOT)
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_secret_paths_reach_the_generated_deny_list():
+    # AC-SECURITY-004 asserts the generated permissions deny secret files.
+    # Before this, no generated rule mentioned a path at all.
+    deny = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE) \
+             .settings["permissions"]["deny"]
+    assert "Read(**/.env)" in deny
+    assert "Read(**/*.pem)" in deny
+    assert "Read(**/.ssh/**)" in deny
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_the_shell_route_round_a_read_rule_is_denied_too():
+    # Denying Read(.env) while allowing Bash(cat .env) is a rule that reads
+    # as protection and is not.
+    deny = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE) \
+             .settings["permissions"]["deny"]
+    for command in ("cat", "less", "head", "tail"):
+        assert f"Bash({command} **/.env)" in deny
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_every_policy_pattern_becomes_a_rule():
+    import sensitive as sd
+    rules = cc.secret_path_rules(SENSITIVE)
+    for entry in sd.denied_path_patterns(SENSITIVE):
+        assert f"Read({entry['glob']})" in rules, (
+            f"{entry['id']} is in the policy and not in the generated config")
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_a_preset_without_the_policy_emits_no_secret_rules():
+    # No rules rather than an exception, and no config that looks stricter
+    # than it is.
+    assert cc.secret_path_rules(None) == []
+    assert cc.secret_path_rules({}) == []
+    built = cc.build(BOOTSTRAP, AGENT, ROUTING, None)
+    assert not [r for r in built.settings["permissions"].get("deny", [])
+                if r.startswith("Read(")]
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_the_secret_rules_are_attributed_to_a_rule_name():
+    # by_rule is what the report shows a reviewer; rules that appear from
+    # nowhere cannot be argued with.
+    built = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE)
+    assert "secret_file_read" in built.by_rule
+    assert "Read(**/.env)" in built.by_rule["secret_file_read"]

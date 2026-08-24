@@ -70,6 +70,22 @@ def load_policies(root: Path | None = None) -> tuple[dict, dict, dict]:
             _load(root, ROUTING_CANDIDATES))
 
 
+def load_sensitive(root: Path | None = None) -> dict | None:
+    """The sensitive-data policy, or None when the preset predates it.
+
+    Loaded here rather than through `load_policies` so the three policies that
+    function returns keep their arity -- the other generator reads them too.
+    A project whose preset has no `denied_paths` gets no secret-path rules,
+    which `--format json` reports as `rules_from_policy: false` rather than
+    emitting a config that looks stricter than it is.
+    """
+    import sensitive
+    try:
+        return sensitive.load_policy(root)
+    except (FileNotFoundError, KeyError):
+        return None
+
+
 @dataclass
 class Unmappable:
     rule: str
@@ -117,7 +133,30 @@ def _set(target: dict, dotted: str, value) -> None:
     target[parts[-1]] = value
 
 
-def build(bootstrap: dict, agent: dict, routing: dict) -> Proposal:
+def secret_path_rules(sensitive: dict | None) -> list[str]:
+    """Deny rules for the file paths a secret lives in.
+
+    `sensitive-data.yml` denies six production data *sources*, none of which
+    is a file, so nothing generated here ever stopped a read of `.env`. These
+    are the missing half: the deny is at the path, before the read, because a
+    secret already read has entered a context redaction cannot reach.
+
+    Emitted for both Read and the shell tools that would otherwise walk
+    straight round a Read rule -- denying `Read(.env)` while allowing
+    `Bash(cat .env)` is a rule that reads as protection and is not.
+    """
+    patterns = (sensitive or {}).get("denied_paths") or {}
+    rules: list[str] = []
+    for entry in patterns.get("patterns") or []:
+        glob = entry["glob"]
+        rules.append(f"Read({glob})")
+        for command in ("cat", "less", "head", "tail"):
+            rules.append(f"Bash({command} {glob})")
+    return rules
+
+
+def build(bootstrap: dict, agent: dict, routing: dict,
+          sensitive: dict | None = None) -> Proposal:
     spec = bootstrap["integrations"]["claude"]
     runtime = agent["runtime"]
     proposal = Proposal()
@@ -136,6 +175,11 @@ def build(bootstrap: dict, agent: dict, routing: dict) -> Proposal:
     for command in (list(bootstrap["verification_commands"]["required"]) +
                     list(bootstrap["verification_commands"]["release"])):
         lists["allow"].append(f"Bash({command})")
+
+    secret_rules = secret_path_rules(sensitive)
+    if secret_rules:
+        lists["deny"].extend(secret_rules)
+        proposal.by_rule["secret_file_read"] = list(secret_rules)
 
     for name, values in lists.items():
         if values:
@@ -204,7 +248,8 @@ def main() -> int:
 
     try:
         if args.cmd == "propose":
-            proposal = build(bootstrap, agent, routing)
+            proposal = build(bootstrap, agent, routing,
+                             load_sensitive(args.policy_root))
             target = write_proposal(args.out, proposal, args.policy_root)
             print(json.dumps(proposal.to_dict(), indent=2))
             print(f"\nProposal written to {target}. No settings have changed.",

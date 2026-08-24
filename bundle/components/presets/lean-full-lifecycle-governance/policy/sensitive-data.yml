@@ -31,6 +31,63 @@ production_data:
     - customer_records
     - payment_records
 
+denied_paths:
+  # Paths, not data sources. `denied_sources` above names six places
+  # production data lives; none of them is a file on disk, so nothing here
+  # stopped an agent reading `.env` or a private key. These are the shapes a
+  # secret has when it is a file.
+  #
+  # Globs rather than regexes: these become permission rules in a generated
+  # agent configuration, and the agents express path rules as globs. A
+  # pattern that cannot be emitted is a pattern that protects nothing.
+  rule_id: SENSITIVE-PATH-001
+  rule: >-
+    Reading a file whose path matches a denied pattern is refused. Refusal is
+    at the path, before the read, because a secret that has been read has
+    already entered the context that a later redaction cannot reach.
+  patterns:
+    - id: dotenv
+      glob: "**/.env"
+      why: Conventional home for credentials in a working tree.
+    - id: dotenv_variants
+      glob: "**/.env.*"
+      why: .env.local and .env.production carry the same content.
+    - id: private_key
+      glob: "**/*.pem"
+      why: Private keys, whatever the surrounding filename says.
+    - id: private_key_rsa
+      glob: "**/id_rsa"
+      why: >-
+        Default OpenSSH key name. Listed separately from the .ssh rule below
+        because a key copied out of .ssh is still a key.
+    - id: private_key_ed25519
+      glob: "**/id_ed25519"
+      why: The modern default, same reasoning.
+    - id: pkcs12
+      glob: "**/*.p12"
+      why: Certificate bundles, which carry the private half.
+    - id: pfx
+      glob: "**/*.pfx"
+      why: The Windows spelling of the same bundle.
+    - id: netrc
+      glob: "**/.netrc"
+      why: Stores host credentials in cleartext.
+    - id: aws_credentials
+      glob: "**/.aws/credentials"
+      why: Long-lived access keys.
+    - id: gcp_service_account
+      glob: "**/gcloud/*.json"
+      why: Service-account keys are JSON and look ordinary.
+    - id: kubeconfig
+      glob: "**/.kube/config"
+      why: Cluster credentials.
+    - id: ssh_dir
+      glob: "**/.ssh/**"
+      why: Everything in it, because the safe members are not worth enumerating.
+    - id: keyring
+      glob: "**/*.kdbx"
+      why: Password database.
+
 redaction:
   # Visible, so a reader can tell something was removed. A silent redaction
   # leaves evidence that reads as complete and is not.

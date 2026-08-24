@@ -228,3 +228,114 @@ def test_the_scan_step_forbids_quoting_the_value():
     args = step["input"]["args"]
     assert "never the value" in args
     assert "patterns_from_policy is false" in args
+
+
+# --- secret file paths --------------------------------------------------------
+#
+# `denied_sources` names six places production data lives and none of them is
+# a file, so nothing here stopped a read of `.env`. These cover the half that
+# was missing: the refusal at the path, before the read.
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+@pytest.mark.parametrize("path", [
+    ".env", "src/.env", "/a/b/.env.local", "config/secrets.pem",
+    ".ssh/id_rsa", "/home/me/.ssh/anything/at/all", ".netrc",
+    ".aws/credentials", "deep/.kube/config", "vault.kdbx",
+])
+def test_a_secret_path_is_refused(path):
+    refusals = sd.path_problems(path, POLICY)
+    assert refusals, f"{path} was not refused"
+    assert "SENSITIVE-PATH-001" in refusals[0]
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+@pytest.mark.parametrize("path", [
+    "src/app.py", "README.md", "notes/id_generator.py",
+    "environments.md", "docs/env.md", "tests/test_env.py",
+])
+def test_an_ordinary_path_is_not_refused(path):
+    # A deny rule wide enough to catch working files gets switched off, and
+    # then it protects nothing at all.
+    assert sd.path_problems(path, POLICY) == []
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_the_refusal_names_the_pattern_that_matched():
+    # "Denied" without a reason is a refusal an author disables.
+    refusal = sd.path_problems(".env", POLICY)[0]
+    assert "'dotenv'" in refusal
+    assert "**/.env" in refusal
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_every_denied_path_glob_is_expressible():
+    # The guard that matters. `**/id_{rsa,ed25519}` is a glob pathlib does not
+    # expand, so it would sit in the policy matching nothing while reporting
+    # itself as present -- the exact defect this requirement is about.
+    for entry in sd.denied_path_patterns(POLICY):
+        glob = entry["glob"]
+        assert "{" not in glob and "[" not in glob, (
+            f"{entry['id']}: brace or class alternation is not translated; "
+            f"split it into separate patterns")
+        sample = glob.replace("**/", "x/").replace("*", "y")
+        assert sd.glob_to_regex(glob).match(sample), (
+            f"{entry['id']}: {glob} matches nothing, not even {sample}")
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_a_star_does_not_cross_a_directory_separator():
+    # fnmatch's `*` would, which makes a rule broader than it reads.
+    assert sd.glob_to_regex("**/*.pem").match("a/b/key.pem")
+    assert not sd.glob_to_regex("secrets/*.pem").match("secrets/nested/key.pem")
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_a_policy_without_denied_paths_refuses_nothing_and_says_so():
+    # An older preset gets no rules rather than an exception. It also gets no
+    # protection, which the report states rather than hiding.
+    assert sd.path_problems(".env", {"production_data": {}}) == []
+    assert sd.denied_path_patterns({}) == []
+
+
+# --- redaction as a reachable command -----------------------------------------
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_redacting_a_record_clears_its_findings(tmp_path):
+    record = tmp_path / "evidence.yml"
+    record.write_text(
+        "note: adoption evidence\n"
+        f"token: {FAKE}\n"
+        "connection: \"postgres://svc:pw@db.internal:5432/app\"\n",
+        encoding="utf-8")
+    before = sd.scan(load_yaml(record), record.name)
+    assert not before.clean
+
+    cleaned = sd.redact(record.read_text(encoding="utf-8"))
+    after = sd.scan(sd.yaml.safe_load(cleaned), record.name)
+    assert after.clean
+    assert sd.compile_patterns().marker in cleaned
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_redaction_leaves_a_visible_marker(tmp_path):
+    # A silent redaction leaves evidence that reads as complete and is not.
+    cleaned = sd.redact(f"token: {FAKE}\n")
+    assert "[redacted]" in cleaned
+    assert FAKE not in cleaned
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_the_workflow_redacts_after_scanning_and_before_review():
+    ids = [s["id"] for s in BROWNFIELD["steps"]]
+    assert ids.index("scan-evidence-for-sensitive-data") < \
+        ids.index("redact-evidence-before-review") < \
+        ids.index("review-discovery")
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_the_redact_step_does_not_treat_redaction_as_authorization():
+    step = [s for s in BROWNFIELD["steps"]
+            if s["id"] == "redact-evidence-before-review"][0]
+    args = step["input"]["args"]
+    assert "not authorization" in args
+    assert "findings_after" in args

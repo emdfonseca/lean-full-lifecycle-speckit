@@ -154,6 +154,79 @@ def redact(text: str, patterns: Patterns | None = None) -> str:
     return text
 
 
+def glob_to_regex(glob: str) -> re.Pattern:
+    """Translate a path glob to a regex, explicitly.
+
+    Not `PurePath.full_match`: that arrived in 3.13 and this package supports
+    3.11, so relying on it would leave older interpreters with deny rules that
+    match nothing while still reporting themselves as present. Not `fnmatch`
+    either: its `*` crosses directory separators, which would make a rule
+    broader than it reads.
+
+    Supports `**`, `*` and `?`. Brace alternation is deliberately absent -- see
+    `test_every_denied_path_glob_is_expressible`, which refuses a policy that
+    uses a construct this cannot translate.
+    """
+    out = ["(?s:"]
+    i = 0
+    while i < len(glob):
+        char = glob[i]
+        if glob.startswith("**/", i):
+            out.append("(?:.*/)?")       # any number of leading directories
+            i += 3
+        elif glob.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif char == "*":
+            out.append("[^/]*")          # one segment only
+            i += 1
+        elif char == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(char))
+            i += 1
+    out.append(")\\Z")
+    return re.compile("".join(out))
+
+
+def denied_path_patterns(policy: dict) -> list[dict]:
+    """The glob patterns whose files may not be read.
+
+    Absent from an older policy rather than empty, so a project that has not
+    updated its preset gets no rules instead of an exception. It also gets no
+    protection, which `--path` reports rather than hides.
+    """
+    return list((policy.get("denied_paths") or {}).get("patterns") or [])
+
+
+def path_problems(path: str, policy: dict) -> list[str]:
+    """Whether reading this path is refused, and by which pattern.
+
+    Matched against the path as given and against its resolved absolute form,
+    because `../../.env` and `/home/me/.env` are the same file and only one of
+    them looks like a secret.
+    """
+    rules = policy.get("denied_paths") or {}
+    patterns = denied_path_patterns(policy)
+    if not patterns:
+        return []
+    candidates = {str(path).replace("\\", "/").lstrip("./") or str(path)}
+    candidates.add(str(path).replace("\\", "/"))
+    try:
+        candidates.add(Path(path).resolve().as_posix())
+    except OSError:
+        # An unresolvable path is still a path; judge the literal form.
+        pass
+    cite = f"{rules.get('rule_id', 'SENSITIVE-PATH-001')}: {str(rules.get('rule', '')).strip()}"
+    for entry in patterns:
+        matcher = glob_to_regex(entry["glob"])
+        if any(matcher.match(c) for c in candidates):
+            return [f"reading {path!r} is denied: it matches {entry['id']!r} "
+                    f"({entry['glob']}) -- {entry['why'].strip()} {cite}"]
+    return []
+
+
 def authorization_problems(source: str, authorization: dict | None,
                            policy: dict) -> list[str]:
     """Decide whether this read of production data may happen.
@@ -184,6 +257,12 @@ def main() -> int:
     ap.add_argument("--record", type=Path,
                     help="Evidence record to scan for credential shapes.")
     ap.add_argument("--source", help="Data source an agent proposes to read.")
+    ap.add_argument("--path", help="File path an agent proposes to read.")
+    ap.add_argument("--redact", action="store_true",
+                    help="Redact --record rather than only reporting on it. "
+                         "Writes to --out, or to stdout when --out is absent.")
+    ap.add_argument("--out", type=Path, default=None,
+                    help="Where --redact writes. Refuses to leave the project.")
     ap.add_argument("--authorization", type=Path,
                     help="Authorization record for that read.")
     ap.add_argument("--policy-root", type=Path, default=None,
@@ -213,11 +292,46 @@ def main() -> int:
                                     "permitted": not problems,
                                     "refusals": problems}
 
+    if args.path:
+        refusals = path_problems(args.path, policy)
+        payload["path"] = {"path": args.path, "permitted": not refusals,
+                           "refusals": refusals,
+                           "rules_from_policy": bool(denied_path_patterns(policy))}
+        problems += refusals
+
     if args.record:
         data = yaml.safe_load(args.record.read_text(encoding="utf-8"))
         result = scan(data, args.record.name, compile_patterns(args.policy_root))
         payload["scan"] = result.to_dict()
-        problems += [str(f) for f in result.findings]
+        if args.redact:
+            # Redact the file's text, not the parsed record: reserialising
+            # would reformat a document a person wrote and make the diff
+            # unreadable, which is how a redaction stops being reviewable.
+            patterns = compile_patterns(args.policy_root)
+            original = args.record.read_text(encoding="utf-8")
+            cleaned = redact(original, patterns)
+            destination = None
+            if args.out:
+                destination = project_root.ensure_within(args.policy_root, args.out)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(cleaned, encoding="utf-8")
+            else:
+                print(cleaned)
+            after = scan(yaml.safe_load(cleaned) if cleaned.strip() else {},
+                         args.record.name, patterns)
+            payload["redaction"] = {
+                "record": str(args.record),
+                "written_to": str(destination) if destination else None,
+                "marker": patterns.marker,
+                "findings_before": len(result.findings),
+                "findings_after": len(after.findings),
+                "changed": cleaned != original,
+            }
+            # Redaction is the remedy, so a finding it cleared is not a
+            # problem to report. One it could not clear still is.
+            problems += [str(f) for f in after.findings]
+        else:
+            problems += [str(f) for f in result.findings]
 
     if args.format == "json":
         print(json.dumps(payload, indent=2))
