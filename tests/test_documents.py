@@ -152,20 +152,28 @@ def test_no_document_is_budgeted_by_length():
 
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_architecture_separates_observation_from_decision():
+    # arc42 names them Building blocks and Solution strategy. The first is
+    # what is there, the second is what should change; the gap between them is
+    # where specs come from.
     spec = next(s for s in CONTRACT["required"]
                 if s["path"].endswith("architecture.md"))
     names = {s["name"] for s in spec["sections"]}
-    assert {"As built", "Intended"} <= names
-    intended = next(s for s in spec["sections"] if s["name"] == "Intended")
-    assert "owner" in intended["answers"].lower()
+    assert {"Building blocks", "Solution strategy"} <= names
+    strategy = next(s for s in spec["sections"] if s["name"] == "Solution strategy")
+    assert "owner" in strategy["answers"].lower()
+    blocks = next(s for s in spec["sections"] if s["name"] == "Building blocks")
+    assert "observed" in blocks["answers"].lower()
 
 
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_the_stack_decision_records_what_was_rejected():
     # Usually the missing half: a stack with no rejections records a habit.
+    # In ADR form it lives inside Decision as a taken/not-taken table.
     spec = next(s for s in CONTRACT["required"]
                 if s["path"].endswith("stack-decision.md"))
-    assert "Rejected" in {s["name"] for s in spec["sections"]}
+    decision = next(s for s in spec["sections"] if s["name"] == "Decision")
+    assert "rejected" in decision["answers"].lower()
+    assert decision["form"] == "table"
 
 
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
@@ -192,3 +200,58 @@ def test_the_style_rules_are_policy_not_prose_in_the_script():
     source = (SCRIPTS / "documents.py").read_text()
     for rule in CONTRACT["style"]:
         assert rule[:30] not in source, "a style rule is duplicated in the script"
+
+
+# --- one shape for both routes -----------------------------------------------
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_both_routes_share_one_contract():
+    # A reader moving between a new project and an adopted one should not have
+    # to learn two shapes. There is one contract, so this asserts neither
+    # workflow carries a document list of its own.
+    for name in ("lifecycle-greenfield-bootstrap", "lifecycle-brownfield-adoption"):
+        text = (ROOT / f"bundle/components/workflows/{name}/workflow.yml").read_text()
+        for spec in CONTRACT["required"]:
+            for section in spec.get("sections") or []:
+                assert section["name"] not in text, (
+                    f"{name} names the section {section['name']!r} itself; the "
+                    f"contract is the only place that should")
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_section_names_follow_a_named_standard():
+    # The first version invented every section name, including a decision shape
+    # for a project that already had five Nygard ADRs.
+    by_path = {s["path"]: s for s in CONTRACT["required"]}
+    assert by_path[".specify/lifecycle/architecture.md"]["standard"].startswith("arc42")
+    assert by_path[".specify/lifecycle/stack-decision.md"]["standard"] == "Nygard ADR"
+    assert by_path[".specify/memory/constitution.md"]["standard"] == "RFC 2119"
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_the_stack_decision_carries_the_four_adr_sections():
+    spec = next(s for s in CONTRACT["required"]
+                if s["path"].endswith("stack-decision.md"))
+    names = [s["name"] for s in spec["sections"]]
+    assert names == ["Status", "Context", "Decision", "Consequences"]
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_architecture_delegates_decisions_rather_than_duplicating_them():
+    # arc42 section 9 permits this, and a second decision format in one project
+    # is the drift the style rules forbid.
+    spec = next(s for s in CONTRACT["required"]
+                if s["path"].endswith("architecture.md"))
+    delegated = " ".join(spec.get("delegates") or [])
+    assert "docs/decisions/" in delegated
+    assert "9" in delegated
+    assert "Architectural Decisions" not in [s["name"] for s in spec["sections"]]
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+def test_seams_is_marked_as_an_addition_not_an_arc42_section():
+    # Claiming a bespoke section is part of a standard would misrepresent it.
+    spec = next(s for s in CONTRACT["required"]
+                if s["path"].endswith("architecture.md"))
+    seams = next(s for s in spec["sections"] if s["name"] == "Seams")
+    assert "not an arc42 section" in seams["answers"].lower()

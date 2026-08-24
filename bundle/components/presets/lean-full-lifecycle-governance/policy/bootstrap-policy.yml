@@ -331,19 +331,31 @@ step_timeouts:
 
 # The documents a bootstrapped project must have, whichever route it took.
 #
-# Declared here because a set that lives in one workflow's prompt is a
-# convention rather than a contract: `PRODUCT.md` existed only because
-# greenfield asked for it, and brownfield adoption produced none of it while
-# writing 937 lines about what the code does (#126).
+# Greenfield and brownfield produce the same set with the same sections. The
+# difference is only what can be filled in: a new project's building blocks are
+# intended, an adopted project's are observed. One contract, because a reader
+# moving between two projects should not have to learn two shapes (#126).
 #
-# Each section states what it answers and what form it takes. Length is not
-# budgeted: a line count is wrong across projects, and the first attempt here
-# set the constitution at 200 lines, which would have meant deleting principles
-# from a real one to fit. Content is specified instead, and length follows.
+# Section names follow established formats rather than invented ones. The first
+# version of this contract invented all of them, including a decision-record
+# shape for a project that already had five Nygard ADRs in docs/decisions/.
 #
-# Terseness is enforced through form, which scales on its own: a table with one
-# row per fact cannot ramble, and a rule with no explanatory paragraph in front
-# of it is a rule.
+#   architecture   arc42, tailored. https://arc42.org -- CC BY-SA 4.0, and the
+#                  template states it is tailorable. Five of its twelve
+#                  sections are used; §9 Architectural Decisions is delegated
+#                  to ADRs, which arc42 permits explicitly.
+#   decisions      Nygard ADR: Status, Context, Decision, Consequences. The
+#                  format docs/decisions/ already uses and the
+#                  documentation-and-adrs skill already writes.
+#   constitution   RFC 2119 keywords. Already in use; now required.
+#
+# C4 is deliberately not used: it is a diagramming methodology, not a
+# documentation template, so it names levels of abstraction rather than
+# sections. Its vocabulary may still be used inside the building-block view.
+#
+# Length is not budgeted. A line count is wrong for somebody -- the first
+# attempt set a constitution at 200 lines, which would have meant deleting
+# principles from a real one. Form is checked instead and scales on its own.
 product_documents:
   style:
     - >-
@@ -354,7 +366,7 @@ product_documents:
       thing a table cannot hold: why.
     - >-
       State the decision, not the reasoning that reached it. Reasoning belongs
-      in the decision log, where it is dated and attributable.
+      in the decision record, where it is dated and attributable.
     - No document summarises itself, and no section restates another.
     - >-
       Where something could not be recovered, say so. An invented answer is
@@ -389,56 +401,82 @@ product_documents:
 
     - path: .specify/memory/constitution.md
       answers: The rules this project's work obeys.
+      standard: RFC 2119
       sections: []
       per_principle:
         form: >-
-          A name, one line stating the rule, then MUST and MUST NOT bullets.
-          No explanatory paragraph before the rule: if the rule needs one to be
-          understood, the rule is not yet written.
+          A name, one line stating the rule, then bullets using the RFC 2119
+          keywords MUST, MUST NOT, SHOULD, MAY. No explanatory paragraph before
+          the rule: if the rule needs one to be understood, it is not yet
+          written.
         excludes: >-
           Anything a policy file already holds. Reference the path instead --
           the constitution's own first principle requires it, and a constitution
           that restates policy is the drift it forbids.
 
     - path: .specify/lifecycle/architecture.md
-      answers: How it is built now, and how it should be.
+      answers: How it is built, and how it should be.
+      standard: arc42 (tailored)
       sections:
-        - name: As built
+        - name: Context and scope
+          form: prose
+          answers: >-
+            arc42 section 3. What the system talks to, and what lies outside
+            it. The boundary, not the internals.
+        - name: Building blocks
           form: table
           answers: >-
-            Component, location, and its one responsibility. One row each.
-            Observation only, and every row carries evidence.
-        - name: Intended
+            arc42 section 5. Component, location, and its one responsibility,
+            one row each. For an adopted project this is observed and every row
+            carries evidence; for a new one it is intended and says so.
+        - name: Solution strategy
           form: list
           answers: >-
-            Numbered decisions about what should change, each with an owner.
-            A decision with no owner is a suggestion.
+            arc42 section 4. Numbered decisions about structure, each with an
+            owner. A decision with no owner is a suggestion.
+        - name: Risks and technical debt
+          form: table
+          answers: >-
+            arc42 section 11. What is known to be wrong or fragile, and what it
+            costs. Empty is a claim; say so rather than omitting the section.
         - name: Seams
           form: table
           answers: >-
+            Not an arc42 section, and kept because arc42 has no equivalent.
             Where a change can be made and observed without restructuring.
             Seam, location, what it enables.
-        - name: Boundaries
-          form: prose
-          answers: What crosses in and out, and what does not.
+      delegates:
+        - >-
+          arc42 section 9, Architectural Decisions, to docs/decisions/. arc42
+          permits this explicitly, and a second decision format in one project
+          is the drift the style rules forbid.
 
     - path: .specify/lifecycle/stack-decision.md
       answers: What it is built with, and what that commits the project to.
+      standard: Nygard ADR
       sections:
-        - name: Chosen
-          form: table
-          answers: Choice and the evidence or reason for it. One row each.
-        - name: Rejected
+        - name: Status
+          form: prose
+          answers: proposed, accepted, or superseded by a named record.
+        - name: Context
+          form: prose
+          answers: >-
+            What forced a choice. For an adopted project this is recovered and
+            says where from.
+        - name: Decision
           form: table
           answers: >-
-            What was considered and not taken, and why. Usually the missing
-            half: a stack with no rejections records a habit, not a decision.
+            What was chosen and what was rejected, one row each, with the
+            reason. A stack with no rejections records a habit, not a decision.
         - name: Consequences
           form: list
-          answers: What this commits the project to, including what it forecloses.
+          answers: >-
+            What this commits the project to, including what it forecloses and
+            what becomes harder.
 
     - path: .specify/lifecycle/product-decisions.md
       answers: What was decided, when, and by whom.
+      standard: Nygard ADR (log of)
       sections:
         - name: Open
           form: list
@@ -447,5 +485,7 @@ product_documents:
             everything is settled.
       per_entry:
         form: >-
-          Heading is the date and the decision. Body is the owner and one line
-          of why. An entry that needs more is two decisions.
+          Heading is the date and the decision. Body carries Status, Context,
+          Decision and Consequences, the same four an ADR carries, at one or
+          two lines each. An entry needing more than that is an ADR, and
+          belongs in docs/decisions/ with this log referencing it.

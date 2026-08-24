@@ -1325,7 +1325,13 @@ requirements:
       would have meant deleting principles from a real one. Form is checked
       instead and scales on its own -- a table with one row per fact cannot
       ramble however large the project. A section that is empty, or in a form
-      the contract did not ask for, is reported. Architecture carries observation and decision as separate named
+      the contract did not ask for, is reported. Section names follow named
+      standards rather than invented ones: arc42 for architecture, tailored
+      and delegating its decision section to the ADRs the project already
+      keeps; the Nygard ADR shape for decision records; RFC 2119 keywords in
+      the constitution. Both bootstrap routes produce the same set with the
+      same sections, since a reader moving between projects should not have
+      to learn two shapes. Architecture carries observation and decision as separate named
       sections, since the gap between them is where specs come from. Every
       workflow that bootstraps or adopts produces the whole set, and a
       document over budget is reported with the overage rather than truncated.
@@ -1354,6 +1360,11 @@ requirements:
       - "tests/test_documents.py::test_every_section_states_what_it_answers"
       - "tests/test_documents.py::test_both_bootstrap_workflows_produce_the_documents"
       - "tests/test_documents.py::test_the_style_rules_are_policy_not_prose_in_the_script"
+      - "tests/test_documents.py::test_both_routes_share_one_contract"
+      - "tests/test_documents.py::test_section_names_follow_a_named_standard"
+      - "tests/test_documents.py::test_the_stack_decision_carries_the_four_adr_sections"
+      - "tests/test_documents.py::test_architecture_delegates_decisions_rather_than_duplicating_them"
+      - "tests/test_documents.py::test_seams_is_marked_as_an_addition_not_an_arc42_section"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BOOTSTRAP-DOCUMENTS]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-BOOTSTRAP-DOCUMENTS]"
     evidence:
