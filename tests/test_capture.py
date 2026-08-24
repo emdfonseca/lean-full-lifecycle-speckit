@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 import pytest
+import yaml
 
 from lib.inventory import ROOT
 
@@ -184,15 +185,23 @@ def test_an_item_created_without_its_type_is_a_failure():
 class StubBackend:
     """A backend that records placements, standing in for a real board."""
 
-    def __init__(self, fail=None):
+    def __init__(self, fail=None, fail_write=None):
         self.placed: list[tuple[int, int]] = []
+        self.written: list[tuple[int, str, str]] = []
         self.fail = fail
+        self.fail_write = fail_write
 
     def place(self, number, issue_id, operation_id=None):
         if self.fail:
             raise self.fail
         self.placed.append((number, issue_id))
         return 900 + number
+
+    def write(self, number, role, value, *, operation_id=None):
+        if self.fail_write:
+            raise self.fail_write
+        self.written.append((number, role, value))
+        return value
 
 
 class NoBoardBackend:
@@ -237,6 +246,59 @@ def test_placement_uses_the_issue_id_from_the_read_back(monkeypatch):
     number = result["number"]
     issue = next(i for i in repo.issues if i["number"] == number)
     assert stub.placed[0][1] == issue["id"]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-002")
+def test_a_captured_item_gets_the_entry_delivery_state(monkeypatch):
+    # Placing the row is half the job. A row with no delivery state is
+    # reported by the audit and skipped by the refinement queue.
+    stub = StubBackend()
+    _wire(monkeypatch, stub)
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt",
+                             "bug", project=3, policy_root=ROOT)
+    assert result["delivery_state"] == "Inbox"
+    assert stub.written == [(result["number"], "delivery_state", "Inbox")]
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-002")
+def test_the_entry_state_comes_from_the_state_machine_not_this_script():
+    # A second copy of the entry state living in capture.py is the copy that
+    # drifts when the policy changes.
+    machine = yaml.safe_load((ROOT / "policy/state-machine.yml").read_text())
+    entries = [e["to"] for e in machine["delivery_status"]["transitions"]
+               if e.get("from") is None]
+    assert cap.initial_delivery_state(ROOT) == entries[0]
+    source = (SCRIPTS / "capture.py").read_text()
+    assert '"Inbox"' not in source, "the entry state is hardcoded in capture.py"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-002")
+def test_a_capture_that_places_but_cannot_set_the_state_says_so(monkeypatch):
+    # Half-placed is its own outcome and must not read as a clean creation.
+    stub = StubBackend(fail_write=RuntimeError("field not found"))
+    _wire(monkeypatch, stub)
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt",
+                             "bug", project=3, policy_root=ROOT)
+    assert result["on_board"] is True
+    assert result["delivery_state"] is None
+    assert "could not set its delivery state" in result["board_note"]
+    assert "the audit will report it" in result["board_note"].lower()
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-002")
+def test_a_backend_without_a_board_is_not_asked_for_a_state(monkeypatch):
+    # Organization Issue Fields carry state on the issue itself. There is no
+    # board row to write, and pretending otherwise would invent a failure.
+    _wire(monkeypatch, NoBoardBackend())
+    result = cap.create_item(client(Repo()), "acme/widgets", "A new finding",
+                             "**Reproduction**\nx\n**Expected**\ny\n"
+                             "**Actual**\nz\n**Regression test**\nt", "bug",
+                             policy_root=ROOT)
+    assert "delivery_state" not in result
 
 
 @pytest.mark.req("REQ-GITHUB-BOARD-001")

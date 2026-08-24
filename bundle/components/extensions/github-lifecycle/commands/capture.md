@@ -38,9 +38,18 @@ the audit, and the refinement queue read it from there. An item created off the
 board exists and cannot be moved, which is worse than not creating it: it looks
 filed.
 
-If placement fails the result says `on_board: false` with the reason. Report
-that. A creation that reads as clean while the item cannot be transitioned is
-the failure this reporting exists to prevent.
+Placing the row is half of it. The item is also given the delivery state a new
+item enters, taken from the `state-machine.yml` edge that starts from no state
+— the one whose evidence is `issue_exists`, which creation has by construction.
+A row with no delivery state is reported by the audit, skipped by the
+refinement queue, and cannot be planned from, so a capture that stopped at
+placement would file something nothing downstream can see.
+
+The result carries `delivery_state`. If placement fails it says
+`on_board: false` with the reason; if placement succeeds and the state write
+fails it says `on_board: true` with `delivery_state: null` and what that means.
+Report either. A creation that reads as clean while the item cannot be
+transitioned is the failure this reporting exists to prevent.
 
 Organization Issue Fields carry state on the issue itself, so there is no board
 to be off. That case is reported too, and is not a failure.

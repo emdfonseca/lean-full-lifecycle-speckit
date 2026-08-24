@@ -126,7 +126,8 @@ def has_evidence(body: str, item_type: str) -> list[str]:
 
 def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
                 parent: int | None = None, operation_id: str | None = None,
-                project: int | None = None) -> dict:
+                project: int | None = None,
+                policy_root: Path | None = None) -> dict:
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
@@ -154,22 +155,51 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
 
     result = {"number": number, "type": item_type, "parent": parent}
     result.update(place_on_board(gh, repo, number, check, project,
-                                 operation_id=operation_id))
+                                 operation_id=operation_id,
+                                 policy_root=policy_root))
     return result
+
+
+def initial_delivery_state(policy_root: Path | None = None) -> str:
+    """The state a new item enters, read from the installed state machine.
+
+    Not hardcoded here. `state-machine.yml` defines exactly one edge from no
+    state, and a second copy of its target living in this file is the copy
+    that drifts.
+    """
+    import project_root
+    import transition_plan
+
+    root = project_root.resolve(policy_root, required=False) or Path.cwd()
+    machine = transition_plan.load_state_machine(root)
+    entries = [e["to"] for e in machine["delivery_status"]["transitions"]
+               if e.get("from") is None]
+    if len(entries) != 1:
+        raise GitHubError(
+            f"state-machine.yml defines {len(entries)} entry states {entries}; "
+            f"capture cannot choose which one a new item enters")
+    return entries[0]
 
 
 def place_on_board(gh: GitHub, repo: str, number: int, issue: dict,
                    project: int | None,
-                   operation_id: str | None = None) -> dict:
-    """Put the new item on the board, because that is where its state lives.
+                   operation_id: str | None = None,
+                   policy_root: Path | None = None) -> dict:
+    """Put the new item on the board and give it the state a new item has.
 
     Every transition, the audit, and the refinement queue read delivery state
     from the project. An item created off the board exists and cannot be moved,
     which is a worse outcome than not creating it: it looks done.
 
-    A capture that cannot place the item reports that plainly. Returning a
-    clean creation would hand back an item nobody can transition and let the
-    caller believe otherwise.
+    Placing the row is only half of that. A row with no delivery state is
+    reported by the audit, skipped by the refinement queue, and cannot be
+    planned from -- so capture writes the entry state too. It is entitled to:
+    `state-machine.yml` gives the edge from no state the evidence
+    `issue_exists`, and this function has just created and read back the issue.
+
+    A capture that cannot place the item, or cannot set the state after
+    placing it, reports that plainly. Returning a clean creation would hand
+    back an item nobody can transition and let the caller believe otherwise.
     """
     import inspect_target
     import field_backend
@@ -185,7 +215,6 @@ def place_on_board(gh: GitHub, repo: str, number: int, issue: dict,
                                   f"board; delivery state is carried on the "
                                   f"issue itself"}
         item = place(number, int(issue["id"]), operation_id=operation_id)
-        return {"on_board": True, "project_item_id": item}
     except Exception as exc:  # noqa: BLE001
         return {
             "on_board": False,
@@ -194,6 +223,21 @@ def place_on_board(gh: GitHub, repo: str, number: int, issue: dict,
                 f"({exc.__class__.__name__}: {exc}). It has no delivery state, "
                 f"so no transition can be planned for it until it is added."),
         }
+
+    try:
+        state = initial_delivery_state(policy_root)
+        backend.write(number, "delivery_state", state,
+                      operation_id=f"{operation_id}-state" if operation_id else None)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "on_board": True, "project_item_id": item, "delivery_state": None,
+            "board_note": (
+                f"placed #{number} on the board but could not set its delivery "
+                f"state ({exc.__class__.__name__}: {exc}). The audit will "
+                f"report it and the refinement queue will skip it until the "
+                f"state is set."),
+        }
+    return {"on_board": True, "project_item_id": item, "delivery_state": state}
 
 
 def main() -> int:
@@ -208,6 +252,9 @@ def main() -> int:
                     help="Project to place the item on. Omit to let inspection choose,\n"
                          "which fails when the owner has more than one.")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    ap.add_argument("--policy-root", type=Path, default=None,
+                    help="Spec Kit project root. Defaults to SPECIFY_INIT_DIR, "
+                         "then the nearest ancestor with a .specify/ directory.")
     ap.add_argument("--create", action="store_true",
                     help="Create the item. Without this, only searches.")
     ap.add_argument("--audit", type=Path, default=None)
@@ -258,7 +305,8 @@ def main() -> int:
 
         report.update(create_item(gh, args.repo, args.title, args.body,
                                   args.item_type, args.parent,
-                                  project=args.project))
+                                  project=args.project,
+                                  policy_root=args.policy_root))
         report["action"] = "created"
         print(json.dumps(report, indent=2))
         return 0

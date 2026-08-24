@@ -990,6 +990,31 @@ requirements:
     evidence:
       - "Issue #60"
 
+  - id: REQ-GITHUB-BOARD-002
+    statement: >-
+      Placing an item on the board also sets the delivery state a new item
+      enters, because a board row without one is reported by the audit, skipped
+      by the refinement queue, and cannot be planned from. The state is read
+      from the state machine's edge from no state rather than compiled into the
+      command. A placement that succeeds while the state write fails reports
+      that rather than reading as a clean creation, and a backend with no board
+      is not asked for a state at all.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.capture
+      - policy:state-machine.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/capture.py
+    verified_by:
+      - "tests/test_capture.py::test_a_captured_item_gets_the_entry_delivery_state"
+      - "tests/test_capture.py::test_the_entry_state_comes_from_the_state_machine_not_this_script"
+      - "tests/test_capture.py::test_a_capture_that_places_but_cannot_set_the_state_says_so"
+      - "tests/test_capture.py::test_a_backend_without_a_board_is_not_asked_for_a_state"
+    evidence:
+      - "Issue #94"
+
   - id: REQ-CORE-RATCHET-001
     statement: >-
       Every gate declared ratcheted carries a baseline. A measurement worse
