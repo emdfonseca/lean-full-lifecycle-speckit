@@ -9,8 +9,8 @@
     "evidence": { "type": "string", "minLength": 1 },
     "scenarios": {
       "type": "array",
-      "minItems": 51,
-      "maxItems": 51,
+      "minItems": 50,
+      "maxItems": 50,
       "items": { "$ref": "#/$defs/scenario" }
     }
   },

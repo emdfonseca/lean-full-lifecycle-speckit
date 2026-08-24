@@ -198,6 +198,18 @@ def break_extension_config_safety(tmp):
                lambda d: d["safety"].__setitem__("require_read_back", False))
 
 
+def break_no_org_schema_mutation(tmp):
+    # The mutation path docs/security.md says does not exist. This is the
+    # guard that used to be `allow_organization_schema_mutation: false`, a
+    # config default nothing read.
+    target = tmp / EXT / "scripts/inspect_target.py"
+    target.write_text(
+        target.read_text(encoding="utf-8")
+        + '\n\ndef _added_by_a_negative_test(gh, owner):\n'
+          '    return gh.rest("POST", f"orgs/{owner}/issue-fields")\n',
+        encoding="utf-8")
+
+
 def break_extension_config_name(tmp):
     _edit_yaml(tmp / EXT / "extension.yml",
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
@@ -240,6 +252,7 @@ MUTATORS = {
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
     "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
     "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
+    "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
     "INV-ITEM-CONTENT": break_item_content,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
@@ -286,6 +299,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-SECURITY-GATE-001")
 @pytest.mark.req("REQ-SECURITY-EXTCONFIG-001")
 @pytest.mark.req("REQ-GITHUB-TRANSITION-001")
+@pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
@@ -303,6 +317,7 @@ def test_check_detects_its_own_violation(check_id, bundle_copy):
 
 
 @pytest.mark.parametrize("check_id", sorted(set(MUTATORS) - set(CURRENTLY_VIOLATED)))
+@pytest.mark.req("REQ-SECURITY-ORGSCHEMA-001")
 def test_check_passes_on_clean_source(check_id):
     r = subprocess.run(
         [sys.executable, "scripts/validate_source.py", "--only", check_id, "--format", "json"],

@@ -416,15 +416,6 @@ scenarios:
       - tests/test_claude_config.py::test_mcp_stays_off_unless_policy_says_otherwise
       - tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named
 
-  - id: AC-SECURITY-008
-    group: security
-    name: Organization schema mutation without authority
-    priority: must
-    phase: blocked
-    expected: Organization Issue Field creation or mutation is refused without explicit organization authority.
-    missing: Nothing creates or alters organization Issue Fields, so there is no mutation path to gate.
-    tracked_by: 91
-
   - id: AC-SECURITY-009
     group: security
     name: GitHub read-back mismatch

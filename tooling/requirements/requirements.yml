@@ -947,6 +947,32 @@ requirements:
     evidence:
       - "Issue #58"
 
+  - id: REQ-SECURITY-ORGSCHEMA-001
+    statement: >-
+      The bundle performs no organization Issue Field schema mutation, and that
+      is checked rather than asserted. Reading an organization's issue fields
+      is how the backend discovers whether a delivery-state field exists and
+      stays permitted; writing to that collection is what no script does. The
+      claim replaced a config default, allow_organization_schema_mutation,
+      which no code read: a switch that gates nothing is the same defect as a
+      scenario that exercises nothing, and the honest form of the promise is a
+      check that the path is absent. docs/security.md states the fact rather
+      than a guarantee, and the credential-separation advice is marked as
+      advice the bundle cannot enforce because it has no schema-administration
+      path to gate.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - check:SEC-NO-ORG-SCHEMA-MUTATION
+      - extension:github-lifecycle
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-NO-ORG-SCHEMA-MUTATION]"
+      - "tests/test_check_negatives.py::test_check_passes_on_clean_source[SEC-NO-ORG-SCHEMA-MUTATION]"
+    evidence:
+      - "Issue #91"
+
   - id: REQ-SECURITY-SENSITIVE-002
     statement: >-
       A secret is refused at its path, before the read, because a secret

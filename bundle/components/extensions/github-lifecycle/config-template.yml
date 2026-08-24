@@ -36,7 +36,6 @@ outcome_values:
 safety:
   require_approved_plan_for_write: true
   require_read_back: true
-  allow_organization_schema_mutation: false
   allow_status_labels: false
   close_completed_after_output_done: true
   infer_output_done_from_closed_issue: false

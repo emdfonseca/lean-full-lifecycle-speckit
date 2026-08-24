@@ -296,6 +296,45 @@ def extension_config_safety(ctx: Ctx) -> Iterator[Finding]:
                               f"expected {want!r}, got {safety.get(key)!r}")
 
 
+@check("SEC-NO-ORG-SCHEMA-MUTATION",
+       "No script mutates an organization's Issue Field schema",
+       scope="extension")
+def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
+    """docs/security.md claims the bundle performs no organization schema
+    mutation. This is what makes that a checked fact rather than a sentence.
+
+    It replaced `allow_organization_schema_mutation: false`, a config default
+    no code read. A switch that gates nothing is the same defect as a scenario
+    that tests nothing, and the honest form of the promise is a check that the
+    path does not exist.
+
+    Reading `orgs/<org>/issue-fields` is fine and is how the backend discovers
+    whether the organization carries a delivery-state field at all. Writing to
+    it is what nothing here does.
+    """
+    import re
+
+    ext = ctx.inv.extension
+    # A write is a non-GET method aimed at the organization issue-fields
+    # collection. Matched on the same line, because these calls are written as
+    # one `gh.rest(method, url)` expression throughout the extension.
+    write = re.compile(
+        r"""(?ix)
+        (POST|PATCH|PUT|DELETE)      # a mutating method
+        .*?
+        orgs/ [^"'\s]* /? issue[-_]fields
+        """)
+    for script in sorted((ext.path / "scripts").glob("*.py")):
+        for number, line in enumerate(
+                script.read_text(encoding="utf-8").splitlines(), 1):
+            if write.search(line):
+                yield ctx.finding(
+                    "SEC-NO-ORG-SCHEMA-MUTATION",
+                    f"{script.name}:{number}",
+                    "writes to an organization Issue Field schema; "
+                    "docs/security.md says the bundle performs none")
+
+
 @check("SEC-COMMAND-SCRIPT-BACKED",
        "Commands that reach GitHub invoke a script rather than describe calls",
        scope="extension")

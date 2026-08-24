@@ -65,9 +65,6 @@ extension_config_safety:
   # No GitHub write without an approved plan, and every write is read back.
   require_approved_plan_for_write: true
   require_read_back: true
-  # Organization schema administration is a separate, privileged operation from
-  # routine issue-value transitions.
-  allow_organization_schema_mutation: false
   # Output Done is an explicit engineering verdict. Closing an issue by any
   # other route must never be taken to mean the work is done.
   infer_output_done_from_closed_issue: false

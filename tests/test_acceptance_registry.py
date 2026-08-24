@@ -30,7 +30,7 @@ def scenario(rows, name):
 def test_registry_is_consistent(pytest_evidence):
     result, data = acceptance.validate_registry(collected=pytest_evidence)
     assert result.errors == []
-    assert len(data["scenarios"]) == 51
+    assert len(data["scenarios"]) == 50
 
 
 @pytest.mark.req("REQ-TOOLING-ACCEPTANCE-001")
