@@ -1534,6 +1534,46 @@ requirements:
     evidence:
       - "Issue #59"
 
+  - id: REQ-GITHUB-BOARD-003
+    statement: >-
+      The board a project-scoped deployment needs can be created, explicitly
+      and never implicitly, because deciding where a project's work is tracked
+      belongs to the project. The delivery field's name comes from the schema
+      and its states from the state machine, in the policy's order. Every new
+      board already carries a reserved single-select of that name holding
+      GitHub's own options, so the existing field is reshaped and its options
+      replaced wholesale rather than added to: a board carrying both would let
+      an item hold a value the state machine does not know. A second board is
+      refused, a field that cannot be created or reshaped is reported rather
+      than returned as success, and the board is read back by fetching the
+      field again rather than by asking which backend the repository would
+      resolve to. An owner with no board is an inspection refusal, not a note. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.board
+      - script:bundle/components/extensions/github-lifecycle/scripts/board.py
+      - policy:state-machine.yml
+      - policy:github-schema.yml
+    verified_by:
+      - "tests/test_board.py::test_the_field_and_its_options_come_from_policy"
+      - "tests/test_board.py::test_creating_makes_the_field_and_links_the_repo"
+      - "tests/test_board.py::test_an_existing_board_is_not_joined_by_a_second"
+      - "tests/test_board.py::test_a_board_without_its_field_is_reported_not_left_silently"
+      - "tests/test_board.py::test_a_board_that_cannot_be_linked_is_reported"
+      - "tests/test_board.py::test_the_board_is_read_back_not_the_repositorys_chosen_backend"
+      - "tests/test_board.py::test_a_board_with_no_status_field_creates_one"
+      - "tests/test_board.py::test_a_dry_run_writes_nothing"
+      - "tests/test_board.py::test_no_board_is_a_refusal_not_a_note"
+      - "tests/test_board.py::test_existing_issues_are_reported_as_not_on_the_board"
+      - "tests/test_board.py::test_adopt_places_them_and_reports_what_landed"
+      - "tests/test_board.py::test_a_board_whose_items_cannot_be_listed_reports_every_issue"
+    evidence:
+      - "Issue #119"
+      - "Issue #103"
+
   - id: REQ-GITHUB-BOARD-001
     statement: >-
       An item the framework creates must be placed on the board, because

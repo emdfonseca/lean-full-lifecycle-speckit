@@ -232,7 +232,14 @@ def _select_project(gh: GitHub, owner: str, kind: str,
         return chosen
     projects = discover_projects(gh, owner, kind)
     if not projects:
-        result.notes.append("No Projects v2 board found; no field backend available.")
+        # An ambiguity, not a note. A note reads as information and this is a
+        # refusal: with no board there is nowhere for delivery_state to live,
+        # so nothing can be transitioned and the backlog cannot move. A
+        # greenfield bootstrap produced exactly that and nothing said so.
+        result.ambiguities.append(
+            f"{owner} has no Projects v2 board, so delivery_state has nowhere "
+            f"to live and no item can be transitioned. Create one with the "
+            f"board command, or pass --project if one exists elsewhere.")
         return None
     if len(projects) == 1:
         return projects[0]["number"]

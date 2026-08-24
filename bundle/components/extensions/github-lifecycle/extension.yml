@@ -22,6 +22,9 @@ provides:
   - name: speckit.github-lifecycle.inspect
     file: commands/inspect.md
     description: Inspect GitHub lifecycle configuration without mutation.
+  - name: speckit.github-lifecycle.board
+    file: commands/board.md
+    description: Create the Projects v2 board a project-scoped deployment needs.
   - name: speckit.github-lifecycle.plan
     file: commands/plan.md
     description: Create a read-only plan for GitHub lifecycle changes.
