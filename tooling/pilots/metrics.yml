@@ -18,6 +18,10 @@ sources:
     reconstructed afterwards -- nobody can count later how often the run was
     repaired -- so it cannot be null. It does not need a person: an agent
     driving a pilot observes its own interventions and can count them.
+  # Any metric may be recorded as `not_applicable` with a reason. That is a
+  # third state, distinct from a value and from null: a bootstrap pilot stops
+  # before anything reaches Ready, so readiness accuracy has nothing to be
+  # right or wrong about. Found by using this contract on the first pilot.
   human: >-
     Needs a person, and an agent may not supply it. Not because it is harder to
     observe but because it is categorically different: it is a judgement about

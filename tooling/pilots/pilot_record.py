@@ -56,6 +56,12 @@ def check(record: dict, contract: dict) -> list[str]:
             continue
         entry = metrics[name]
         value = entry.get("value") if isinstance(entry, dict) else entry
+        if value == "not_applicable":
+            if not (isinstance(entry, dict) and entry.get("why")):
+                problems.append(
+                    f"{name!r} is not_applicable with no reason. Why it does "
+                    f"not apply is the part a later reader needs.")
+            continue
         if spec["source"] in ("operator", "human") and value is None:
             problems.append(
                 f"{name!r} is {spec['source']}-recorded and has no value. "

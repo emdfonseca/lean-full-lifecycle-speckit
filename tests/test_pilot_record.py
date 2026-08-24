@@ -150,3 +150,43 @@ def test_an_operator_metric_may_be_recorded_by_an_agent():
     record["metrics"]["human_interventions"] = {
         "value": 2, "why": "re-ran twice", "recorded_by": "agent"}
     assert pr.check(record, CONTRACT) == []
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_not_applicable_is_a_third_state():
+    # Distinct from a value and from null. A bootstrap pilot stops before
+    # anything reaches Ready, so readiness accuracy has nothing to be right
+    # or wrong about. Found by using this contract on the first pilot.
+    record = filled()
+    record["metrics"]["readiness_accuracy"] = {
+        "value": "not_applicable", "why": "bootstrap stops before Ready"}
+    assert pr.check(record, CONTRACT) == []
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_not_applicable_still_needs_a_reason():
+    record = filled()
+    record["metrics"]["readiness_accuracy"] = {"value": "not_applicable"}
+    assert any("not_applicable with no reason" in p
+               for p in pr.check(record, CONTRACT))
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_not_applicable_does_not_excuse_a_human_metric_silently():
+    # It is still a claim someone made, and it still needs the reason.
+    record = filled()
+    record["metrics"]["developer_satisfaction"] = {
+        "value": "not_applicable", "why": "no person drove this run"}
+    assert pr.check(record, CONTRACT) == []
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_the_greenfield_pilot_record_is_complete_but_for_the_human_metric():
+    # The shipped record is real evidence, not a fixture. It should be
+    # complete except for the one value an agent may not supply.
+    import yaml
+    record = yaml.safe_load(
+        (ROOT / "docs/evidence/pilot-greenfield.md").read_text(encoding="utf-8"))
+    problems = pr.check(record, CONTRACT)
+    assert len(problems) == 1, problems
+    assert "developer_satisfaction" in problems[0]
