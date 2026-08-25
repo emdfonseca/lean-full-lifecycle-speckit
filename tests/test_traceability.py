@@ -60,10 +60,14 @@ def test_detects_a_test_that_stopped_claiming(tree):
 
 
 def test_detects_a_claim_the_catalogue_does_not_list(tree):
+    # The target must be a test the catalogue will never list. This one
+    # documents itself as unmarked on purpose, so legitimising it is not a
+    # change anyone would make -- unlike the previous target, which was
+    # unmarked only because its requirement had not traced it yet (#130).
     _sub(tree / "tests/test_docs.py",
-         "def test_validation_names_the_platform_it_was_run_on(",
+         "def test_the_extension_declares_no_spec_kit_hooks(",
          '@pytest.mark.req("REQ-DOCS-TRUTH-001")\n'
-         "def test_validation_names_the_platform_it_was_run_on(")
+         "def test_the_extension_declares_no_spec_kit_hooks(")
     r = run(tree)
     assert r.returncode == 1
     assert "appears in no verified_by entry" in r.stdout

@@ -97,6 +97,78 @@ def version_coherence(ctx: Ctx) -> Iterator[Finding]:
                               f"{ctx.inv.version}")
 
 
+@check("INV-RELEASE-LADDER",
+       "The shipped version is not behind the next fully verified release",
+       scope="bundle")
+def release_ladder(ctx: Ctx) -> Iterator[Finding]:
+    """A release ladder nothing walks.
+
+    The roadmap declares five releases and `INV-VERSION-COHERENCE` keeps every
+    component on the bundle's version. What nothing required was that the
+    number ever move: 0.1.0 was written once and four rungs' worth of verified
+    work accumulated underneath it.
+
+    Only the *next* rung is considered. Reporting every fully verified release
+    would have asked for a jump to 0.9.0 while three pilot streams were still
+    open -- a ladder is climbed in order, and the rung above the one you have
+    not taken says nothing about where you are.
+
+    A rung needs more than its requirements. `gates:` in the same file declares
+    the rest -- 0.9.0 asks for four completed pilot streams -- and a rung whose
+    gate is not `passed` is silent here.
+
+    Even with both read, this warns rather than refuses. Requirement status and
+    a declared gate are what it can see; whether to cut a release is a
+    judgement, and a check that refused the build would be making it.
+    """
+    requirements = load_yaml(ctx.root / "tooling/requirements/requirements.yml") or {}
+    reqs = requirements.get("requirements") or []
+    if not reqs:
+        return
+
+    def parts(version: str) -> tuple[int, ...]:
+        try:
+            return tuple(int(n) for n in str(version).split("."))
+        except ValueError:
+            return ()
+
+    shipped = parts(ctx.inv.version)
+    if not shipped:
+        return
+
+    by_release: dict[str, list[str]] = {}
+    for req in reqs:
+        release = str(req.get("release") or "").strip()
+        if release and parts(release) > shipped:
+            by_release.setdefault(release, []).append(str(req.get("status") or ""))
+    if not by_release:
+        return
+
+    nxt = min(by_release, key=parts)
+    statuses = by_release[nxt]
+    if any(status != "verified" for status in statuses):
+        return
+
+    # `gates:` declares what a rung needs beyond its requirements -- 0.9.0 asks
+    # for four completed pilot streams. A rung with an unmet gate is silent:
+    # every requirement passing is not the same as the release being ready, and
+    # this file already says so.
+    pending = [gate for gate in (requirements.get("gates") or [])
+               if str(gate.get("release") or "").strip() == nxt
+               and str(gate.get("status") or "").strip() != "passed"]
+    if pending:
+        return
+    # A warning, not an error. What this knows is requirement status, and a
+    # roadmap exit condition can require more -- 0.9.0 asks for four completed
+    # pilots, which no `status` field records. Refusing the build would force a
+    # release decision on evidence this check does not have.
+    yield ctx.finding(
+        "INV-RELEASE-LADDER", "tooling/bundle-meta.yml",
+        f"ships {ctx.inv.version} while all {len(statuses)} requirements for "
+        f"{nxt} are verified. Cut it, or record what its exit condition still "
+        f"needs", severity="warning")
+
+
 @check("INV-SPECKIT-PIN", "Every manifest declares the one supported Spec Kit range",
        scope="bundle")
 def speckit_pin(ctx: Ctx) -> Iterator[Finding]:

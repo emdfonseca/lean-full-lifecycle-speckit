@@ -255,6 +255,32 @@ def test_no_code_path_leads_from_issue_state_to_a_delivery_state():
 
 
 @pytest.mark.req("REQ-STATE-OUTPUT-001")
+def test_no_code_path_leads_from_an_outcome_to_a_delivery_state():
+    # The other direction, and the half the requirement was left `implemented`
+    # for. The first test covers issue state; this covers outcome status, which
+    # is what "an unvalidated outcome never reopens completed work" forbids.
+    import ast
+
+    tree = ast.parse((SCRIPTS / "transition_plan.py").read_text(encoding="utf-8"))
+    OUTCOME = {"Outcome Status", "outcome_status", "Outcome Validated",
+               "Outcome Missed / Inconclusive", "Measuring",
+               "Not Yet Measurable"}
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        body = ast.dump(node)
+        if not (".write" in body or "backend.write" in body):
+            continue
+        literals = {n.value for n in ast.walk(node)
+                    if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+        overlap = literals & OUTCOME
+        assert not overlap, (
+            f"{node.name} both writes a delivery state and reads outcome "
+            f"status via {sorted(overlap)}")
+
+
+@pytest.mark.req("REQ-STATE-OUTPUT-001")
 def test_output_done_still_requires_a_legal_edge_and_evidence():
     plan, be, insp, board = plan_for("Output Done", initial="In Progress")
     assert "acceptance_criteria_satisfied" in plan.evidence_required

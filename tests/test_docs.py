@@ -23,6 +23,7 @@ def test_validation_states_unverified_areas():
     assert len(section.strip()) > 100, "the unverified section is a stub"
 
 
+@pytest.mark.req("REQ-DOCS-TRUTH-001")
 def test_validation_names_the_platform_it_was_run_on():
     text = (ROOT / "VALIDATION.md").read_text(encoding="utf-8")
     assert re.search(r"Spec Kit `?\d+\.\d+\.\d+", text), "no Spec Kit version recorded"

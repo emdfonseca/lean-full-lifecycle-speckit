@@ -25,6 +25,7 @@ families:
   - REQ-PILOT       # what a pilot run must record to count as evidence
   - REQ-WORKFLOW    # how a workflow step is bounded and run
   - REQ-PRODUCT     # the documents a project must have, and how terse
+  - REQ-RELEASE     # cutting a release, and what a rung still needs
 
 gates:
   - release: "0.9.0"
@@ -470,12 +471,13 @@ requirements:
     priority: must
     owner: product/process owner
     release: "0.2.0"
-    status: implemented
+    status: verified
     components:
       - policy:state-machine.yml
       - policy:outcome-policy.yml
     verified_by:
       - "tests/test_transition.py::test_no_code_path_leads_from_issue_state_to_a_delivery_state"
+      - "tests/test_transition.py::test_no_code_path_leads_from_an_outcome_to_a_delivery_state"
       - "tests/test_transition.py::test_output_done_still_requires_a_legal_edge_and_evidence"
 
   - id: REQ-BACKLOG-ITEMS-001
@@ -1344,6 +1346,34 @@ requirements:
     evidence:
       - "Issue #128"
       - "Issue #104"
+
+  - id: REQ-RELEASE-LADDER-001
+    statement: >-
+      The release ladder is observable. The roadmap declares five releases,
+      each with an exit condition, and version coherence keeps every component
+      on the bundle's version -- but nothing required the number to ever move,
+      so four rungs' worth of verified work accumulated under the 0.1.0 the
+      repository started at. Only the next rung is considered: reporting every
+      fully verified release would ask for a jump to 0.9.0 while three pilot
+      streams are open, and a ladder is climbed in order. What the check knows
+      is requirement status, and a roadmap exit condition can require more --
+      0.9.0 asks for four completed pilots, which no status field records --
+      so it warns rather than refuses and leaves cutting a release to a
+      person. A rung whose requirements are not all verified is silent, because
+      pushing a release whose exit condition is unmet is the same failure in
+      the other direction.
+    priority: should
+    owner: bundle maintainer
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:scripts/lib/checks.py
+    verified_by:
+      - "tests/test_check_negatives.py::test_currently_violated_check_fires_on_clean_source[INV-RELEASE-LADDER]"
+      - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+    evidence:
+      - "Issue #130"
+      - "Issue #103"
 
   - id: REQ-PRODUCT-DOCUMENTS-002
     statement: >-
@@ -2481,11 +2511,12 @@ requirements:
     priority: should
     owner: bundle maintainer
     release: "0.1.1"
-    status: implemented
+    status: verified
     components:
       - script:VALIDATION.md
     verified_by:
       - "tests/test_docs.py::test_validation_states_unverified_areas"
+      - "tests/test_docs.py::test_validation_names_the_platform_it_was_run_on"
 
   - id: REQ-TOOLING-TASKS-001
     statement: >-

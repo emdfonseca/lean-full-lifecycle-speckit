@@ -311,6 +311,12 @@ def break_no_placeholder(tmp):
     (tmp / "docs/leak.md").write_text("https://github.com/YOUR-ORG/x\n", encoding="utf-8")
 
 
+def break_release_ladder(tmp):
+    # INV-RELEASE-LADDER is violated by the *current* state: 0.1.1 is fully
+    # verified and the bundle still ships 0.1.0. See CURRENTLY_VIOLATED.
+    pass
+
+
 def break_catalog_root(tmp):
     # PUB-CATALOG-ROOT is violated by the *current* state: the bundle is
     # unpublished, so publishing.org is unset. See CURRENTLY_VIOLATED.
@@ -346,6 +352,7 @@ MUTATORS = {
     "INV-ITEM-CONTENT": break_item_content,
     "INV-NO-PHANTOM-BUDGET": break_phantom_budget,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
+    "INV-RELEASE-LADDER": break_release_ladder,
     "PUB-CATALOG-ROOT": break_catalog_root,
 }
 
@@ -367,12 +374,20 @@ def bundle_copy(tmp_path):
 CURRENTLY_VIOLATED = {
     "PUB-CATALOG-ROOT": "publishing.org is unset until P14",
     "PUB-NO-PLACEHOLDER": "YOUR-ORG remains in prose docs until P0e/P14",
+    "INV-RELEASE-LADDER": "0.1.1 is fully verified and the bundle ships 0.1.0",
 }
+
+# Checks whose findings are warnings by design, so "did it fire" cannot be read
+# from the error list alone. INV-RELEASE-LADDER warns because it knows
+# requirement status and a roadmap exit condition can require more; refusing the
+# build would force a release decision on evidence it does not have.
+WARNING_ONLY = {"INV-RELEASE-LADDER"}
 
 
 @pytest.mark.req("REQ-GITHUB-COMMANDS-001")
 @pytest.mark.req("REQ-TOOLING-CHECKS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
+@pytest.mark.req("REQ-RELEASE-LADDER-001")
 def test_every_check_has_a_negative_case():
     missing = set(REGISTRY) - set(MUTATORS)
     assert not missing, f"checks with no negative fixture: {sorted(missing)}"
@@ -431,6 +446,7 @@ def test_check_passes_on_clean_source(check_id):
 
 
 @pytest.mark.parametrize("check_id", sorted(CURRENTLY_VIOLATED))
+@pytest.mark.req("REQ-RELEASE-LADDER-001")
 def test_currently_violated_check_fires_on_clean_source(check_id):
     """These fire today by design; that they fire is what proves they work."""
     r = subprocess.run(
@@ -438,5 +454,7 @@ def test_currently_violated_check_fires_on_clean_source(check_id):
          "--only", check_id, "--strict-publish", "--format", "json"],
         cwd=ROOT, text=True, capture_output=True,
     )
-    reported = {f["check_id"] for f in json.loads(r.stdout)["errors"]}
+    payload = json.loads(r.stdout)
+    where = ["errors", "warnings"] if check_id in WARNING_ONLY else ["errors"]
+    reported = {f["check_id"] for key in where for f in payload[key]}
     assert check_id in reported, CURRENTLY_VIOLATED[check_id]
