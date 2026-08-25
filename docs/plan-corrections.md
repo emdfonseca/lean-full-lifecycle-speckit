@@ -599,3 +599,48 @@ Next, in order:
 
 P0b through P0d are the prerequisite for the eight new workflows. Doing the workflows first
 means eight PRs each hand-editing five files, none of which could be installed to test.
+
+## Pilot streams are not acceptance-scenario groups
+
+The roadmap names four pilot streams at `P13`: greenfield, brownfield, monorepo,
+and the GitHub sandbox organization. `tooling/acceptance-scenarios.yml` groups
+by capability, not by stream, and two of the four have no group of their own.
+
+| Stream | Scenario group | Verified as |
+|---|---|---|
+| greenfield | `greenfield` | 6 scenarios at `p13` |
+| brownfield | `brownfield` | 5 scenarios at `p13` |
+| monorepo | none | a `backends`-style dimension in `tooling/compatibility.yml`, with named tests |
+| sandbox organization | none | delivered as #37, evidence in `docs/evidence/orgfields-round-trip.md` |
+
+**The decision: scenarios are not missing, and the registry is not reorganised.**
+
+The sandbox organization settles it. It is a completed pilot stream with real
+evidence, cited from `requirements.yml` and `compatibility.yml`, and it never
+had a scenario group. So a stream can be complete without one, and adding a
+`monorepo` group now would be inventing a shape that the one delivered stream
+did not need.
+
+What monorepo has instead is a compatibility dimension:
+
+```yaml
+monorepo: two members of one repository stay independent
+```
+
+with two named tests as its evidence under `opencode`, and an explicit absence
+under `claude`: "overlays and monorepo are deliberately absent: nothing has
+exercised either under this integration, and an empty row says so."
+
+That is the more honest instrument for this stream. An acceptance scenario asks
+whether a behaviour is specified and tested; the compatibility matrix asks
+whether it has been exercised *under a given integration*, which is the question
+a monorepo raises. The same behaviour can hold under one agent and be untried
+under another, and only the matrix can say so.
+
+**What this does not excuse.** The `0.9.0` gate asks for four pilot streams
+complete with collected evidence and a named owner, and that is a separate
+requirement from scenario coverage. Monorepo still needs a run and a record.
+This decision says the run does not need a new scenario group first; it does not
+say the run is optional.
+
+Recorded for AC4 of #105.
