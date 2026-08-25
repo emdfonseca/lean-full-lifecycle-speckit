@@ -25,6 +25,19 @@ PLACEHOLDER_EXCLUDED_DIRS = {
 }
 PLACEHOLDER = "YOUR-ORG"
 
+# Phrases that can only mean a document budget exists. Stating that length is
+# not budgeted is not one of them, which is why these are instructions rather
+# than the word itself.
+BUDGET_INSTRUCTIONS = (
+    "over budget",
+    "under budget",
+    "within budget",
+    "obey the budget",
+    "budgets are the point",
+    "with the overage",
+    "max_lines",
+)
+
 
 def _steps(component) -> list[dict[str, Any]]:
     return component.manifest.get("steps", []) or []
@@ -462,6 +475,49 @@ def bootstrap_documents(ctx: Ctx) -> Iterator[Finding]:
                 f"bootstraps a project and never produces the "
                 f"{len(required)} declared documents, so the project it "
                 f"leaves behind has nothing to write a spec against")
+
+
+@check("INV-NO-PHANTOM-BUDGET",
+       "No shipped surface instructs a document budget the policy does not declare",
+       scope="repo")
+def no_phantom_budget(ctx: Ctx) -> Iterator[Finding]:
+    """An instruction the checker will never enforce.
+
+    `bootstrap-policy.yml` budgeted document length once, and the number was
+    wrong for somebody: a constitution set at 200 lines would have meant
+    deleting principles from a real one. The budget went; the prose telling
+    people to obey it stayed, in the command document and in the `args` of the
+    step that writes the documents in both bootstrap routes.
+
+    The command document merely misleads a reader. The workflow `args` are
+    worse: they instruct the agent that is writing the documents, which is
+    where a document actually gets shortened to fit a number nobody declares.
+
+    Saying "length is not budgeted" is fine and is what the corrected text
+    says. What is refused is an instruction to obey one.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    required = (policy.get("product_documents") or {}).get("required") or []
+    # The check applies only while the policy declares no budget. Reinstating
+    # one must make this stop refusing, not require deleting it.
+    if any("max_lines" in spec for spec in required):
+        return
+
+    scan = [ctx.root / "bundle", ctx.root / "tooling" / "requirements"]
+    for base in scan:
+        for path in sorted(base.rglob("*")):
+            if not path.is_file() or path.suffix not in PLACEHOLDER_SCAN_SUFFIXES:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8").lower()
+            except (UnicodeDecodeError, OSError):
+                continue
+            for phrase in BUDGET_INSTRUCTIONS:
+                if phrase in text:
+                    yield ctx.finding(
+                        "INV-NO-PHANTOM-BUDGET", str(path.relative_to(ctx.root)),
+                        f"says {phrase!r}, but product_documents declares no "
+                        f"budget and documents.py measures no length")
 
 
 @check("INV-GATE-VERDICT", "Every gate declares a verdict input allowing an empty default",

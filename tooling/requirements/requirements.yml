@@ -1314,6 +1314,37 @@ requirements:
       - "Issue #115"
       - "Issue #103"
 
+  - id: REQ-PRODUCT-DOCUMENTS-003
+    statement: >-
+      No shipped surface instructs a document budget the policy does not
+      declare. Length stopped being budgeted because a line count is wrong for
+      somebody, but the prose telling people to obey one stayed in three
+      places: the command document, the `args` of the step that writes the
+      documents in both bootstrap routes, and the closing clause of the
+      requirement that declared the contract. The command document misleads a
+      reader; the workflow `args` instruct the agent that is writing the
+      documents, which is where a document actually gets shortened to fit a
+      number nobody declares. Stating that length is not budgeted is not the
+      same as instructing a budget, so what is refused is the instruction. The
+      check applies only while the policy declares no budget: reinstating one
+      must make it stop refusing rather than require deleting it.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:bootstrap-policy.yml
+      - command:speckit.github-lifecycle.documents
+      - workflow:lifecycle-greenfield-bootstrap
+      - workflow:lifecycle-brownfield-adoption
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-NO-PHANTOM-BUDGET]"
+      - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+      - "tests/test_documents.py::test_no_document_is_budgeted_by_length"
+    evidence:
+      - "Issue #128"
+      - "Issue #104"
+
   - id: REQ-PRODUCT-DOCUMENTS-002
     statement: >-
       The per-principle preamble count reads structure, not physical lines. A
@@ -1364,8 +1395,8 @@ requirements:
       because a principle with no MUST is an opinion and an explanatory
       paragraph in front of a rule means the rule is not yet written. Architecture carries observation and decision as separate named
       sections, since the gap between them is where specs come from. Every
-      workflow that bootstraps or adopts produces the whole set, and a
-      document over budget is reported with the overage rather than truncated.
+      workflow that bootstraps or adopts produces the whole set, and no
+      shipped surface instructs a budget the policy does not declare.
     priority: must
     owner: product/process owner
     release: "0.3.0"

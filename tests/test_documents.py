@@ -147,6 +147,7 @@ def test_bold_headings_count_as_sections(tmp_path):
 
 
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 def test_no_document_is_budgeted_by_length():
     # A line count is wrong for somebody. The first version set the
     # constitution at 200, which would have meant deleting principles.

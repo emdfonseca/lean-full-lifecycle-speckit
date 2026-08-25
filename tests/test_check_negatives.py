@@ -279,6 +279,20 @@ def break_bootstrap_documents(tmp):
     _edit_yaml(path, mutate)
 
 
+def break_phantom_budget(tmp):
+    # Put the instruction back. Both bootstrap routes carried this sentence in
+    # the args of the step that writes the documents, telling the agent to obey
+    # a budget the policy had already stopped declaring.
+    path = tmp / "bundle/components/workflows/lifecycle-greenfield-bootstrap/workflow.yml"
+
+    def mutate(d):
+        for step in d["steps"]:
+            if str(step.get("command") or "").endswith(".documents"):
+                step["input"]["args"] += (
+                    " Obey the budgets: they are maxima somebody chose.")
+    _edit_yaml(path, mutate)
+
+
 def break_extension_config_name(tmp):
     _edit_yaml(tmp / EXT / "extension.yml",
                lambda d: d["provides"]["config"][0].__setitem__("name", "github-lifecycle"))
@@ -330,6 +344,7 @@ MUTATORS = {
     "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION": break_untrusted_no_command_interpolation,
     "INV-EXTENSION-CONFIG-NAME": break_extension_config_name,
     "INV-ITEM-CONTENT": break_item_content,
+    "INV-NO-PHANTOM-BUDGET": break_phantom_budget,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
     "PUB-CATALOG-ROOT": break_catalog_root,
 }
@@ -357,6 +372,7 @@ CURRENTLY_VIOLATED = {
 
 @pytest.mark.req("REQ-GITHUB-COMMANDS-001")
 @pytest.mark.req("REQ-TOOLING-CHECKS-001")
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 def test_every_check_has_a_negative_case():
     missing = set(REGISTRY) - set(MUTATORS)
     assert not missing, f"checks with no negative fixture: {sorted(missing)}"
@@ -381,6 +397,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-GITHUB-INVOCATION-001")
 @pytest.mark.req("REQ-GITHUB-BACKENDS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

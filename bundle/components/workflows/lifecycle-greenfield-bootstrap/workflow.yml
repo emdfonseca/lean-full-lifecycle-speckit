@@ -192,9 +192,9 @@ steps:
   timeout: 1800
   input:
     args: 'Write every document bootstrap-policy.yml declares under product_documents,
-      then run the command again to check them. Obey the budgets: they are maxima
-      somebody chose, and a document that needs more room usually needs less content.
-      Obey the style rules the contract states, in particular that a table beats a
+      then run the command again to check them. Length is not budgeted; form is
+      what is checked, and a document that rambles is one whose facts are not in a
+      table. Obey the style rules the contract states, in particular that a table beats a
       paragraph wherever the content is facts, and that a document does not summarise
       itself. Evidence belongs in the evidence records, not in these: the discovery
       record and the adoption or bootstrap report already hold it, and repeating it

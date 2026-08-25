@@ -13,15 +13,23 @@ have, what each answers, the sections it carries, and how long it may be.
 {SCRIPT} --format json
 ```
 
-## The budgets are the point
+## Form is the point, not length
 
 A brownfield adoption produced four artefacts averaging 234 lines — accurate,
-well-reasoned, and too long to read before writing a spec. Length is the one
-quality property a script can judge, so it is the one this enforces.
+well-reasoned, and too long to read before writing a spec. The first fix
+budgeted lines, and that number was wrong for somebody: a constitution set at
+200 lines would have meant deleting principles from a real one.
 
-A document over budget is reported with the overage named. It is not truncated
-and not warned about: the budget is a maximum somebody chose, and a document
-that needs more room usually needs less content.
+So length is not budgeted and no overage is reported. Form is checked instead
+and scales on its own — a table with one row per fact cannot ramble however
+large the project, and a section declared as a list shows how many entries it
+has. A section that is missing, empty, or in a form the contract did not ask
+for is a failure, not a warning.
+
+A constitution is checked principle by principle: each states something
+normative in RFC 2119 terms, and states it first. A principle with no MUST is
+an opinion, and an explanatory paragraph in front of a rule means the rule is
+not yet written.
 
 **Evidence does not go in these.** The discovery record and the bootstrap or
 adoption report already hold it. Repeating it here makes the one document a
@@ -44,15 +52,15 @@ document rather than two that drift apart.
 
 ## Report
 
-State which documents are missing, which are over budget and by how much, and
-which lack a named section. A clean result says so plainly; there is nothing
-else to report.
+State which documents are missing, which lack a named section, which sections
+are empty or in the wrong form, and which principles state no rule or bury it.
+A clean result says so plainly; there is nothing else to report.
 
 ## Never
 
 - Write a document to satisfy the check. An empty `PRODUCT.md` with the right
   headings passes and tells a reader nothing.
-- Move content into an evidence record to get under budget without deciding
+- Move content into an evidence record to shorten a document without deciding
   whether it was worth writing.
 - Fill a section you could not recover. Say it could not be recovered.
 - Summarise the document inside the document.
