@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -145,6 +146,35 @@ def principles_of(text: str) -> list[tuple[str, list[str]]]:
     return out
 
 
+# A list item, table row, or block quote -- the structures the preamble count
+# exempts. Any ordinal is a list item: exempting `1.` alone made the second and
+# third steps of a numbered cycle read as prose.
+STRUCTURE = re.compile(r"^(?:[-*+>|]|\d+[.)](?:\s|$))")
+
+
+def blocks_of(lines: list[str]) -> list[str]:
+    """Each structure or prose line, with the lines it wraps onto.
+
+    A bullet that wraps is one bullet. Counting its continuation lines as prose
+    made the passing shape depend on the wrap column, so a principle in exactly
+    the form the contract asks for was reported whenever its rule ran past the
+    margin.
+
+    Prose lines are not joined to each other. Three consecutive prose lines are
+    three, which is what the preamble count is there to catch; only a
+    continuation of a structure is folded into it.
+    """
+    out: list[list[str]] = []
+    for line in lines:
+        continues = (out and line[:1].isspace()
+                     and STRUCTURE.match(out[-1][0].strip()))
+        if continues and not STRUCTURE.match(line.strip()):
+            out[-1].append(line)
+        else:
+            out.append([line])
+    return ["\n".join(block) for block in out]
+
+
 def principle_problems(path_name: str, text: str) -> list[str]:
     """Whether each principle is a rule or an essay with a rule in it.
 
@@ -161,16 +191,16 @@ def principle_problems(path_name: str, text: str) -> list[str]:
 
     problems = []
     for name, body in found:
-        lines = [ln for ln in body if ln.strip()]
-        first = next((i for i, ln in enumerate(lines)
-                      if any(k in ln for k in NORMATIVE)), None)
+        blocks = blocks_of([ln for ln in body if ln.strip()])
+        first = next((i for i, block in enumerate(blocks)
+                      if any(k in block for k in NORMATIVE)), None)
         if first is None:
             problems.append(
                 f"{path_name}: {name!r} states no MUST, SHOULD, or MAY. "
                 f"Without one it is an opinion, however well argued.")
             continue
-        preamble = [ln for ln in lines[:first]
-                    if not ln.strip().startswith(("-", "*", "|", ">", "1."))]
+        preamble = [block for block in blocks[:first]
+                    if not STRUCTURE.match(block.strip())]
         if len(preamble) > 1:
             problems.append(
                 f"{path_name}: {name!r} has {len(preamble)} lines of prose "

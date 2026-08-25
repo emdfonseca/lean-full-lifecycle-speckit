@@ -318,6 +318,60 @@ def test_a_bulleted_line_is_not_counted_as_preamble(tmp_path):
             if CONSTITUTION in p] == []
 
 
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-002")
+def test_a_bullet_that_wraps_before_its_keyword_passes(tmp_path):
+    # The keyword falls on the bullet's third physical line. Counting the two
+    # continuation lines as prose made the passing shape depend on the wrap
+    # column: this principle is a list of bullets and no paragraph at all.
+    body = ("# C\n## Principles\n### III. Living specifications\n"
+            "- Behavior a user can observe is specified before it is claimed\n"
+            "  done, in the same change that changes the behavior.\n"
+            "- Open uncertainty is recorded rather than resolved by guessing,\n"
+            "  and the record names who must answer it.\n"
+            "- Discovery records MUST mark each observation as inferred.\n")
+    assert [p for p in docs.check(project(tmp_path, constitution(body)), CONTRACT)
+            if CONSTITUTION in p] == []
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-002")
+def test_a_wrapped_rule_statement_is_still_two_lines_of_prose(tmp_path):
+    # Prose is not folded. This is the rule the preamble count exists to
+    # enforce, and the wrapped-bullet fix must not relax it.
+    body = ("# C\n## Principles\n### I. One source per fact\n"
+            "Duplication is the enemy of truth.\n"
+            "Teams discover this the hard way.\n"
+            "- A pull request MUST NOT restate a threshold.\n")
+    problems = docs.check(project(tmp_path, constitution(body)), CONTRACT)
+    assert any("2 lines of prose before its first rule" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-002")
+def test_every_ordinal_is_a_list_item_not_just_the_first(tmp_path):
+    # Exempting `1.` alone made the second and third steps of a numbered cycle
+    # read as an explanatory paragraph.
+    body = ("# C\n## Principles\n### IV. Red-Green-Refactor\n"
+            "A behavioural change starts with a failing test.\n"
+            "1. Write a failing test that names the behaviour.\n"
+            "2. Make it pass with the smallest change that does.\n"
+            "3. Refactor with the suite green.\n"
+            "- The failing test MUST be observed failing.\n")
+    assert [p for p in docs.check(project(tmp_path, constitution(body)), CONTRACT)
+            if CONSTITUTION in p] == []
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-002")
+def test_a_wrapped_table_row_is_not_prose(tmp_path):
+    body = ("# C\n## Principles\n### I. One source per fact\n"
+            "Every changeable fact has one home.\n"
+            "| Fact | Home |\n"
+            "|---|---|\n"
+            "| Engineering policy | this constitution and the installed\n"
+            "  policy files it points at |\n"
+            "- A pull request MUST NOT restate a threshold.\n")
+    assert [p for p in docs.check(project(tmp_path, constitution(body)), CONTRACT)
+            if CONSTITUTION in p] == []
+
+
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_a_constitution_with_no_principles_is_reported(tmp_path):
     body = "# C\n## Some prose\nNo principles here at all.\n"

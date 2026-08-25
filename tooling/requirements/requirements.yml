@@ -1314,6 +1314,34 @@ requirements:
       - "Issue #115"
       - "Issue #103"
 
+  - id: REQ-PRODUCT-DOCUMENTS-002
+    statement: >-
+      The per-principle preamble count reads structure, not physical lines. A
+      list item, table row, or block quote carries the lines it wraps onto, so
+      a principle that is a list of bullets and no paragraph at all passes
+      however its bullets wrap. Counting continuation lines as prose made the
+      passing shape depend on the wrap column, which no policy states and no
+      author can infer from the message. Any ordinal opens a list item, not
+      just `1.`: exempting the first alone made the second and third steps of
+      a numbered cycle read as an explanatory paragraph. Prose lines are still
+      counted one by one, because a rule statement that runs to two lines is
+      the thing the count exists to catch.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:bootstrap-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
+    verified_by:
+      - "tests/test_documents.py::test_a_bullet_that_wraps_before_its_keyword_passes"
+      - "tests/test_documents.py::test_a_wrapped_rule_statement_is_still_two_lines_of_prose"
+      - "tests/test_documents.py::test_every_ordinal_is_a_list_item_not_just_the_first"
+      - "tests/test_documents.py::test_a_wrapped_table_row_is_not_prose"
+    evidence:
+      - "Issue #127"
+      - "Issue #104"
+
   - id: REQ-PRODUCT-DOCUMENTS-001
     statement: >-
       The documents a bootstrapped project must have are declared in policy, not
