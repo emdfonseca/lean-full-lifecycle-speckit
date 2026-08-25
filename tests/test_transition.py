@@ -746,7 +746,10 @@ def test_a_not_planned_closure_is_not_reported():
     # state-machine.yml declares set_output_done: false for this route.
     # Reporting it would report the policy's own sanctioned route as a
     # contradiction of the policy.
-    gh, insp, be = audit_setup({1: "closed"}, {1: "Refining"},
+    #
+    # At Inbox, which claims nothing. The exemption is from reaching Output
+    # Done, not from leaving a column that says work is under way (#139).
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Inbox"},
                                reasons={1: "not_planned"})
     assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
 
@@ -755,7 +758,7 @@ def test_a_not_planned_closure_is_not_reported():
 def test_a_duplicate_closure_is_not_reported():
     # Superseded work is carried by the item that supersedes it. GitHub
     # records `duplicate` natively, verified against the live API.
-    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"},
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Inbox"},
                                reasons={1: "duplicate"})
     assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
 
@@ -1125,3 +1128,50 @@ def test_ready_is_applied_once_the_evidence_is_asserted():
     tp.apply_plan(be, insp, plan, {"readiness_verdict_ready": "true"},
                   machine=MACHINE)
     assert be.read(38, "delivery_state").value == "Ready"
+
+
+# --- exempt from the terminal state, not from claiming work -------------------
+#
+# The exemption was one thing and is two claims. A duplicate or not_planned
+# closure is rightly excused from reaching Output Done, which is the policy's
+# own route. It was also excused from leaving In Progress, so #100 sat in that
+# column claiming work was under way on something closed weeks earlier.
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-002")
+@pytest.mark.parametrize("state", ["Refining", "Ready", "In Progress"])
+@pytest.mark.parametrize("reason", ["duplicate", "not_planned"])
+def test_an_exempt_closure_left_where_work_is_claimed_is_reported(state, reason):
+    gh, insp, be = audit_setup({1: "closed"}, {1: state}, reasons={1: reason})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert problems, f"{reason} at {state} claims work and was not reported"
+    assert "claims work is under way" in problems[0].problem
+    assert state in problems[0].problem
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-002")
+@pytest.mark.parametrize("reason", ["duplicate", "not_planned"])
+def test_an_exempt_closure_at_inbox_is_not_reported(reason):
+    # Inbox asserts nothing beyond existence, so a closed item resting there
+    # says nothing false. This is the half of the exemption that was right.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "Inbox"}, reasons={1: reason})
+    assert [p for p in tp.audit_board(gh, be, insp) if p.issue == 1] == []
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-002")
+def test_a_completed_closure_is_reported_once_not_twice():
+    # Two findings for one fact teaches a reader to skim.
+    gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"},
+                               reasons={1: "completed"})
+    problems = [p for p in tp.audit_board(gh, be, insp) if p.issue == 1]
+    assert len(problems) == 1, problems
+
+
+@pytest.mark.req("REQ-BACKLOG-CLOSURE-002")
+def test_the_states_that_claim_work_come_from_the_machine():
+    # Not a list here: the ends are Inbox and Output Done, and everything
+    # between them claims something actionable.
+    machine = tp.load_state_machine(ROOT)
+    assert tp.states_asserting_work(machine) == ["Refining", "Ready", "In Progress"]
+    values = machine["delivery_status"]["values"]
+    assert values[0] not in tp.states_asserting_work(machine)
+    assert values[-1] not in tp.states_asserting_work(machine)

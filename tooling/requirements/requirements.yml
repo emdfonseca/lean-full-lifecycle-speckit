@@ -871,6 +871,39 @@ requirements:
     evidence:
       - "Issue #106"
 
+  - id: REQ-BACKLOG-CLOSURE-002
+    statement: >-
+      Being exempt from the terminal delivery state is not being exempt from
+      claiming work. A not_planned or duplicate closure is rightly excused from
+      reaching Output Done, because requiring a state the work never earned is
+      how a board starts recording fiction. That exemption also excused the
+      item from leaving the column it stopped in, so a duplicate closed weeks
+      earlier sat in In Progress and the board said somebody was building it.
+      Those are two claims and the audit now separates them: the closure route
+      stays unreported, and an exempt closure resting in a state that asserts
+      active work is reported, naming the state and what it claims. The states
+      that assert work are derived from the machine's own order rather than
+      listed, because a second copy of the policy is the copy that drifts:
+      Inbox asserts nothing beyond existence and Output Done asserts
+      completion, so a closed item at either end says nothing false, and
+      everything between them says something actionable. An item is reported
+      once, since two findings for one fact teaches a reader to skim.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:state-machine.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_transition.py::test_an_exempt_closure_left_where_work_is_claimed_is_reported"
+      - "tests/test_transition.py::test_an_exempt_closure_at_inbox_is_not_reported"
+      - "tests/test_transition.py::test_a_completed_closure_is_reported_once_not_twice"
+      - "tests/test_transition.py::test_the_states_that_claim_work_come_from_the_machine"
+    evidence:
+      - "Issue #139"
+      - "Issue #103"
+
   - id: REQ-BACKLOG-CLOSURE-001
     statement: >-
       Closure is judged against the route it was closed by. `state-machine.yml`

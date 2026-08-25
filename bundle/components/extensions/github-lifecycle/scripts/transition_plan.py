@@ -291,6 +291,22 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
                          operation_id=plan.operation_id)
 
 
+def states_asserting_work(machine: dict) -> list[str]:
+    """Delivery states that claim somebody is working on the item right now.
+
+    Everything strictly between the entry state and the terminal one. `Inbox`
+    asserts nothing beyond existence and `Output Done` asserts completion, so
+    a closed item resting at either end says nothing false. The states in
+    between say work is under way, which a closed item cannot make true.
+
+    Derived from the machine's order rather than named here, for the reason
+    `closure_exempt_reasons` gives: a second copy of the policy is the copy
+    that drifts.
+    """
+    values = list(machine["delivery_status"]["values"])
+    return values[1:-1]
+
+
 def closure_exempt_reasons(machine: dict) -> set[str]:
     """Close reasons that do not require the terminal delivery state.
 
@@ -349,6 +365,7 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
         project_root.resolve(None, required=False) or Path.cwd())
     values = machine["delivery_status"]["values"]
     exempt_reasons = closure_exempt_reasons(machine)
+    asserts_work = set(states_asserting_work(machine))
     issues = gh.rest(
         "GET", f"repos/{inspection.owner}/{inspection.repo}/issues?state=all",
         paginate=True,
@@ -381,6 +398,16 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                     number,
                     f"closed as {reason!r} while delivery state is {value!r}. "
                     f"Closure follows completion; it cannot precede it."))
+            elif value in asserts_work:
+                # Exempt from reaching Output Done, which is the policy's own
+                # route, and not exempt from leaving a state that claims
+                # somebody is working. Those were one exemption and are two
+                # claims (#139).
+                found.append(Inconsistency(
+                    number,
+                    f"closed as {reason!r} and left at {value!r}, which claims "
+                    f"work is under way. The closure is correct and the column "
+                    f"is not: nothing is being done to a closed item."))
         if value == "Ready":
             blocking = blockers(gh, inspection.owner, inspection.repo, int(number))
             if blocking:
