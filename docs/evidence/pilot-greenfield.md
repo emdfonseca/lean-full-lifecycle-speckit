@@ -77,6 +77,10 @@ metrics:
       outside the allowed directories, needs a manual removal.
     recorded_by: agent
 
+# A second run in this stream, framework-only for AC1, is recorded in
+# docs/evidence/pilot-greenfield/framework-only-run.md. It aborted at the
+# verification gate; the metrics above describe the product bootstrap only.
+
 failures:
   - what: >-
       Command docs prescribed a bare `python <script>` invocation. Failed three
@@ -105,3 +109,24 @@ failures:
       Nothing creates the Projects v2 board the default deployment shape needs,
       and the bootstrap does not say one is required.
     tracked_by: 119
+  - what: >-
+      23 of 31 shipped scripts import yaml and nothing declares PyYAML. No
+      interpreter on this machine runs the 9 importing github_api.py, so
+      decompose, triage, and transition cannot run at all.
+    tracked_by: 132
+  - what: >-
+      product_documents.required has no framework-only variant, and the mode
+      has no path to a completed run.
+    tracked_by: 133
+  - what: >-
+      edit_permission deny maps to a read_only tool set containing Bash, and is
+      reported as neither enforced nor unmappable.
+    tracked_by: 134
+  - what: >-
+      secret_file_read denies four readers by name, which its own docstring
+      argues is not a boundary.
+    tracked_by: 135
+  - what: >-
+      The stack-decision precondition is satisfied by any non-empty file, so
+      the guard against inventing a toolchain clears on every bootstrap.
+    tracked_by: 136

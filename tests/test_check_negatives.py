@@ -311,6 +311,16 @@ def break_no_placeholder(tmp):
     (tmp / "docs/leak.md").write_text("https://github.com/YOUR-ORG/x\n", encoding="utf-8")
 
 
+def break_declared_imports(tmp):
+    # Undeclare PyYAML. 23 of 31 scripts import it, and a pilot found every
+    # policy-reading command dying at import because nothing said so.
+    def mutate(d):
+        pkgs = d["requires"]["python_packages"]
+        d["requires"]["python_packages"] = [
+            p for p in pkgs if p.get("import_name") != "yaml"]
+    _edit_yaml(tmp / EXT / "extension.yml", mutate)
+
+
 def break_release_ladder(tmp):
     # INV-RELEASE-LADDER is violated by the *current* state: 0.1.1 is fully
     # verified and the bundle still ships 0.1.0. See CURRENTLY_VIOLATED.
@@ -352,6 +362,7 @@ MUTATORS = {
     "INV-ITEM-CONTENT": break_item_content,
     "INV-NO-PHANTOM-BUDGET": break_phantom_budget,
     "PUB-NO-PLACEHOLDER": break_no_placeholder,
+    "INV-DECLARED-IMPORTS": break_declared_imports,
     "INV-RELEASE-LADDER": break_release_ladder,
     "PUB-CATALOG-ROOT": break_catalog_root,
 }
@@ -413,6 +424,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-GITHUB-BACKENDS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
+@pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

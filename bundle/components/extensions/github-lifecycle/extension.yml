@@ -17,6 +17,29 @@ requires:
     required: true
   - name: python3
     required: true
+  # What the shipped scripts need of the interpreter that runs them. Declared
+  # because nothing did: 23 of 31 import yaml, and a greenfield pilot resolved
+  # `{SCRIPT}` to a `python3` without it, so every command reading policy died
+  # at import (#132). `python_min` is the floor the scripts actually hold to,
+  # verified by importing all 31 under it.
+  python_min: '3.9'
+  python_packages:
+  - name: PyYAML
+    import_name: yaml
+    required: true
+    why: >-
+      Every policy file is YAML, and reading policy is what these scripts do.
+  # Optional, and the cost of its absence is stated rather than silent: the
+  # four scripts that use it catch ImportError and report "jsonschema is not
+  # installed; schema not enforced". A readiness verdict still gets its other
+  # checks; it does not get its schema checked.
+  - name: jsonschema
+    import_name: jsonschema
+    required: false
+    why: >-
+      Validates a readiness verdict, outcome record, discovery note, and
+      disposal decision against its declared schema. Without it those four are
+      accepted on shape alone.
 provides:
   commands:
   - name: speckit.github-lifecycle.inspect

@@ -101,3 +101,66 @@ def test_the_hooks_decision_does_not_silently_cover_events():
         encoding="utf-8")
     assert "#99" in adr, "the ADR does not point at the events spike"
     assert "is not decided here" in adr
+
+
+# --- the interpreter the shipped scripts need --------------------------------
+#
+# A greenfield pilot resolved `{SCRIPT}` to a `python3` with no PyYAML, and
+# every command that reads policy died at import. Eleven more died on one
+# module-level type alias, which `from __future__ import annotations` does not
+# defer because a type alias is a runtime expression.
+
+EXT_MANIFEST = ROOT / "bundle/components/extensions/github-lifecycle/extension.yml"
+EXT_SCRIPTS = ROOT / "bundle/components/extensions/github-lifecycle/scripts"
+
+
+@pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
+def test_the_extension_declares_what_its_scripts_need():
+    requires = load_yaml(EXT_MANIFEST)["requires"]
+    assert requires.get("python_min"), "no python_min declared"
+    names = {p["import_name"] for p in requires["python_packages"]}
+    assert "yaml" in names, "PyYAML is imported by most scripts and undeclared"
+
+
+@pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
+def test_no_shipped_script_evaluates_a_pep_604_union_at_import():
+    # A type alias is evaluated on import. This is the line that made eleven
+    # scripts unimportable below the declared floor while twenty ran fine.
+    import ast
+
+    # `re.IGNORECASE | re.MULTILINE` is also a module-level BitOr and is fine on
+    # every version, so the test looks for the type-union shape specifically:
+    # an operand that is `None` or a builtin type name.
+    TYPEISH = {"str", "int", "float", "bool", "bytes", "list", "dict",
+               "tuple", "set", "Path", "Sequence", "Callable"}
+
+    def is_type_operand(node):
+        if isinstance(node, ast.Constant) and node.value is None:
+            return True
+        if isinstance(node, ast.Name) and node.id in TYPEISH:
+            return True
+        return isinstance(node, ast.Subscript)
+
+    offenders = []
+    for path in sorted(EXT_SCRIPTS.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:                      # module level only
+            if not isinstance(node, ast.Assign):
+                continue
+            for sub in ast.walk(node.value):
+                if (isinstance(sub, ast.BinOp) and isinstance(sub.op, ast.BitOr)
+                        and (is_type_operand(sub.left) or is_type_operand(sub.right))):
+                    offenders.append(f"{path.name}:{node.lineno}")
+    assert not offenders, (
+        f"module-level PEP 604 union evaluated at import: {offenders}. "
+        f"Quote it, or the declared python_min is not the real floor")
+
+
+@pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
+def test_an_optional_dependency_says_what_its_absence_costs():
+    requires = load_yaml(EXT_MANIFEST)["requires"]
+    for pkg in requires["python_packages"]:
+        assert str(pkg.get("why") or "").strip(), f"{pkg['name']} declares no why"
+        if not pkg.get("required"):
+            assert "without it" in pkg["why"].lower(), (
+                f"{pkg['name']} is optional and does not say what is lost")

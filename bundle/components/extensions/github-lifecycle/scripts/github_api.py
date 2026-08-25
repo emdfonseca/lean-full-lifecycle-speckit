@@ -107,7 +107,12 @@ class AuditRecord:
         }, sort_keys=True)
 
 
-Runner = Callable[[Sequence[str], str | None], subprocess.CompletedProcess]
+# A type alias is a runtime expression, so `from __future__ import annotations`
+# does not defer it and `str | None` is evaluated on import. That made this one
+# line the floor for eleven scripts: every module reaching GitHub imports this
+# one, and all eleven died here on Python 3.9 while the other twenty ran fine
+# (#132). Quoted, it is a string until something asks for it.
+Runner = Callable[[Sequence[str], "str | None"], subprocess.CompletedProcess]
 
 
 def _default_runner(args: Sequence[str], stdin: str | None) -> subprocess.CompletedProcess:

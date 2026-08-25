@@ -22,6 +22,21 @@
             "name": "python3",
             "required": true
           }
+        ],
+        "python_min": "3.9",
+        "python_packages": [
+          {
+            "name": "PyYAML",
+            "import_name": "yaml",
+            "required": true,
+            "why": "Every policy file is YAML, and reading policy is what these scripts do."
+          },
+          {
+            "name": "jsonschema",
+            "import_name": "jsonschema",
+            "required": false,
+            "why": "Validates a readiness verdict, outcome record, discovery note, and disposal decision against its declared schema. Without it those four are accepted on shape alone."
+          }
         ]
       },
       "tags": [

@@ -1408,6 +1408,39 @@ requirements:
       - "Issue #130"
       - "Issue #103"
 
+  - id: REQ-PACKAGE-INTERPRETER-001
+    statement: >-
+      The extension declares what the interpreter running its scripts must
+      provide, and no shipped script raises that floor by accident. 23 of 31
+      scripts import yaml and nothing declared PyYAML, so a greenfield pilot
+      resolved the script placeholder to a python3 without it and every command
+      that reads policy died at import. Eleven more were unimportable on the
+      floor for a different reason: a module-level type alias is a runtime
+      expression, so `from __future__ import annotations` does not defer it and
+      a PEP 604 union in one is evaluated on import. One line in github_api.py
+      therefore set the floor for every script that reaches GitHub, while the
+      other twenty ran fine. The declaration names a minimum Python version and
+      each third-party package, and an optional package states what its absence
+      costs rather than degrading quietly. A check asserts every third-party
+      import is declared, which is the half that catches the next one: its
+      first run found jsonschema undeclared in four more scripts.
+    priority: must
+    owner: bundle maintainer
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/extension.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
+    verified_by:
+      - "tests/test_docs.py::test_the_extension_declares_what_its_scripts_need"
+      - "tests/test_docs.py::test_no_shipped_script_evaluates_a_pep_604_union_at_import"
+      - "tests/test_docs.py::test_an_optional_dependency_says_what_its_absence_costs"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-DECLARED-IMPORTS]"
+    evidence:
+      - "Issue #132"
+      - "Issue #114"
+      - "Issue #103"
+
   - id: REQ-PRODUCT-DOCUMENTS-002
     statement: >-
       The per-principle preamble count reads structure, not physical lines. A

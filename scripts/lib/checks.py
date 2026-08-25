@@ -25,6 +25,23 @@ PLACEHOLDER_EXCLUDED_DIRS = {
 }
 PLACEHOLDER = "YOUR-ORG"
 
+# The standard library, for deciding whether an import needs declaring.
+# `sys.stdlib_module_names` is 3.10+, and this repository's own scripts must
+# stay runnable on the floor they declare, so the fallback is not decorative.
+try:
+    STDLIB_MODULES = frozenset(sys.stdlib_module_names)
+except AttributeError:  # pragma: no cover -- only on < 3.10
+    STDLIB_MODULES = frozenset({
+        "argparse", "ast", "base64", "collections", "contextlib", "copy",
+        "csv", "dataclasses", "datetime", "difflib", "enum", "errno",
+        "fnmatch", "functools", "glob", "hashlib", "html", "http", "importlib",
+        "inspect", "io", "itertools", "json", "logging", "math", "os",
+        "pathlib", "platform", "posixpath", "random", "re", "shlex", "shutil",
+        "signal", "socket", "string", "subprocess", "sys", "tempfile",
+        "textwrap", "time", "traceback", "types", "typing", "unicodedata",
+        "urllib", "uuid", "warnings", "zipfile",
+    })
+
 # Phrases that can only mean a document budget exists. Stating that length is
 # not budgeted is not one of them, which is why these are instructions rather
 # than the word itself.
@@ -95,6 +112,62 @@ def version_coherence(ctx: Ctx) -> Iterator[Finding]:
             yield ctx.finding("INV-VERSION-COHERENCE", comp.ref,
                               f"version {comp.version} differs from bundle "
                               f"{ctx.inv.version}")
+
+
+@check("INV-DECLARED-IMPORTS",
+       "Every third-party import a shipped script makes is declared",
+       scope="extension")
+def declared_imports(ctx: Ctx) -> Iterator[Finding]:
+    """An undeclared dependency is a script that runs here and nowhere else.
+
+    23 of the extension's 31 scripts import `yaml`, and nothing declared
+    PyYAML. `{SCRIPT}` resolves to whichever `python3` the CLI finds, which on a
+    normal machine has no PyYAML, so a greenfield pilot got an ImportError from
+    every command that reads policy (#132).
+
+    This checks the declaration, not the runtime. Whether the interpreter in
+    front of a user satisfies it is not something the suite can assume, and
+    checking the declaration is what catches the *next* undeclared import
+    rather than this one.
+    """
+    import ast
+
+    ext = next((c for c in ctx.inv.by_kind("extension")), None)
+    if ext is None:
+        return
+    requires = (ext.manifest.get("requires") or {})
+    declared = {str(pkg.get("import_name") or pkg.get("name") or "").lower()
+                for pkg in (requires.get("python_packages") or [])}
+
+    scripts_dir = ext.path / "scripts"
+    if not scripts_dir.is_dir():
+        return
+    local = {p.stem for p in scripts_dir.glob("*.py")}
+
+    for path in sorted(scripts_dir.glob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError, OSError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [(node.module or "").split(".")[0]] if node.level == 0 else []
+            else:
+                continue
+            for name in names:
+                if not name or name in local or name in STDLIB_MODULES:
+                    continue
+                if name.lower() in declared:
+                    continue
+                yield ctx.finding(
+                    "INV-DECLARED-IMPORTS",
+                    f"{path.relative_to(ctx.root)}",
+                    f"imports {name!r}, which extension.yml does not declare "
+                    f"under requires.python_packages. A script whose "
+                    f"dependency is undeclared runs on the author's machine "
+                    f"and nowhere else")
 
 
 @check("INV-RELEASE-LADDER",
