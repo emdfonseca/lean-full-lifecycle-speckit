@@ -138,6 +138,49 @@ def scan(record, name: str, patterns: Patterns | None = None) -> ScanResult:
     return result
 
 
+YAML_SUFFIXES = frozenset({".yml", ".yaml"})
+
+
+def scan_text(text: str, name: str, patterns: Patterns | None = None) -> ScanResult:
+    """Scan a record we cannot parse into fields, anchoring findings to lines.
+
+    A prose record has no field paths, so `line 12` is the most precise
+    location there is. Reporting it that way keeps the promise the field
+    variant makes -- name where it is, never what it is.
+    """
+    patterns = patterns or compile_patterns()
+    result = ScanResult(patterns_from_policy=patterns.from_policy)
+    for number, line in enumerate(text.splitlines(), start=1):
+        if patterns.marker in line:
+            continue
+        for shape, pattern in patterns.shapes:
+            if pattern.search(line):
+                result.findings.append(Finding(name, f"line {number}", shape))
+                break
+    return result
+
+
+def scan_record(text: str, name: str, patterns: Patterns | None = None) -> ScanResult:
+    """Scan a record by what it is, not by what we wish it were.
+
+    The workflows write Markdown records as well as YAML ones -- discovery and
+    disposal among them -- so parsing every record as YAML both crashed on
+    ordinary prose and, worse, reported a token in a `#` heading as clean,
+    because YAML reads that line as a comment. A scan that certifies an
+    unscanned record is the one failure this module exists to prevent, so an
+    unparseable record falls back to text rather than to an empty document.
+    """
+    patterns = patterns or compile_patterns()
+    if Path(name).suffix.lower() in YAML_SUFFIXES:
+        try:
+            data = yaml.safe_load(text)
+        except yaml.YAMLError:
+            return scan_text(text, name, patterns)
+        if isinstance(data, (dict, list)):
+            return scan(data, name, patterns)
+    return scan_text(text, name, patterns)
+
+
 def redact(text: str, patterns: Patterns | None = None) -> str:
     """Replace anything credential-shaped with a marker a reader can see.
 
@@ -300,15 +343,14 @@ def main() -> int:
         problems += refusals
 
     if args.record:
-        data = yaml.safe_load(args.record.read_text(encoding="utf-8"))
-        result = scan(data, args.record.name, compile_patterns(args.policy_root))
+        patterns = compile_patterns(args.policy_root)
+        original = args.record.read_text(encoding="utf-8")
+        result = scan_record(original, args.record.name, patterns)
         payload["scan"] = result.to_dict()
         if args.redact:
             # Redact the file's text, not the parsed record: reserialising
             # would reformat a document a person wrote and make the diff
             # unreadable, which is how a redaction stops being reviewable.
-            patterns = compile_patterns(args.policy_root)
-            original = args.record.read_text(encoding="utf-8")
             cleaned = redact(original, patterns)
             destination = None
             if args.out:
@@ -317,8 +359,7 @@ def main() -> int:
                 destination.write_text(cleaned, encoding="utf-8")
             else:
                 print(cleaned)
-            after = scan(yaml.safe_load(cleaned) if cleaned.strip() else {},
-                         args.record.name, patterns)
+            after = scan_record(cleaned, args.record.name, patterns)
             payload["redaction"] = {
                 "record": str(args.record),
                 "written_to": str(destination) if destination else None,

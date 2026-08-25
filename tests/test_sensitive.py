@@ -10,6 +10,7 @@ The fake credentials below are shaped like the real thing and are not real.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 
 import pytest
@@ -339,3 +340,63 @@ def test_the_redact_step_does_not_treat_redaction_as_authorization():
     args = step["input"]["args"]
     assert "not authorization" in args
     assert "findings_after" in args
+
+
+# --- a record is scanned as what it is ----------------------------------------
+
+MD_RECORD = (
+    "# Discovery\n"
+    "\n"
+    "Scan run: `scan` mode, read-only.\n"
+    "\n"
+    f"Token found: {FAKE}\n"
+)
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_a_markdown_record_is_scanned_rather_than_parsed_as_yaml():
+    result = sd.scan_record(MD_RECORD, "discovery.md", PATTERNS)
+    assert not result.clean
+    assert [f.field for f in result.findings] == ["line 5"]
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_a_secret_in_a_markdown_heading_is_not_reported_clean():
+    # YAML reads `#` as a comment, so parsing this record discarded the line
+    # holding the token and certified it clean.
+    record = f"# Token found: {FAKE}\n\nEverything else is fine.\n"
+    result = sd.scan_record(record, "discovery.md", PATTERNS)
+    assert not result.clean
+    assert [f.field for f in result.findings] == ["line 1"]
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_a_finding_in_a_markdown_record_still_never_names_the_value():
+    result = sd.scan_record(MD_RECORD, "discovery.md", PATTERNS)
+    assert FAKE not in str(result.findings[0])
+    assert FAKE not in json.dumps(result.to_dict())
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_a_yaml_record_still_reports_the_field_path():
+    result = sd.scan_record(f"discovery:\n  token: {FAKE}\n", "d.yml", PATTERNS)
+    assert [f.field for f in result.findings] == ["discovery.token"]
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_a_yaml_record_that_does_not_parse_is_scanned_as_text_not_skipped():
+    # Refusing to scan is safer than certifying an unscanned record clean.
+    result = sd.scan_record(f"key: [unclosed\ntoken: {FAKE}\n", "d.yml", PATTERNS)
+    assert not result.clean
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_redaction_clears_a_markdown_finding_on_the_rescan():
+    cleaned = sd.redact(MD_RECORD, PATTERNS)
+    assert sd.scan_record(cleaned, "discovery.md", PATTERNS).clean
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-003")
+def test_an_already_redacted_markdown_line_is_not_reported_again():
+    record = f"Token found: {MARKER}\n"
+    assert sd.scan_record(record, "discovery.md", PATTERNS).clean

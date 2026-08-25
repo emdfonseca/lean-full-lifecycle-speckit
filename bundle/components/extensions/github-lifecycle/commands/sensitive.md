@@ -28,7 +28,9 @@ read by people long after the run.
 
 ## What a finding says
 
-The record and the field. Never the value. A report that quotes the secret has
+The record and where in it. Never the value. A YAML record reports the field
+path; a Markdown record has no fields, so it reports the line. A report that
+quotes the secret has
 copied it somewhere new — into an issue, a log, a transcript — which is the harm
 the scan exists to prevent. If you need to see the value, open the file; do not
 paste it into a report, a comment, or a commit message.
@@ -71,7 +73,8 @@ Say so. The command emitted no rules, so nothing is denied.
 ```
 
 Redacts the file's text rather than the parsed record, so a document a person
-wrote keeps its shape and the diff stays reviewable.
+wrote keeps its shape and the diff stays reviewable. The rescan afterwards reads
+the record the same way the first scan did.
 
 Report `findings_before`, `findings_after` and `changed`. **A non-zero
 `findings_after` stops the record reaching review.** Redaction is not

@@ -1795,6 +1795,29 @@ requirements:
     evidence:
       - "Issue #89"
 
+  - id: REQ-SECURITY-SENSITIVE-003
+    statement: >-
+      A record is scanned as the format it is written in. A Markdown record is
+      scanned by line and reports the line a finding sits on; a YAML record is
+      walked by field and reports the field path. A record that cannot be
+      parsed is scanned as text rather than reported clean, because certifying
+      an unscanned record is the failure the scan exists to prevent. Both the
+      scan and the rescan that follows redaction take the same path.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.sensitive
+      - policy:sensitive-data.yml
+    verified_by:
+      - "tests/test_sensitive.py::test_a_markdown_record_is_scanned_rather_than_parsed_as_yaml"
+      - "tests/test_sensitive.py::test_a_secret_in_a_markdown_heading_is_not_reported_clean"
+      - "tests/test_sensitive.py::test_a_finding_in_a_markdown_record_still_never_names_the_value"
+      - "tests/test_sensitive.py::test_a_yaml_record_still_reports_the_field_path"
+      - "tests/test_sensitive.py::test_a_yaml_record_that_does_not_parse_is_scanned_as_text_not_skipped"
+      - "tests/test_sensitive.py::test_redaction_clears_a_markdown_finding_on_the_rescan"
+      - "tests/test_sensitive.py::test_an_already_redacted_markdown_line_is_not_reported_again"
   - id: REQ-SECURITY-SENSITIVE-001
     statement: >-
       Production data is denied to the agent unless a named authority has
