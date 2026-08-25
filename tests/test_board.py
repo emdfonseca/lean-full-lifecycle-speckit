@@ -104,6 +104,78 @@ def _repo_issues(monkeypatch, numbers):
     return Fake()
 
 
+# --- the delivery field name is read, not defaulted ---------------------------
+#
+# `delivery_field` read `schema.get("fields")` for an entry carrying
+# `role: delivery_state`. The schema declares `issue_fields:` and no entry has
+# ever carried a role, so every call fell through to a `"Status"` default. It
+# was right by accident for the only backend that creates boards and silently
+# wrong for the other.
+
+
+def _schema_with(tmp_path, mutate):
+    """A project rooted at tmp_path whose schema is the real one, mutated."""
+    import yaml
+    schema = yaml.safe_load((ROOT / "policy/github-schema.yml").read_text())
+    mutate(schema)
+    d = tmp_path / "policy"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "github-schema.yml").write_text(yaml.safe_dump(schema, sort_keys=False))
+    (d / "state-machine.yml").write_text(
+        (ROOT / "policy/state-machine.yml").read_text())
+    return tmp_path
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_the_delivery_field_name_follows_the_schema(tmp_path):
+    # Rename it in policy and the returned name must follow. Under the default
+    # this test passes while reading nothing.
+    root = _schema_with(
+        tmp_path,
+        lambda s: s["backends"]["project"].__setitem__("delivery_field", "Lifecycle"))
+    name, _ = board.delivery_field(root, "projects-v2")
+    assert name == "Lifecycle"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_each_backend_gets_the_name_its_own_vocabulary_uses():
+    # The two genuinely differ: GitHub reserves `Status` on a Projects v2
+    # board, and an organization Issue Field is `Delivery Status`.
+    assert board.delivery_field(ROOT, "projects-v2")[0] == "Status"
+    assert board.delivery_field(ROOT, "issue-fields")[0] == "Delivery Status"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_either_backend_spelling_resolves():
+    # `github-schema.yml` says `project`/`issue_fields`; the compatibility
+    # matrix and carriable_fields say `projects-v2`/`issue-fields`.
+    assert board.delivery_field(ROOT, "project") == board.delivery_field(ROOT, "projects-v2")
+    assert board.delivery_field(ROOT, "issue_fields") == board.delivery_field(ROOT, "issue-fields")
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_an_undeclared_name_refuses_rather_than_defaulting(tmp_path):
+    # The whole defect was a default standing in for a fact nobody wrote down.
+    root = _schema_with(
+        tmp_path, lambda s: s["backends"]["project"].pop("delivery_field"))
+    with pytest.raises(KeyError, match="no `delivery_field`"):
+        board.delivery_field(root, "projects-v2")
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_an_unknown_backend_is_named_not_guessed():
+    with pytest.raises(KeyError, match="declares no backend"):
+        board.delivery_field(ROOT, "gitlab-boards")
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-004")
+def test_no_delivery_field_name_is_hardcoded_in_board():
+    source = (SCRIPTS / "board.py").read_text()
+    body = source.split("def _declared_delivery_field(")[0]
+    assert '"Status"' not in body.replace('`"Status"`', ""), \
+        "a delivery field name is hardcoded outside the policy lookup"
+
+
 @pytest.mark.req("REQ-GITHUB-BOARD-003")
 def test_the_field_and_its_options_come_from_policy():
     # A board that disagreed with the state machine about what a state is

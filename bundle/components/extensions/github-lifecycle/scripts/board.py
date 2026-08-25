@@ -110,19 +110,59 @@ def _load_matrix(root: Path) -> dict:
     return {}
 
 
-def delivery_field(root: Path) -> tuple[str, list[str]]:
+def delivery_field(root: Path, backend: str = "projects-v2") -> tuple[str, list[str]]:
     """The field name and its options, both from policy.
 
-    The name comes from `github-schema.yml` and the values from
-    `state-machine.yml`, in the order the policy lists them, so a board this
-    creates cannot disagree with the machine about what a state is.
+    The name is per backend, because the two genuinely differ: a Projects v2
+    board carries GitHub's reserved `Status`, and an organization Issue Field is
+    `Delivery Status`. The values come from `state-machine.yml`, in the order
+    the policy lists them, so a board this creates cannot disagree with the
+    machine about what a state is.
+
+    This used to read `schema.get("fields")` for an entry carrying
+    `role: delivery_state`. The schema declares `issue_fields:` and no entry has
+    ever carried a role, so the lookup found nothing and the function returned a
+    `"Status"` default on every call -- right by accident for the only backend
+    that creates boards, and silently wrong for the other (#125). Reading the
+    name through `ROLE_CANDIDATES` instead would not have fixed it: those are
+    ordered candidates for *discovery*, `Delivery Status` first, so creation
+    would have named a project board's field after the other backend's
+    vocabulary.
     """
     schema = _load(root, SCHEMA_CANDIDATES)
     machine = _load(root, MACHINE_CANDIDATES)
-    name = next((n for n, spec in (schema.get("fields") or {}).items()
-                 if isinstance(spec, dict)
-                 and spec.get("role") == "delivery_state"), None) or "Status"
+    name = _declared_delivery_field(schema, backend)
     return name, list(machine["delivery_status"]["values"])
+
+
+def _declared_delivery_field(schema: dict, backend: str) -> str:
+    """The `delivery_field` the schema declares for this backend.
+
+    Backends are keyed one way in `github-schema.yml` (`project`,
+    `issue_fields`) and another in `tooling/compatibility.yml` (`projects-v2`,
+    `issue-fields`); each schema entry carries `matrix_key` so either spelling
+    resolves. Raising rather than defaulting is the point of the change: a
+    default here is what let an undeclared name look declared.
+    """
+    backends = schema.get("backends") or {}
+    for key, spec in backends.items():
+        if not isinstance(spec, dict):
+            continue
+        if backend in (key, spec.get("matrix_key")):
+            name = spec.get("delivery_field")
+            if name:
+                return str(name)
+            raise KeyError(
+                f"github-schema.yml declares backend {key!r} with no "
+                f"`delivery_field`; the name a backend gives the delivery "
+                f"field is policy, not a default this code may choose")
+    known = sorted(
+        {k for k in backends} | {
+            s.get("matrix_key") for s in backends.values()
+            if isinstance(s, dict) and s.get("matrix_key")})
+    raise KeyError(
+        f"github-schema.yml declares no backend {backend!r}; it declares "
+        f"{known}")
 
 
 def run(args: list[str], runner=None) -> subprocess.CompletedProcess:

@@ -1723,6 +1723,40 @@ requirements:
     evidence:
       - "Issue #59"
 
+  - id: REQ-GITHUB-BOARD-004
+    statement: >-
+      The delivery field's name is read from policy per backend, never
+      defaulted. The two backends genuinely differ: GitHub reserves `Status` on
+      a Projects v2 board, and an organization Issue Field is `Delivery Status`.
+      `github-schema.yml` declares the name on each backend alongside the other
+      per-backend facts, and carries a `matrix_key` so the schema's spelling
+      and the compatibility matrix's spelling both resolve rather than each
+      caller guessing which vocabulary it is in. A backend the schema does not
+      declare, or one declaring no name, is refused with both named; a default
+      is what let an undeclared name look declared, and the previous lookup
+      asked for a `fields:` key and a `role:` attribute the schema has never
+      had, so it returned `Status` on every call. Reading the name through the
+      role candidates instead would not have fixed it: those are ordered for
+      discovery, so creation would have named a project board's field after the
+      other backend's vocabulary.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:github-schema.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/board.py
+    verified_by:
+      - "tests/test_board.py::test_the_delivery_field_name_follows_the_schema"
+      - "tests/test_board.py::test_each_backend_gets_the_name_its_own_vocabulary_uses"
+      - "tests/test_board.py::test_either_backend_spelling_resolves"
+      - "tests/test_board.py::test_an_undeclared_name_refuses_rather_than_defaulting"
+      - "tests/test_board.py::test_an_unknown_backend_is_named_not_guessed"
+      - "tests/test_board.py::test_no_delivery_field_name_is_hardcoded_in_board"
+    evidence:
+      - "Issue #125"
+      - "Issue #124"
+
   - id: REQ-GITHUB-BOARD-003
     statement: >-
       The board a project-scoped deployment needs can be created, explicitly

@@ -7,18 +7,33 @@
 #                  vocabulary.
 scope: project_scoped_default
 
+# The `matrix_key` on each backend is the spelling `tooling/compatibility.yml`
+# and `board.carriable_fields` use. Two spellings for two backends is one more
+# than anybody can keep straight, and this names the mapping rather than
+# leaving each caller to guess which vocabulary it is in.
 backends:
   project:
     default: true
+    matrix_key: projects-v2
     # Exactly one board is authoritative. More than one candidate is an
     # ambiguity to refuse, never one to resolve by choosing.
     authoritative_project_count: 1
     field_value_addressing: option_id
+    # What this backend calls the delivery field. GitHub reserves `Status` on a
+    # Projects v2 board, so a board cannot use the name `issue_fields` declares.
+    # Undeclared, this was a `"Status"` default inside `board.delivery_field`,
+    # right by accident for the only backend that creates boards and wrong for
+    # the other with no error (#125).
+    delivery_field: Status
   issue_fields:
     default: false
     requires: organization
+    matrix_key: issue-fields
     # GitHub rejects an option id here: values must be the option name.
     field_value_addressing: option_name
+    # Matches the `issue_fields:` entry below, which is this backend's
+    # vocabulary.
+    delivery_field: Delivery Status
     note: >-
       Applies organization-wide. Adding a field for one repository adds it to
       every repository in the organization.
