@@ -104,7 +104,6 @@ class Unmappable:
 @dataclass
 class Proposal:
     settings: dict = field(default_factory=dict)
-    agents: dict[str, dict] = field(default_factory=dict)
     by_rule: dict[str, list[str]] = field(default_factory=dict)
     by_setting: dict[str, str] = field(default_factory=dict)
     unmappable: list[Unmappable] = field(default_factory=list)
@@ -112,7 +111,6 @@ class Proposal:
     def to_dict(self) -> dict:
         return {
             "settings": self.settings,
-            "agents": self.agents,
             "by_rule": self.by_rule,
             "by_setting": self.by_setting,
             "unmappable": [
@@ -255,12 +253,6 @@ def build(bootstrap: dict, agent: dict, routing: dict,
             continue
         _set(proposal.settings, entry["key"], entry[key])
         proposal.by_setting[rule] = entry["key"]
-
-    read_only = spec["agent_tools"]["read_only"]
-    for role, role_spec in (routing.get("roles") or {}).items():
-        constraints = (role_spec or {}).get("constraints") or {}
-        if constraints.get("edit_permission") == "deny":
-            proposal.agents[role] = {"tools": list(read_only)}
 
     for rule, entry in (spec.get("unmappable") or spec.get("unenforceable")
                         or {}).items():

@@ -2480,6 +2480,28 @@ requirements:
     evidence:
       - "Issue #75"
 
+  - id: REQ-SECURITY-CLAUDE-002
+    statement: >-
+      A role constraint the agent's own configuration cannot express is
+      reported as unmappable, never approximated. Permissions are the agent's
+      to enforce; the generated configuration carries only what a real
+      permission primitive expresses, so it is never read as stricter than it
+      is. edit_permission has no per-agent primitive in Claude Code and is
+      reported as an uncompensated gap, and no policy key or generated field
+      curates a per-agent tool list in its place.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.claude-config
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_claude_config.py::test_edit_permission_is_reported_as_unmappable"
+      - "tests/test_claude_config.py::test_the_edit_denial_is_not_claimed_as_compensated_by_the_config"
+      - "tests/test_claude_config.py::test_the_proposal_carries_no_per_agent_tool_list"
+      - "tests/test_claude_config.py::test_no_policy_key_feeds_a_per_agent_tool_list"
+      - "tests/test_claude_config.py::test_a_role_constraint_the_settings_cannot_express_leaves_them_unchanged"
   - id: REQ-SECURITY-CLAUDE-001
     statement: >-
       The generated Claude Code settings must carry every runtime rule that
@@ -2502,7 +2524,6 @@ requirements:
       - "tests/test_claude_config.py::test_a_denied_rule_is_not_also_allowed"
       - "tests/test_claude_config.py::test_a_not_applicable_rule_does_not_make_the_report_unenforced"
       - "tests/test_claude_config.py::test_a_proposal_cannot_be_written_outside_the_project"
-      - "tests/test_claude_config.py::test_a_role_without_the_constraint_gets_no_agent"
       - "tests/test_claude_config.py::test_a_rule_opencode_could_not_express_is_generated_here[mcp_default]"
       - "tests/test_claude_config.py::test_a_rule_opencode_could_not_express_is_generated_here[plugin_default]"
       - "tests/test_claude_config.py::test_a_rule_this_agent_cannot_have_is_marked_not_applicable"
@@ -2523,9 +2544,7 @@ requirements:
       - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[allow]"
       - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[ask]"
       - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[deny]"
-      - "tests/test_claude_config.py::test_the_one_genuine_gap_is_marked_uncompensated"
-      - "tests/test_claude_config.py::test_the_reviewer_agent_has_no_writing_tools"
-      - "tests/test_claude_config.py::test_the_tool_list_comes_from_the_role_constraint"
+      - "tests/test_claude_config.py::test_the_genuine_gaps_are_marked_uncompensated"
       - "tests/test_claude_config.py::test_the_verification_commands_are_allowed_by_name"
     evidence:
       - "Issue #76"

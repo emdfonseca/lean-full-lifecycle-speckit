@@ -103,26 +103,42 @@ def test_a_denied_rule_is_not_also_allowed(proposal):
     assert not set(permissions.get("deny", [])) & set(permissions.get("allow", []))
 
 
-# --- AC2: the reviewer cannot edit --------------------------------------------
+# --- AC2: the reviewer's edit denial is reported, not approximated ------------
 
-@pytest.mark.req("REQ-SECURITY-CLAUDE-001")
-def test_the_reviewer_agent_has_no_writing_tools(proposal):
-    tools = proposal.agents["reviewer"]["tools"]
-    assert tools == SPEC["agent_tools"]["read_only"]
-    for writer in ("Edit", "Write", "NotebookEdit"):
-        assert writer not in tools
+@pytest.mark.req("REQ-SECURITY-CLAUDE-002")
+def test_edit_permission_is_reported_as_unmappable(proposal):
+    assert "edit_permission" in {u.rule for u in proposal.unmappable}
 
 
-@pytest.mark.req("REQ-SECURITY-CLAUDE-001")
-def test_the_tool_list_comes_from_the_role_constraint():
+@pytest.mark.req("REQ-SECURITY-CLAUDE-002")
+def test_the_edit_denial_is_not_claimed_as_compensated_by_the_config(proposal):
+    # Claude Code has no per-agent edit permission. Reporting it as compensated
+    # would say the generated settings hold a denial they do not hold.
+    entry = [u for u in proposal.unmappable if u.rule == "edit_permission"][0]
+    assert entry.uncompensated
+    assert not entry.not_applicable
+
+
+@pytest.mark.req("REQ-SECURITY-CLAUDE-002")
+def test_the_proposal_carries_no_per_agent_tool_list(proposal):
+    # A curated tool list decides what an agent is offered, not what it is
+    # refused, and Bash alone writes anything the shell reaches. Emitting one
+    # made the config read as stricter than it is.
+    assert "agents" not in proposal.to_dict()
+    assert not hasattr(proposal, "agents")
+
+
+@pytest.mark.req("REQ-SECURITY-CLAUDE-002")
+def test_no_policy_key_feeds_a_per_agent_tool_list():
+    assert "agent_tools" not in SPEC
+
+
+@pytest.mark.req("REQ-SECURITY-CLAUDE-002")
+def test_a_role_constraint_the_settings_cannot_express_leaves_them_unchanged():
     routing = copy.deepcopy(ROUTING)
     routing["roles"]["reviewer"]["constraints"].pop("edit_permission")
-    assert "reviewer" not in cc.build(BOOTSTRAP, AGENT, routing).agents
-
-
-@pytest.mark.req("REQ-SECURITY-CLAUDE-001")
-def test_a_role_without_the_constraint_gets_no_agent(proposal):
-    assert "builder" not in proposal.agents
+    assert (cc.build(BOOTSTRAP, AGENT, routing).settings
+            == cc.build(BOOTSTRAP, AGENT, ROUTING).settings)
 
 
 # --- AC3: the commands are allowed, the shell is not --------------------------
@@ -196,9 +212,11 @@ def test_a_rule_this_agent_cannot_have_is_marked_not_applicable(proposal):
 
 
 @pytest.mark.req("REQ-SECURITY-CLAUDE-001")
-def test_the_one_genuine_gap_is_marked_uncompensated(proposal):
-    uncompensated = [u.rule for u in proposal.unmappable if u.uncompensated]
-    assert uncompensated == ["cost_and_runtime_limits"]
+def test_the_genuine_gaps_are_marked_uncompensated(proposal):
+    # Two, since edit_permission stopped being approximated by a tool list and
+    # started being reported as the gap it always was.
+    uncompensated = {u.rule for u in proposal.unmappable if u.uncompensated}
+    assert uncompensated == {"cost_and_runtime_limits", "edit_permission"}
 
 
 @pytest.mark.req("REQ-SECURITY-CLAUDE-001")

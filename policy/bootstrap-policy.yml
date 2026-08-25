@@ -293,10 +293,17 @@ integrations:
         compensated_by: >-
           Nothing in the configuration. This one is a genuine gap and is
           reported as such rather than compensated.
-
-    # A read-only role is an agent whose tool list omits the writing tools.
-    agent_tools:
-      read_only: [Read, Grep, Glob, Bash]
+      edit_permission:
+        why: >-
+          Claude Code has no per-agent edit permission. Permissions are the
+          agent's to enforce, and settings.json carries no key that denies one
+          role the writing tools while granting them to another. A curated tool
+          list is not that key: it decides what an agent is offered, not what it
+          is refused, and Bash alone can write anything the shell can reach.
+        compensated_by: >-
+          Nothing in the configuration. The reviewer role's denial rests on the
+          review gate in agent-policy.yml, not on the generated settings, and is
+          reported here so the config is not read as enforcing it.
 
 # `specify init --script py|sh` records the project's choice in
 # .specify/init-options.json, and Spec Kit installs both flavours of its own
