@@ -238,3 +238,61 @@ def test_the_types_come_from_policy_not_from_this_script():
     body = source.split("def acceptance_types(")[1].split("\ndef ")[0]
     for name in ("story", "bug", "spike", "epic"):
         assert f'"{name}"' not in body, f"{name} is hardcoded in acceptance_types"
+
+
+# --- emphasis must not hide a criterion --------------------------------------
+#
+# Bold Given/When/Then is the natural Markdown form and the one real issue
+# bodies use. It defeated the linter twice over: the section terminator ended
+# at any line opening `**` and a capital, so `**Given**` closed the section it
+# was inside; and the clause patterns anchored to the start of a line, so a
+# one-line criterion had its When and Then mid-sentence where nothing looked.
+
+BOLD_CRITERIA = (
+    "**Acceptance criteria**\n\n"
+    "**Given** a stale extension, **When** update runs, **Then** it refuses.\n\n"
+    "**Risk**\n\nLow.\n"
+)
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-002")
+def test_a_bold_criterion_does_not_end_the_section_it_is_inside():
+    section = lint_mod.extract_section(BOLD_CRITERIA)
+    assert section is not None and section.strip(), "the section came back empty"
+    assert "refuses" in section
+    assert lint_mod.split_criteria(section), "no criteria found in a section with one"
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-002")
+def test_a_bold_heading_still_ends_the_section():
+    # What the terminator was for. Real bodies close with `**Risk**`, and the
+    # fix must not swallow it into the criteria.
+    section = lint_mod.extract_section(BOLD_CRITERIA)
+    assert "**Risk**" not in section and "Low." not in section
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-002")
+def test_emphasised_clause_markers_are_recognised_mid_line():
+    one_line = "**Given** a thing, **When** it runs, **Then** it refuses."
+    assert lint_mod.GIVEN.search(one_line)
+    assert lint_mod.WHEN.search(one_line)
+    assert lint_mod.THEN.search(one_line)
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-002")
+def test_a_bare_then_in_prose_is_not_a_clause_marker():
+    # Only the emphasised form is recognised away from the start of a line.
+    # `then` is too common a word to treat as a marker wherever it appears.
+    assert not lint_mod.THEN.search("The system does a thing and then it stops.")
+
+
+@pytest.mark.req("REQ-BACKLOG-CRITERIA-002")
+def test_a_bold_criterion_reaches_lint_rather_than_merely_being_captured():
+    # Capturing the section is not enough: the criteria must arrive at the
+    # content checks. A banned phrase inside a bold criterion proves they did.
+    body = ("**Acceptance criteria**\n\n"
+            "**Given** a thing, **When** it runs, **Then** it works correctly.\n\n"
+            "**Risk**\n\nLow.\n")
+    findings, account = lint_mod.lint_issue(body, "story", CONTRACT, POLICY)
+    assert "linted the acceptance section" in account
+    assert any("works correctly" in str(f) for f in findings), findings

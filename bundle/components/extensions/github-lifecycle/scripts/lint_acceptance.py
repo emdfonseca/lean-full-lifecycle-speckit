@@ -29,9 +29,23 @@ import yaml  # noqa: E402
 
 # A criterion header: "AC1 — name", "AC1: name", or a bare numbered line.
 AC_HEADER = re.compile(r"^\s*(?:AC\s*\d+|\d+[.)])\s*[—\-:]?\s*(.*)$", re.IGNORECASE)
-GIVEN = re.compile(r"^\s*given\b", re.IGNORECASE | re.MULTILINE)
-WHEN = re.compile(r"^\s*when\b", re.IGNORECASE | re.MULTILINE)
-THEN = re.compile(r"^\s*(?:then|and)\b", re.IGNORECASE | re.MULTILINE)
+# A clause marker opens a line, possibly behind a bullet or emphasis, or is
+# emphasised anywhere on it. The second form matters because `**Given** a
+# project, **When** it runs, **Then** it refuses.` is one line, and the
+# markers after the first are mid-sentence. Bare `then` mid-line is not a
+# marker -- it is the commonest word in prose -- so only the emphasised form
+# is recognised away from the start of a line.
+def _clause(*words: str) -> re.Pattern[str]:
+    alternatives = "|".join(words)
+    return re.compile(
+        rf"(?:^[\s>*_+-]*(?:{alternatives})\b"
+        rf"|(\*\*|__|\*|_)\s*(?:{alternatives})\b[^\n]*?\1)",
+        re.IGNORECASE | re.MULTILINE)
+
+
+GIVEN = _clause("given")
+WHEN = _clause("when")
+THEN = _clause("then", "and")
 
 # Words that signal a criterion covering something other than the happy path.
 NEGATIVE_SIGNALS = (
@@ -183,10 +197,15 @@ def _report(findings: list["Finding"], fmt: str) -> int:
 # A section heading, written either as markdown heading or as a bold line.
 # Both occur in practice, and matching only the first silently linted the whole
 # issue body instead of its criteria.
+# The section ends at the next heading. A heading is a `#` line or a wholly
+# emphasised one -- `**Risk**`, which real bodies use. Ending at any line
+# opening `**` and a capital also ended it at `**Given** a project ...`, so a
+# criterion written in the natural Markdown form terminated the section it was
+# inside and the linter reported no criteria at all (#131).
 _SECTION = re.compile(
     r"^(?:#{1,6}\s*|\*\*)\s*Acceptance criteria\s*(?:\*\*)?\s*$"
     r"(.*?)"
-    r"(?=^(?:#{1,6}\s|\*\*[A-Z]).*$|\Z)",
+    r"(?=^(?:#{1,6}\s[^\n]*|\*\*[A-Z][^*\n]*\*\*[ \t]*)$|\Z)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL,
 )
 

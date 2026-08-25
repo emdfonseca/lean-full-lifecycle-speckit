@@ -806,6 +806,39 @@ requirements:
       - "Issue #93"
       - "Issue #99"
 
+  - id: REQ-BACKLOG-CRITERIA-002
+    statement: >-
+      Emphasis does not hide a criterion. Bold Given/When/Then is the natural
+      Markdown form and the one real issue bodies use, and it defeated the
+      linter twice over: the section terminator ended at any line opening two
+      asterisks and a capital, so a criterion opening "**Given**" closed the
+      section it was inside; and the clause patterns anchored to the start of a
+      line, so a one-line criterion had its When and Then mid-sentence where
+      nothing looked. A section ends at a heading, which is a hash line or a
+      wholly emphasised one such as "**Risk**" -- the form real bodies close
+      with, which the terminator must keep catching. A clause marker opens a
+      line, possibly behind a bullet or emphasis, or is emphasised anywhere on
+      it; a bare "then" away from the start of a line is not a marker, because
+      it is too common a word in prose to treat as one. Capturing the section
+      is not sufficient and is checked separately from the criteria reaching
+      the content rules, because reporting "no acceptance criteria given"
+      against an issue carrying several is worse than reporting nothing.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
+    verified_by:
+      - "tests/test_acceptance_lint.py::test_a_bold_criterion_does_not_end_the_section_it_is_inside"
+      - "tests/test_acceptance_lint.py::test_a_bold_heading_still_ends_the_section"
+      - "tests/test_acceptance_lint.py::test_emphasised_clause_markers_are_recognised_mid_line"
+      - "tests/test_acceptance_lint.py::test_a_bare_then_in_prose_is_not_a_clause_marker"
+      - "tests/test_acceptance_lint.py::test_a_bold_criterion_reaches_lint_rather_than_merely_being_captured"
+    evidence:
+      - "Issue #131"
+      - "Issue #130"
+
   - id: REQ-BACKLOG-CRITERIA-001
     statement: >-
       An item is linted against its own type's contract. Only types whose
