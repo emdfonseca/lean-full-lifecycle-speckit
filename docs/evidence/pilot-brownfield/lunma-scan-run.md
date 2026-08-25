@@ -77,6 +77,42 @@ Five findings, all filed before being acted on, none fixed in place.
 | 144 | Approving the verification resolution performs nothing; no step consumes the gate's verdict |
 | 145 | `establish-constitution` writes a constitution failing the contract on 13 counts, three principles with no RFC 2119 keyword at all |
 
+## How AC5 was measured, and what that measurement cannot see
+
+`git status --short` was the first instrument and it is not sufficient on its
+own. It reports modified-tracked and untracked-not-ignored files, so three
+things could change without appearing:
+
+| Gap | Instrument | Result |
+|---|---|---|
+| A tracked file changed and committed away from `status` | `git diff --stat <baseline> -- . ':!.specify'` against the commit made before adoption started | empty: no tracked change outside `.specify/` |
+| A file hidden by newly ignoring it | `git log -1 -- .gitignore` | last changed at `ed20f39`, the OpenSpec removal, before adoption began |
+| A write outside the project entirely | `find /tmp -maxdepth 2 -newermt <run start> -type f` | nothing, excluding this session's own scratch files |
+
+So AC5 holds under all four instruments rather than one.
+
+**What remains unmeasured, stated rather than glossed.** Ignored paths are not
+compared. `node_modules/` and the paraglide output under
+`src/shared/paraglide/` both changed during this stream, because `pnpm install`
+ran and its postinstall compiles into that directory. Neither appears in any
+check above.
+
+The argument for excluding them is that both are derived and regenerable, so a
+change there is not a change in behaviour. That argument is sound and it is
+still an assumption, not a measurement. A generator that emitted something
+different into an ignored path would be invisible to every instrument used
+here.
+
+The outside-project scan covers `/tmp` and not the whole filesystem, so a write
+to the home directory would also be missed. Widening it is cheap and was not
+done.
+
+**Recommended for the next stream**: hash every tracked file before and after,
+compare the manifests, and scan a widened set of directories by modification
+time. That closes the first gap completely and narrows the third. Closing the
+ignored-path gap needs a decision about whether derived output is in scope at
+all, which is a question for the criterion rather than the instrument.
+
 ## Two judgements made during the run
 
 **I scanned the discovery record by hand before approving its gate.** `#143`
