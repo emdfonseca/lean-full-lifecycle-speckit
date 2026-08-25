@@ -42,10 +42,15 @@ def body_for(form: str) -> str:
     return SAMPLE.get(form, "text\n")
 
 
+# The contract requires a freshness line on every declared document, so a
+# fixture without one is not a complete project (#137).
+FRESH = "Last verified: 2026-08-01 (change: fixture)"
+
+
 def complete(**over):
     out = {}
     for spec in CONTRACT["required"]:
-        parts = [f"# {spec['path']}\n"]
+        parts = [f"# {spec['path']}\n{FRESH}\n"]
         for section in spec.get("sections") or []:
             parts.append(f"## {section['name']}\n{body_for(section.get('form',''))}")
         if spec.get("per_principle"):
@@ -138,9 +143,11 @@ def test_prose_that_runs_long_is_reported(tmp_path):
 def test_bold_headings_count_as_sections(tmp_path):
     # Both styles occur. Matching one would report a present section as absent,
     # which teaches an author to ignore the check.
-    body = ("# P\n**Intent**\nOne.\n**Users**\n| a | b |\n|---|---|\n| x | y |\n"
+    body = (f"# P\n{FRESH}\n**Intent**\nOne.\n"
+            "**Users**\n| a | b |\n|---|---|\n| x | y |\n"
             "**Constraints**\n| a | b |\n|---|---|\n| x | y |\n"
-            "**Definition of done**\n- x\n**Non-goals**\n- y\n")
+            "**Definition of done**\n- x\n**Non-goals**\n- y\n"
+            "**Deliberately untested**\n- z\n")
     files = complete(**{"PRODUCT.md": body})
     assert [p for p in docs.check(project(tmp_path, files), CONTRACT)
             if "PRODUCT.md" in p] == []
@@ -273,7 +280,9 @@ CONSTITUTION = ".specify/memory/constitution.md"
 
 def constitution(body: str) -> dict:
     files = complete()
-    files[CONSTITUTION] = body
+    # Stamped for the same reason: these fixtures replace the file wholesale,
+    # and a missing stamp would mask the principle problem under test.
+    files[CONSTITUTION] = body.replace("# C\n", f"# C\n{FRESH}\n", 1)
     return files
 
 
@@ -383,3 +392,78 @@ def test_a_constitution_with_no_principles_is_reported(tmp_path):
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 def test_the_keywords_are_rfc_2119():
     assert set(docs.NORMATIVE) == {"MUST NOT", "MUST", "SHOULD NOT", "SHOULD", "MAY"}
+
+
+# --- freshness ---------------------------------------------------------------
+#
+# Nothing made a stale document visible: one that stopped being true read
+# exactly like one that is. The stamp carries a change id as well as a date,
+# because a date alone says somebody typed a date.
+
+from datetime import date  # noqa: E402
+
+STAMP = "Last verified: 2026-08-01 (change: abc123)"
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_a_document_with_no_stamp_is_reported(tmp_path):
+    files = {k: v.replace(FRESH + "\n", "") for k, v in complete().items()}
+    problems = docs.check(project(tmp_path, files), CONTRACT, today=date(2026, 8, 25))
+    assert any("carries no" in p and "Last verified" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_a_stamped_document_passes(tmp_path):
+    files = {k: f"{STAMP}\n\n{v}" for k, v in complete().items()}
+    problems = docs.check(project(tmp_path, files), CONTRACT, today=date(2026, 8, 25))
+    assert not any("Last verified" in p for p in problems), problems
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_a_future_stamp_is_refused(tmp_path):
+    # It cannot be contradicted, so it claims freshness permanently.
+    files = {k: "Last verified: 2099-01-01 (change: abc123)\n\n"
+                + v.replace(FRESH + "\n", "")
+             for k, v in complete().items()}
+    problems = docs.check(project(tmp_path, files), CONTRACT, today=date(2026, 8, 25))
+    assert any("in the future" in p for p in problems)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_a_date_without_a_change_id_is_not_a_stamp(tmp_path):
+    # A date alone says somebody typed a date.
+    files = {k: "Last verified: 2026-08-01\n\n" + v.replace(FRESH + "\n", "")
+             for k, v in complete().items()}
+    problems = docs.check(project(tmp_path, files), CONTRACT, today=date(2026, 8, 25))
+    assert any("carries no" in p for p in problems)
+
+
+# --- the two documents the framework already required ------------------------
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_a_runbook_is_declared():
+    # artifact-policy.yml gives a runbook authority: authoritative_operational
+    # and Output Done requires operability discharged, while no contract asked
+    # anyone to write one.
+    paths = {s["path"] for s in CONTRACT["required"]}
+    assert ".specify/lifecycle/runbook.md" in paths
+    spec = next(s for s in CONTRACT["required"] if s["path"].endswith("runbook.md"))
+    names = {s["name"] for s in spec["sections"]}
+    assert {"When it breaks", "Rollback"} <= names
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_the_domain_document_asks_what_a_word_does_not_mean():
+    spec = next(s for s in CONTRACT["required"] if s["path"].endswith("domain.md"))
+    vocab = next(s for s in spec["sections"] if s["name"] == "Vocabulary")
+    assert "does not mean" in vocab["answers"].lower(), (
+        "the third column is what earns this document")
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-004")
+def test_deliberately_untested_is_a_section_not_a_document():
+    paths = {s["path"] for s in CONTRACT["required"]}
+    assert not any("testing" in p for p in paths), (
+        "the rest of a testing document restates quality-gates.yml")
+    product = next(s for s in CONTRACT["required"] if s["path"] == "PRODUCT.md")
+    assert "Deliberately untested" in {s["name"] for s in product["sections"]}

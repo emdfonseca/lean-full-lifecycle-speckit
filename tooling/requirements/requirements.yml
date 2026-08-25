@@ -1441,6 +1441,43 @@ requirements:
       - "Issue #114"
       - "Issue #103"
 
+  - id: REQ-PRODUCT-DOCUMENTS-004
+    statement: >-
+      Every declared document says when it was last verified and by what
+      change, and two documents the framework already required are declared.
+      Nothing made a stale document visible, so one that had stopped being true
+      read exactly like one that is; the stamp carries a change id as well as a
+      date, because a date alone records that somebody typed a date. A date in
+      the future is refused rather than reported, since nothing can contradict
+      it and it therefore claims freshness permanently. A runbook is declared
+      because artifact-policy.yml already gives one authority
+      authoritative_operational and Output Done requires operability
+      discharged, while no contract asked anyone to write it: a required
+      artifact nobody is asked for is a gap that appears only at the gate. A
+      domain document is declared for the project's vocabulary, and its third
+      column, what a term does not mean, is what earns it. What a project
+      deliberately does not test is a section rather than a document, because
+      the rest of a testing document restates quality-gates.yml and a second
+      copy is the one that drifts.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:bootstrap-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
+    verified_by:
+      - "tests/test_documents.py::test_a_document_with_no_stamp_is_reported"
+      - "tests/test_documents.py::test_a_stamped_document_passes"
+      - "tests/test_documents.py::test_a_future_stamp_is_refused"
+      - "tests/test_documents.py::test_a_date_without_a_change_id_is_not_a_stamp"
+      - "tests/test_documents.py::test_a_runbook_is_declared"
+      - "tests/test_documents.py::test_the_domain_document_asks_what_a_word_does_not_mean"
+      - "tests/test_documents.py::test_deliberately_untested_is_a_section_not_a_document"
+    evidence:
+      - "Issue #137"
+      - "Issue #103"
+
   - id: REQ-PRODUCT-DOCUMENTS-002
     statement: >-
       The per-principle preamble count reads structure, not physical lines. A

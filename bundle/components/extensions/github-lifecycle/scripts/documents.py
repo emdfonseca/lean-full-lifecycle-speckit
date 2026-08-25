@@ -37,6 +37,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -210,7 +211,45 @@ def principle_problems(path_name: str, text: str) -> list[str]:
     return problems
 
 
-def check(root: Path, contract: dict) -> list[str]:
+FRESHNESS = re.compile(
+    r"^Last verified:\s*(\d{4}-\d{2}-\d{2})\s*\(change:\s*([^)]+)\)\s*$",
+    re.MULTILINE)
+
+
+def freshness_problems(path_name: str, text: str, rule: dict,
+                       today: date) -> list[str]:
+    """Whether a document says when it was last checked, and by what.
+
+    Nothing here made a stale document visible: one that stopped being true
+    read exactly like one that is. The date is evidence of when the claim was
+    checked, which is why it carries a change id -- a date alone says somebody
+    typed a date.
+
+    A future date is refused rather than reported. It cannot be contradicted by
+    anything, so it is a stamp that permanently claims freshness, which is
+    worse than no stamp at all.
+    """
+    if not rule.get("required"):
+        return []
+    match = FRESHNESS.search(text)
+    if not match:
+        return [f"{path_name} carries no `{rule['line']}` line. Without it a "
+                f"document that stopped being true reads exactly like one "
+                f"that is."]
+    if not rule.get("refuse_future_dates"):
+        return []
+    try:
+        stamped = date.fromisoformat(match.group(1))
+    except ValueError:
+        return [f"{path_name}: {match.group(1)!r} is not a date."]
+    if stamped > today:
+        return [f"{path_name} is verified {stamped.isoformat()}, which is in "
+                f"the future. Nothing can contradict it, so it claims "
+                f"freshness permanently."]
+    return []
+
+
+def check(root: Path, contract: dict, today: date | None = None) -> list[str]:
     problems: list[str] = []
     for spec in contract.get("required") or []:
         path = root / spec["path"]
@@ -222,6 +261,9 @@ def check(root: Path, contract: dict) -> list[str]:
             continue
 
         text = path.read_text(encoding="utf-8")
+        problems.extend(freshness_problems(
+            name, text, contract.get("freshness") or {},
+            today or date.today()))
         if spec.get("per_principle"):
             problems.extend(principle_problems(name, text))
 

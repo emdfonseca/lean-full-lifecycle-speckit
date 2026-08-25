@@ -372,6 +372,17 @@ product_documents:
       Where something could not be recovered, say so. An invented answer is
       worse than an absent one, because the next reader believes it.
 
+  # Every declared document carries this line, directly under its title.
+  # Nothing here made a stale document visible, so one that stopped being true
+  # looked exactly like one that is (#137). The date is evidence of when the
+  # claim was last checked, which the style rules permit as an exception to
+  # "docs are state, not history"; the change id says what checked it.
+  freshness:
+    line: 'Last verified: <YYYY-MM-DD> (change: <change-id>)'
+    required: true
+    # A stamp nobody can contradict is worse than no stamp.
+    refuse_future_dates: true
+
   required:
     - path: PRODUCT.md
       answers: What this is for, and how anyone tells it is done.
@@ -398,6 +409,15 @@ product_documents:
           answers: >-
             What a reader would reasonably expect and will not get. One line
             each.
+        # A section rather than a testing document: the rest of what a testing
+        # document would say is already in quality-gates.yml, and a second copy
+        # is the copy that drifts.
+        - name: Deliberately untested
+          form: list
+          answers: >-
+            What is not covered, and why not. This is the section that stops
+            the same argument recurring, and an empty one is a claim that
+            everything is tested.
 
     - path: .specify/memory/constitution.md
       answers: The rules this project's work obeys.
@@ -489,3 +509,56 @@ product_documents:
           Decision and Consequences, the same four an ADR carries, at one or
           two lines each. An entry needing more than that is an ADR, and
           belongs in docs/decisions/ with this log referencing it.
+
+    # Declared because the framework already requires one and never asked for
+    # it: artifact-policy.yml gives a runbook `authority:
+    # authoritative_operational`, and Output Done requires operability
+    # discharged. A required artifact nobody is asked to write is a gap that
+    # only shows up at the gate (#137).
+    - path: .specify/lifecycle/runbook.md
+      answers: How this is run, and what to do when it stops working.
+      sections:
+        - name: Running it
+          form: list
+          answers: >-
+            The commands that start it locally, in order. A project with
+            nothing to run says so; that is a fact about the project, not a
+            missing section.
+        - name: Configuration and secrets
+          form: table
+          answers: >-
+            Each setting, where its value comes from, and what breaks without
+            it. Never the value itself.
+        - name: Observability
+          form: prose
+          answers: >-
+            Where the logs, metrics, and traces are, and what normal looks
+            like. Without the second half the first is a list of URLs.
+        - name: When it breaks
+          form: table
+          answers: >-
+            The failures that actually happen, and the first thing to check for
+            each. Not every failure imaginable: the ones seen.
+        - name: Rollback
+          form: list
+          answers: >-
+            How a release is undone, and what cannot be. An irreversible step
+            is named here or it is discovered during an incident.
+
+    # The nouns of the project. Nothing else in the contract records what a
+    # word means here, and a brownfield adoption reading somebody's codebase
+    # has no worse failure than assuming a term means what it usually means.
+    - path: .specify/lifecycle/domain.md
+      answers: What the project's words mean, here specifically.
+      sections:
+        - name: Vocabulary
+          form: table
+          answers: >-
+            Term, what it means here, and what it does not mean. The third
+            column is the one that earns the document: it catches the word that
+            means something else in this industry, or in the next team.
+        - name: Relationships
+          form: table
+          answers: >-
+            Which terms own which, and any cardinality that surprises people.
+            A relationship nobody finds surprising does not need a row.
