@@ -42,8 +42,13 @@ def project(tmp_path, scripts=None, overlay=None, stack=None, devbox="valid"):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(vb.yaml.safe_dump({"mappings": overlay}), encoding="utf-8")
     if stack:
-        path = tmp_path / POLICY["generation"]["stack_decision_sources"][0]
+        source = POLICY["generation"]["stack_decision_sources"][0]
+        path = tmp_path / source["path"]
         path.parent.mkdir(parents=True, exist_ok=True)
+        # A source records a decision under a declared heading. Writing the
+        # body alone is what used to count, and is the defect (#136).
+        if stack.strip() and "#" not in stack:
+            stack = f"# S\n\n## {source['records_decision_in']}\n\n{stack}"
         path.write_text(stack, encoding="utf-8")
     return tmp_path
 
@@ -120,7 +125,8 @@ def test_generation_without_a_stack_decision_is_refused(tmp_path):
 def test_the_refusal_names_the_missing_input(tmp_path):
     problems = vb.refuse_generation_without_a_stack(project(tmp_path), POLICY)
     for source in POLICY["generation"]["stack_decision_sources"]:
-        assert source in problems[0]
+        assert source["path"] in problems[0]
+        assert source["records_decision_in"] in problems[0]
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
@@ -217,3 +223,53 @@ def test_the_commands_are_not_hardcoded_in_the_script():
     source = (SCRIPTS / "verify_bootstrap.py").read_text(encoding="utf-8")
     for literal in ('"devbox run verify"', '"devbox.json"'):
         assert literal not in source, f"{literal} is hardcoded"
+
+
+# --- a file is not a decision -------------------------------------------------
+#
+# `stack_decision` tested that a source existed and was non-empty. Every
+# bootstrap writes a constitution, so the guard against inventing a toolchain
+# was cleared by the document meant to contain the answer (#136).
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-002")
+def test_a_constitution_naming_no_toolchain_is_not_a_stack_decision(tmp_path):
+    # The pilot's constitution: 347 lines, no language, no runtime, no test
+    # command. It satisfied the old check by existing.
+    root = tmp_path
+    path = root / ".specify/memory/constitution.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("# Constitution\n\n## Governance\n\n" + ("Rules.\n" * 50),
+                    encoding="utf-8")
+    assert vb.stack_decision(root, POLICY) is None
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-002")
+def test_a_constitution_that_records_its_tooling_does_count(tmp_path):
+    # The fix must not simply refuse everything: a real constitution records
+    # its stack, and the brownfield pilot's does under this heading.
+    source = next(s for s in POLICY["generation"]["stack_decision_sources"]
+                  if s["path"].endswith("constitution.md"))
+    path = tmp_path / source["path"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f"# Constitution\n\n### {source['records_decision_in']}\n\n"
+        "| Concern | Decision |\n|---|---|\n| Lint | Ruff |\n", encoding="utf-8")
+    assert vb.stack_decision(tmp_path, POLICY) == path
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-002")
+def test_a_declared_heading_with_nothing_under_it_is_not_a_decision(tmp_path):
+    # The same failure one level down: a heading is not an answer.
+    source = POLICY["generation"]["stack_decision_sources"][0]
+    path = tmp_path / source["path"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"# S\n\n## {source['records_decision_in']}\n\n"
+                    "## Consequences\n\n- something\n", encoding="utf-8")
+    assert vb.stack_decision(tmp_path, POLICY) is None
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-002")
+def test_every_source_declares_where_its_decision_is_recorded():
+    for source in POLICY["generation"]["stack_decision_sources"]:
+        assert source["records_decision_in"], (
+            f"{source['path']} names no section, so any content would count")

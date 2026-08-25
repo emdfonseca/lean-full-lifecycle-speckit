@@ -127,9 +127,19 @@ verification_commands:
     # stack decision. Generating one without it means inventing the project's
     # toolchain and calling it a default.
     requires_stack_decision: true
+    # Each source names the section that records the decision, because a file
+    # existing is not a decision. The check tested only that one of these was
+    # non-empty, and every bootstrap writes a constitution, so the guard
+    # against inventing a toolchain was cleared by the document that was meant
+    # to contain the answer (#136).
+    #
+    # The constitution stays a source: a real one records its tooling choices,
+    # and the brownfield pilot's does, under this heading.
     stack_decision_sources:
-      - .specify/memory/constitution.md
-      - .specify/lifecycle/stack-decision.md
+      - path: .specify/lifecycle/stack-decision.md
+        records_decision_in: Decision
+      - path: .specify/memory/constitution.md
+        records_decision_in: Recorded stack decisions
 
   overlay:
     # The overlay names which framework command it satisfies. Letting it name

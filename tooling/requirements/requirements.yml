@@ -1102,6 +1102,35 @@ requirements:
     evidence:
       - "Issue #56"
 
+  - id: REQ-CORE-VERIFYCMD-002
+    statement: >-
+      A stack decision is recognised by what a document records, not by the
+      document existing. The precondition on generating a verification script
+      tested that one declared source was present and non-empty, and every
+      bootstrap writes a constitution, so it cleared on every project: the
+      guard against inventing a project's toolchain was satisfied by the
+      document that was meant to contain the answer. Each source now declares
+      the section that records the decision, so the constitution stays a
+      source, because a real one records its tooling choices, while one that
+      names no language, runtime, or test command no longer counts. A declared
+      heading with nothing beneath it is not a decision either, which is the
+      same failure one level down.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:bootstrap-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/verify_bootstrap.py
+    verified_by:
+      - "tests/test_verify_bootstrap.py::test_a_constitution_naming_no_toolchain_is_not_a_stack_decision"
+      - "tests/test_verify_bootstrap.py::test_a_constitution_that_records_its_tooling_does_count"
+      - "tests/test_verify_bootstrap.py::test_a_declared_heading_with_nothing_under_it_is_not_a_decision"
+      - "tests/test_verify_bootstrap.py::test_every_source_declares_where_its_decision_is_recorded"
+    evidence:
+      - "Issue #136"
+      - "Issue #103"
+
   - id: REQ-CORE-VERIFYCMD-001
     statement: >-
       Bootstrap must establish that the project defines the verification

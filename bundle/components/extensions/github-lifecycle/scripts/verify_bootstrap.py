@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -154,10 +155,52 @@ def check_overlay(root: Path, policy: dict) -> list[str]:
     return problems
 
 
+SECTION = re.compile(r"^(?:#{1,6}\s*|\*\*)\s*(.+?)\s*(?:\*\*)?\s*$")
+
+
+def _records_a_decision(text: str, heading: str) -> bool:
+    """Whether `heading` exists in `text` and has something under it.
+
+    A heading with nothing beneath it is a heading, which is the same failure
+    at one level down from the one this function was written for.
+    """
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        match = SECTION.match(line.strip())
+        if not match or match.group(1).strip().lower() != heading.lower():
+            continue
+        for following in lines[i + 1:]:
+            stripped = following.strip()
+            if not stripped:
+                continue
+            if SECTION.match(stripped) and stripped.startswith(("#", "**")):
+                break        # next heading, nothing in between
+            return True
+    return False
+
+
 def stack_decision(root: Path, policy: dict) -> Path | None:
-    for rel in policy["generation"]["stack_decision_sources"]:
+    """The source that records a stack decision, or None.
+
+    This tested that one of the sources existed and was non-empty. Every
+    bootstrap writes a constitution, so the precondition cleared on every
+    project and the guard against inventing a toolchain was satisfied by the
+    document that was supposed to contain the answer (#136).
+
+    Each source now names the section that records the decision, so the
+    question asked is whether a decision is written down rather than whether a
+    file is.
+    """
+    for source in policy["generation"]["stack_decision_sources"]:
+        rel = source["path"] if isinstance(source, dict) else source
+        heading = source.get("records_decision_in") if isinstance(source, dict) else None
         path = root / rel
-        if path.is_file() and path.read_text(encoding="utf-8").strip():
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not text.strip():
+            continue
+        if heading is None or _records_a_decision(text, heading):
             return path
     return None
 
@@ -167,7 +210,10 @@ def refuse_generation_without_a_stack(root: Path, policy: dict) -> list[str]:
         return []
     if stack_decision(root, policy):
         return []
-    sources = policy["generation"]["stack_decision_sources"]
+    sources = [
+        f"{s['path']} (section {s['records_decision_in']!r})"
+        if isinstance(s, dict) else s
+        for s in policy["generation"]["stack_decision_sources"]]
     return [
         "cannot generate a verification script: no stack decision is recorded "
         f"in any of {sources}. The script has to run something, and what to run "
