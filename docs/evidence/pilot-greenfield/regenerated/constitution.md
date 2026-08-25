@@ -9,8 +9,7 @@ fixed.
 
 ### I. One Authoritative Source Per Mutable Fact
 
-Every mutable fact has exactly one authoritative home. A copy of it elsewhere is derived, is
-labelled as derived, and is regenerated rather than edited.
+Every mutable fact has exactly one authoritative home.
 
 - SOT-001 (MUST) The authorities are: work item → GitHub issue; structured backlog metadata →
   GitHub issue fields; intended behavior → the living spec; engineering policy → this constitution
@@ -25,6 +24,8 @@ labelled as derived, and is regenerated rather than edited.
   `Status: superseded by NNNN`.
 - SOT-005 (MUST NOT) Write changelogs, rename history, or "previously X" narration into any
   authoritative artifact. Git carries history.
+- SOT-006 (MUST) Label a copy of an authoritative fact as derived, and regenerate it rather than
+  edit it.
 
 ### II. Progressive Formalization, Minimum Justified Ceremony
 
@@ -221,17 +222,16 @@ evidence of compliance.
 
 ### Readiness Criteria (Refining → Ready)
 
-An item becomes Ready only on a readiness verdict (`policy/item-types.yml`, `readiness_verdict`)
-recorded by the product or refinement authority, carrying:
+An item becomes Ready only on a readiness verdict from the product or refinement authority.
 
-- `readiness`: ready | not_ready
-- `blocking_questions`: non-empty means not ready
-- `risk`: low | medium | high
-- `spec_impact`: none | update | create
-- `material_uncertainty`: none | discovery | prototype | spike | threat-analysis
-- `next_engineering_action`: what the assigned owner does first
-
-Rules:
+| `readiness_verdict` field (`policy/item-types.yml`) | Value |
+| --- | --- |
+| `readiness` | ready \| not_ready |
+| `blocking_questions` | non-empty means not ready |
+| `risk` | low \| medium \| high |
+| `spec_impact` | none \| update \| create |
+| `material_uncertainty` | none \| discovery \| prototype \| spike \| threat-analysis |
+| `next_engineering_action` | what the assigned owner does first |
 
 - READY-001 (MUST NOT) Treat technical design as a prerequisite for Ready.
 - READY-002 (MUST) Leave an item in Refining while any blocking question is open.
@@ -246,13 +246,15 @@ Rules:
 
 Authority: automated gates plus authorized review. Every item below is required evidence:
 
-- DONE-001 acceptance criteria satisfied, each demonstrated against its Given / When / Then
-- DONE-002 required CI green, including every always-on gate
-- DONE-003 applicable security gates green, including every conditional gate its triggers fired
-- DONE-004 convergence clear — the living spec describes the shipped behavior with no known
-  divergence
-- DONE-005 operability complete — runbook, observability, and rollback obligations at this risk
-  grade discharged
+- DONE-001 (MUST) Satisfy every acceptance criterion, each demonstrated against its Given / When /
+  Then.
+- DONE-002 (MUST) Have required CI green, including every always-on gate.
+- DONE-003 (MUST) Have applicable security gates green, including every conditional gate whose
+  triggers fired.
+- DONE-004 (MUST) Have convergence clear — the living spec describes the shipped behavior with no
+  known divergence.
+- DONE-005 (MUST) Have operability complete — runbook, observability, and rollback obligations at
+  this risk grade discharged.
 - DONE-006 (MUST) A disposal decision is recorded for any prototype or spike that informed the work:
   delete, archive, or promote. Promotion names an approver and a reason; delete and archive name the
   artifacts so a reader can check it happened.
@@ -261,22 +263,20 @@ Authority: automated gates plus authorized review. Every item below is required 
 - DONE-008 (MUST) Close as `completed` only from Output Done. Retired, abandoned, and decided-against
   work closes `not_planned` without ever being set to Output Done; superseded work closes
   `duplicate`.
-- DONE-009 Reopening Output Done → In Progress requires an engineering authority and a recorded
-  reopen reason.
+- DONE-009 (MUST) Require an engineering authority and a recorded reopen reason to reopen Output
+  Done → In Progress.
 
 Output Done says the work is finished. It says nothing about whether it worked.
 
 ### Definition of Outcome Done
 
-Outcome scope defaults to the product goal or Epic; Story-level outcomes are not required. Items
-with no user-facing result leave the outcome fields empty rather than inventing one.
+Outcome scope defaults to the product goal or Epic; Story-level outcomes are not required.
 
-An outcome record carries: hypothesis, owner, baseline, target, guardrails, data source, observation
-window, decision date, result, decision — plus the evidence fields `sample_size`, `minimum_sample`,
-`window_elapsed`, `guardrail_results`, and `measured_value`.
-
-Statuses: Not Applicable, Not Yet Measurable, Measuring, Outcome Validated, Outcome Missed /
-Inconclusive.
+| An outcome record carries | Fields |
+| --- | --- |
+| Declared up front | hypothesis, owner, baseline, target, guardrails, data source, observation window, decision date |
+| Recorded at the decision | result, decision |
+| Evidence | `sample_size`, `minimum_sample`, `window_elapsed`, `guardrail_results`, `measured_value` |
 
 - OUT-001 (MUST) Only the product owner or analytics owner may record Outcome Validated, and only
   with the target met and every guardrail intact.
@@ -292,6 +292,10 @@ Inconclusive.
 - OUT-007 (MUST) Validate outcomes asynchronously, after the observation window, on the recorded
   decision date. Delivery does not wait on measurement and measurement does not wait on the next
   delivery.
+- OUT-008 (MUST) Record one of these Outcome Statuses: Not Applicable, Not Yet Measurable,
+  Measuring, Outcome Validated, Outcome Missed / Inconclusive.
+- OUT-009 (MUST) Leave the outcome fields empty for an item with no user-facing result, rather than
+  inventing one.
 
 ### Transition Authority
 
@@ -329,11 +333,20 @@ Inconclusive.
 
 ### Exceptions
 
-An exception is narrow, owned, and expiring. It records: `id`, `scope`, `policy_rule`, `reason`,
-`owner`, `approver`, `created_at`, `review_or_expiry_at`, `compensating_controls`, `disposition`.
-Dispositions: active, remediated, expired, superseded, accepted_permanently_by_authority.
+An exception is narrow, owned, and expiring. A forbidden shape is refused, not flagged.
 
-Forbidden shapes, with the detection rules that make them checkable:
+| Every exception records |
+| --- |
+| `id` |
+| `scope` |
+| `policy_rule` |
+| `reason` |
+| `owner` |
+| `approver` |
+| `created_at` |
+| `review_or_expiry_at` |
+| `compensating_controls` |
+| `disposition`: active, remediated, expired, superseded, accepted_permanently_by_authority |
 
 - EXC-001 (MUST NOT) Blanket legacy exception. A scope of `*`, `**`, `.`, `./**`, `/`, `all`, or
   `everything` is refused; a scope path with fewer than two segments is a blanket whatever it is
