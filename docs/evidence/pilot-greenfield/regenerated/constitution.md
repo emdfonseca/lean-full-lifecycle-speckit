@@ -246,15 +246,13 @@ An item becomes Ready only on a readiness verdict from the product or refinement
 
 Authority: automated gates plus authorized review. Every item below is required evidence:
 
-- DONE-001 (MUST) Satisfy every acceptance criterion, each demonstrated against its Given / When /
-  Then.
-- DONE-002 (MUST) Have required CI green, including every always-on gate.
-- DONE-003 (MUST) Have applicable security gates green, including every conditional gate whose
-  triggers fired.
-- DONE-004 (MUST) Have convergence clear — the living spec describes the shipped behavior with no
-  known divergence.
-- DONE-005 (MUST) Have operability complete — runbook, observability, and rollback obligations at
-  this risk grade discharged.
+- DONE-001 acceptance criteria satisfied, each demonstrated against its Given / When / Then
+- DONE-002 required CI green, including every always-on gate
+- DONE-003 applicable security gates green, including every conditional gate whose triggers fired
+- DONE-004 convergence clear — the living spec describes the shipped behavior with no known
+  divergence
+- DONE-005 operability complete — runbook, observability, and rollback obligations at this risk
+  grade discharged
 - DONE-006 (MUST) A disposal decision is recorded for any prototype or spike that informed the work:
   delete, archive, or promote. Promotion names an approver and a reason; delete and archive name the
   artifacts so a reader can check it happened.
@@ -263,8 +261,8 @@ Authority: automated gates plus authorized review. Every item below is required 
 - DONE-008 (MUST) Close as `completed` only from Output Done. Retired, abandoned, and decided-against
   work closes `not_planned` without ever being set to Output Done; superseded work closes
   `duplicate`.
-- DONE-009 (MUST) Require an engineering authority and a recorded reopen reason to reopen Output
-  Done → In Progress.
+- DONE-009 Reopening Output Done → In Progress requires an engineering authority and a recorded
+  reopen reason.
 
 Output Done says the work is finished. It says nothing about whether it worked.
 

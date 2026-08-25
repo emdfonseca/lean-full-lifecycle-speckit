@@ -250,21 +250,22 @@ These are the tooling decisions in force for this repository.
 | Coverage | `pytest --cov=records`, via `pytest-cov` declared as a dev dependency | ratchet measure only, no floor |
 | Secret detection | `sensitive.py` using preset patterns | `patterns_from_policy` must report true |
 
-- Changing any row above MUST have an ADR.
-- A decision above MUST take effect when its configuration and dependency land.
+- A decision above takes effect when its configuration and dependency land.
   Until then EX-002 suspends the measurement, not the requirement.
 - mypy MUST run non-strict: `records.py` carries no annotations today, strict
   mode would produce a number nobody can act on, and non-strict establishes a
   baseline that ratchets downward as annotations arrive.
+- Changing any row above MUST have an ADR.
 
 ### Always-on gates
 
 Every change runs the `always` gates from `quality-gates.yml`.
 
-- Each `always` gate MUST pass: format or style validation, lint or static
-  analysis, type or compile check where supported, deterministic
-  change-appropriate tests, secret detection, dependency hygiene, build or
-  package validation, and specification convergence for promoted work.
+- The `always` gates are format or style validation, lint or static analysis,
+  type or compile check where supported, deterministic change-appropriate
+  tests, secret detection, dependency hygiene, build or package validation,
+  and specification convergence for promoted work.
+- Every one of them MUST pass.
 - A gate that cannot run MUST state that it cannot run and why. A gate that is
   skipped silently is a failed gate.
 
@@ -272,12 +273,12 @@ Every change runs the `always` gates from `quality-gates.yml`.
 
 A conditional gate runs when its trigger fires, and not otherwise.
 
-- A conditional gate MUST run when its trigger fires, and MUST NOT be required
-  when it does not.
 - The triggers are the `conditional` block of `quality-gates.yml`, governing
   integration and contract tests, end-to-end tests, property or fuzz tests,
   performance tests, migration tests, accessibility checks, security review, and
   SBOM or provenance or signing.
+- A gate whose trigger fires MUST run, and one whose trigger does not fire MUST
+  NOT be required.
 - End-to-end tests MUST NOT be treated as mandatory. A change to a critical user
   journey triggers them, and nothing else does.
 
@@ -308,7 +309,7 @@ open blocker is reported, and its transition to In Progress is refused.
 
 An item becomes Ready only on a complete `readiness_verdict`.
 
-| Field | Value |
+| `readiness_verdict` field (`item-types.yml`) | Value |
 |---|---|
 | `readiness` | `ready` or `not_ready` |
 | `blocking_questions` | non-empty means not ready; the item stays Refining |
@@ -317,8 +318,6 @@ An item becomes Ready only on a complete `readiness_verdict`.
 | `material_uncertainty` | `none`, `discovery`, `prototype`, `spike`, or `threat-analysis` |
 | `next_engineering_action` | what the assigned owner does first |
 
-- The verdict MUST carry every field in `item-types.yml`, `readiness_verdict`,
-  which the table above names.
 - Acceptance criteria MUST be observable. Vague phrases such as "and so on" or
   "make sure" are refused, because an unenumerated criterion cannot be verified.
 - Technical design MUST NOT be a prerequisite for Ready.
