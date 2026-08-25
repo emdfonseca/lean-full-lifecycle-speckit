@@ -157,6 +157,21 @@ issue closed for any other reason (duplicate, withdrawn, superseded) says
 nothing about whether the work was completed. Delivery Status is authoritative;
 closure is a consequence of it, never evidence for it.
 
+## Completed work stays on the board
+
+Nothing archives an item. Delivery Status reaching Output Done is the end of
+the lifecycle, and the item stays where it is.
+
+That is deliberate. GitHub archives project items natively, and the board is the
+record of what was built -- an item removed from it is a record that has to be
+found somewhere else. Reading the board is a view concern, so it is solved with
+a view: filter on `-status:"Output Done"` to see only live work. The default
+view carries the filter; the unfiltered board remains the whole history.
+
+No command archives, and none should. A framework that archived would be taking
+on a job the platform already does, and adding a write path to the board for a
+reason that is presentation rather than state.
+
 ## Field model
 
 `policy/github-schema.yml` defines project-scoped fields as the default
