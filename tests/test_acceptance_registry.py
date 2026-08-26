@@ -28,9 +28,11 @@ def scenario(rows, name):
 
 @pytest.mark.req("REQ-TOOLING-ACCEPTANCE-001")
 def test_registry_is_consistent(pytest_evidence):
-    result, data = acceptance.validate_registry(collected=pytest_evidence)
+    result, _ = acceptance.validate_registry(collected=pytest_evidence)
     assert result.errors == []
-    assert len(data["scenarios"]) == 50
+    # No count assertion. The schema's minItems is the floor that guards
+    # truncation, and it fails safe: adding a scenario passes it. Pinning an
+    # equality here only meant nobody could add one without editing this line.
 
 
 @pytest.mark.req("REQ-TOOLING-ACCEPTANCE-001")

@@ -59,11 +59,10 @@ BUDGET_INSTRUCTIONS = (
 def _steps(component) -> list[dict[str, Any]]:
     """Every step in the workflow, descending into switch cases.
 
-    Walking only the outer list left 45 of the bundle's steps unexamined by
-    every workflow-scope check, `SEC-SHELL-ALLOWLIST` and
-    `SEC-WRITE-BEHIND-GATE` among them -- and `lifecycle-outcome-review`, which
-    is 4 steps at the top and 19 inside cases, was almost entirely invisible.
-    A step is not exempt from a safety invariant for sitting in a branch.
+    A step is not exempt from a safety invariant for sitting in a branch, and a
+    workflow can hold more of its steps inside cases than outside them. Walking
+    only the outer list is therefore not a smaller check but an arbitrary one:
+    what it covers depends on where an author happened to put a step.
     """
     return list(_flatten(component.manifest.get("steps", []) or []))
 

@@ -533,9 +533,9 @@ def test_currently_violated_check_fires_on_clean_source(check_id):
 def test_check_detects_a_violation_nested_in_a_switch_case(check_id, bundle_copy):
     """A step is not exempt from a safety invariant for sitting in a branch.
 
-    `_steps()` returned only the top-level list, leaving 45 of the bundle's
-    steps unexamined -- and `lifecycle-outcome-review`, 4 steps at the top and
-    19 inside cases, almost entirely invisible.
+    The top-level mutators plant where a check already looks, so they pass
+    whether or not it descends. These plant at the deepest reachable site, which
+    is the only place the difference shows.
     """
     NESTED_MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
