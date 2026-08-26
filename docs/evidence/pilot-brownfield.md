@@ -20,16 +20,16 @@ finished: 2026-08-25
 
 metrics:
   workflow_completion_without_repair:
-    value: false
-    why: >-
+    verdict: breached
+    evidence: >-
       The run reached completed, but its own validation step reports the
       verification resolution as an unresolved blocker, and the discovery
       record could not be certified because sensitive.py crashed on it. Neither
       was repaired in place; both are filed as #144 and #143.
     recorded_by: agent
   human_interventions:
-    value: 4
-    why: >-
+    verdict: observed
+    evidence: >-
       Three gate decisions -- adoption plan, discovery, verification resolution
       -- plus one scan I ran by hand, applying the policy patterns to the
       discovery record because sensitive.py could not. That fourth one is an
@@ -37,8 +37,8 @@ metrics:
       been approved on an uncertified record.
     recorded_by: agent
   incorrect_or_out_of_scope_edits:
-    value: 0
-    why: >-
+    verdict: held
+    evidence: >-
       Measured by diff against a tree committed clean before adoption started.
       One tracked file changed, `.specify/memory/constitution.md`. Every build
       path is byte-identical: devbox.json, pnpm-workspace.yaml, every
@@ -46,50 +46,50 @@ metrics:
       packages/. No product code was touched.
     recorded_by: agent
   readiness_accuracy:
-    value: not_applicable
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       No readiness verdict was produced. Adoption stops before any item reaches
       Refining, and no backlog item was created: the clone is dissociated, so
       no GitHub target exists to create one on.
     recorded_by: agent
   duplicate_backlog_rate:
-    value: not_applicable
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       No backlog item was created. AC6, duplicate triage at the gate, needs a
       GitHub target and a targeted run; neither happened here.
   convergence_findings:
-    value: not_applicable
-    why: No converge step runs in adoption, and no promoted work exists yet.
+    verdict: not_applicable
+    evidence: No converge step runs in adoption, and no promoted work exists yet.
   ready_to_output_done_hours:
-    value: not_applicable
-    why: No item was delivered.
+    verdict: not_applicable
+    evidence: No item was delivered.
   failed_github_operations:
-    value: 0
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       No GitHub operation was attempted. inspect-github refused for want of a
       target and wrote nothing, which is the intended refusal rather than a
       failure: the clone has no remote by design.
   model_cost:
-    value: null
-    why: Not instrumented in this run.
+    verdict: unmeasured
+    evidence: Not instrumented in this run.
   model_runtime_minutes:
-    value: null
-    why: >-
+    verdict: unmeasured
+    evidence: >-
       Not recorded per step. No step approached its timeout; the longest were
       the document-writing steps at the artifact_synthesis tier.
   test_flakiness:
-    value: not_applicable
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       The target's suite was never run. `pnpm verify` needs node_modules, the
       plan's approval to run `pnpm install` had no gate and no key in
       inputs.json so it was never asked, and the report says so rather than
       claiming a pass.
   developer_satisfaction:
-    value: null
-    why: Needs a person. Not recorded by the agent that drove the run.
+    verdict: unrecorded
+    evidence: Needs a person. Not recorded by the agent that drove the run.
   generated_artifacts_disposed:
-    value: 0.0
-    why: >-
+    verdict: observed
+    evidence: >-
       The clone is retained until this record is reviewed. It is dissociated
       from its origin and has no remotes, so disposal is a directory delete
       with nothing to detach first.

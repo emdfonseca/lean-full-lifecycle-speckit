@@ -1,27 +1,52 @@
 # What a pilot run records, and who can record it.
 #
-# Roadmap Phase 10 names twelve metrics. Half are facts a script can read off
-# the run; half are observations about a person working, which no script can
-# produce. Separating them is the point of this file: a pilot that reports a
-# machine-readable zero for `human_interventions` has measured nothing, and a
-# pilot report that looks complete because the hard fields defaulted is worse
-# than one that is visibly incomplete.
+# Every entry asks for a verdict and the evidence behind it, never a quantity.
+# Thirteen numbers were tried first and none of them carried a threshold, a
+# target, or a gate; no script produced one; and in every record written, the
+# prose said what happened while the integer said nothing. A number is the most
+# confident way to state something nobody instrumented, and rendering an
+# unsourced claim as `0` makes it read as measured.
+#
+# The numbers were also not comparable. Greenfield's `7` interventions and
+# monorepo's `0` counted different activities in different workflows, so they
+# could not be summed, averaged, or trended -- and aggregation is the only
+# reason to prefer a number to a sentence.
+#
+# This framework guides; it does not govern or measure. Whether a person walked
+# the path responsibly is theirs to answer, and a schema of unenforced integers
+# neither helps them do it nor proves they did.
 
-schema_version: "1.0"
+schema_version: "2.0"
+
+# A verdict with no evidence is refused. The verdict is the part that invites a
+# shrug; the evidence is what stops it.
+verdicts:
+  held: >-
+    The property held. Say how it was checked, not that it was.
+  breached: >-
+    It did not hold. What happened, and what it cost.
+  observed: >-
+    Recorded, and the evidence carries the meaning. No pass or fail is claimed
+    -- some things a pilot watches are not a test of anything.
+  not_applicable: >-
+    This stream does not do that thing, so there is nothing to be right or
+    wrong about. A bootstrap stops before anything reaches Ready.
+  unmeasured: >-
+    It applies, it was attempted, and no instrument exists to read it. This is
+    a gap in the framework, recorded as one -- not a gap in the pilot.
+  unrecorded: >-
+    Nobody filled this in. Always refused. It exists so the template ships in a
+    state that cannot be signed off, and so an unfilled field can never be
+    mistaken for a measured one.
 
 sources:
   observed: >-
-    Read from the run by a script or from the board. Absent means not
-    collected, never zero.
+    Read from the run by a script or from the board.
   operator: >-
-    Recorded by whoever drove the run, agent or person. Cannot be
-    reconstructed afterwards -- nobody can count later how often the run was
-    repaired -- so it cannot be null. It does not need a person: an agent
-    driving a pilot observes its own interventions and can count them.
-  # Any metric may be recorded as `not_applicable` with a reason. That is a
-  # third state, distinct from a value and from null: a bootstrap pilot stops
-  # before anything reaches Ready, so readiness accuracy has nothing to be
-  # right or wrong about. Found by using this contract on the first pilot.
+    Recorded by whoever drove the run, agent or person. Cannot be reconstructed
+    afterwards -- nobody can say later how often the run was repaired -- so it
+    cannot be left unrecorded. It does not need a person: an agent driving a
+    pilot watches its own interventions.
   human: >-
     Needs a person, and an agent may not supply it. Not because it is harder to
     observe but because it is categorically different: it is a judgement about
@@ -31,7 +56,7 @@ sources:
 metrics:
   - id: workflow_completion_without_repair
     source: operator
-    unit: boolean
+    verdicts: [held, breached, unmeasured, not_applicable]
     note: >-
       Did the workflow run end to end with no manual repair. A repair the owner
       made without noticing is the observation this exists to catch, so it is
@@ -39,7 +64,6 @@ metrics:
 
   - id: human_interventions
     source: operator
-    unit: count
     note: >-
       Every point the owner had to step in. Zero is a legitimate value and an
       unrecorded zero is not; state that none occurred rather than leaving it
@@ -47,62 +71,53 @@ metrics:
 
   - id: incorrect_or_out_of_scope_edits
     source: operator
-    unit: count
+    verdicts: [held, breached, unmeasured, not_applicable]
     note: >-
       Files changed that should not have been. Judged against the approved
       target, which a script cannot know.
 
   - id: readiness_accuracy
     source: operator
-    unit: ratio
     note: >-
       Items that were genuinely startable when marked Ready, over items marked
       Ready. Requires knowing whether the work actually could start.
 
   - id: duplicate_backlog_rate
     source: observed
-    unit: ratio
     note: Items capture refused as duplicates, over items proposed.
 
   - id: convergence_findings
     source: observed
-    unit: count
 
   - id: ready_to_output_done_hours
     source: observed
-    unit: hours
     note: Read from the transition audit trail, not estimated.
 
   - id: failed_github_operations
     source: observed
-    unit: count
+    verdicts: [held, breached, unmeasured, not_applicable]
     note: >-
       Read from the audit trail written by --audit. A run with no audit file
       cannot report this and must say so.
 
   - id: model_cost
     source: observed
-    unit: currency
 
   - id: model_runtime_minutes
     source: observed
-    unit: minutes
 
   - id: test_flakiness
     source: observed
-    unit: count
     note: Tests that passed and failed on the same code within the run.
 
   - id: developer_satisfaction
     source: human
-    unit: scale_1_5
     note: >-
       The owner's own reading. Recorded with a sentence of why, because the
       number alone tells a later reader nothing they can act on.
 
   - id: generated_artifacts_disposed
     source: operator
-    unit: ratio
     note: >-
       Artifacts archived or deleted over artifacts generated. Left-behind
       scaffolding is the failure artifact-policy.yml exists to prevent, and

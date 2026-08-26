@@ -1,7 +1,7 @@
 # Running a pilot
 
 Four streams, one owner each. The gate at `0.9.0` asks for evidence **and** a
-named owner, so a run with no owner is not a pilot however good its numbers.
+named owner, so a run with no owner is not a pilot however clean its record.
 
 ## Before
 
@@ -11,26 +11,44 @@ named owner, so a run with no owner is not a pilot however good its numbers.
 2. Copy `template.yml` to `docs/evidence/pilot-<stream>.md`. Fill in `stream`,
    `owner`, `target`, `started`.
 3. Run with `--audit <path>` wherever a command accepts it. Without it
-   `failed_github_operations` cannot be answered and the record must say so
-   rather than report zero.
+   `failed_github_operations` is `unmeasured`, not `held` — the record says no
+   instrument was reading, rather than claiming nothing failed.
 
 ## During
 
-Record the five **operator** metrics as they happen — how often the run was
-repaired, what was changed out of scope, how many interventions. None can be
-reconstructed afterwards, so `pilot_record.py` refuses a null for them and
-accepts one, with a reason, for the observed ones.
+Every entry takes a **verdict** and the **evidence** behind it. Never a
+quantity: a number is the most confident way to state something nobody
+instrumented, and `incorrect_or_out_of_scope_edits: 0` reads as measured when
+it is a claim awaiting evidence.
+
+| verdict | means |
+|---|---|
+| `held` | the property held. Say how it was checked, not that it was |
+| `breached` | it did not. What happened, and what it cost |
+| `observed` | recorded; the evidence carries the meaning, no pass or fail claimed |
+| `not_applicable` | this stream does not do that thing |
+| `unmeasured` | it applies, it was attempted, no instrument exists |
+| `unrecorded` | nobody filled it in. Always refused |
+
+`unmeasured` is the one worth getting right. `model_cost` is unmeasured in
+every run so far, and that is a gap in the framework — recording it as one
+keeps it visible instead of burying it as a pilot that fell short.
+
+Record the **operator** entries as they happen. None can be reconstructed
+afterwards.
 
 The operator can be an agent. An agent driving a pilot observes its own
 interventions and counts them, and `recorded_by: agent` is a fair answer.
 
-`developer_satisfaction` is the one metric that needs a person. Not because it
+`developer_satisfaction` is the one entry that needs a person. Not because it
 is harder to observe but because it is a judgement about the experience of
 doing the work, and an agent reporting one would be inventing a reading nobody
 had. The validator refuses `recorded_by: agent` on it.
 
-Zero is a legitimate value. An unrecorded zero is not: write `0` and say that
-none occurred.
+Evidence is required for every verdict, `held` included. The verdict is the
+part that invites a shrug; the evidence is what stops it. Three streams once
+reported `0` for out-of-scope edits by three different ad-hoc methods, which is
+the discipline this replaces.
 
 When something fails, do not fix it in place. A pilot that fixes what it finds
 stops being a measurement. Follow the loop:

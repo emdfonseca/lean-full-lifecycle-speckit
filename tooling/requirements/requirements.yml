@@ -1293,16 +1293,22 @@ requirements:
 
   - id: REQ-PILOT-EVIDENCE-001
     statement: >-
-      A pilot run records every metric the contract declares, and the record is
-      refused when it does not. Metrics are split by who can produce them:
-      observed values a script or the board can read, and witnessed values that
-      are observations about a person working. A witnessed metric may not be
-      null, because nobody can reconstruct it afterwards; an observed one may
-      be, with a stated reason, because not measured and zero are different
-      results. An absent metric is not read as zero, a metric the contract does
-      not declare is refused, an empty failure list is an explicit claim rather
+      A pilot run answers every entry the contract declares with a verdict from
+      a declared vocabulary and the evidence behind it, never a quantity. A
+      verdict with no evidence is refused, because the verdict is the part that
+      invites a shrug and the evidence is what stops it. The vocabulary
+      separates three states an integer conflated: not applicable, meaning the
+      stream does not do that thing; unmeasured, meaning it applies and no
+      instrument exists, which is a gap in the framework rather than in the
+      pilot; and unrecorded, meaning nobody filled it in, which a finished
+      record may never carry. An entry the run either upheld or did not may
+      declare the verdicts it accepts, so it cannot be answered with a shrug.
+      An absent entry is not read as an answer, an entry the contract does not
+      declare is refused, an empty failure list is an explicit claim rather
       than an omission, every failure names the item tracking it, and the
-      shipped template does not validate clean. A metric may also be recorded as not applicable, with a reason: a bootstrap pilot stops before anything reaches Ready, so readiness accuracy has nothing to be right or wrong about, and that is neither a value nor a gap.
+      shipped template does not validate clean. A witnessed verdict may not be
+      supplied by an agent: it is a judgement about the experience of doing the
+      work, and an agent reporting one would be inventing a reading nobody had.
     priority: should
     owner: product/process owner
     release: "0.9.0"
@@ -1312,30 +1318,22 @@ requirements:
     verified_by:
       - "tests/test_pilot_record.py::test_a_complete_record_passes"
       - "tests/test_pilot_record.py::test_no_failures_is_an_explicit_claim_not_an_omission"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[workflow_completion_without_repair]"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[human_interventions]"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[incorrect_or_out_of_scope_edits]"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[readiness_accuracy]"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[developer_satisfaction]"
-      - "tests/test_pilot_record.py::test_an_operator_or_human_metric_cannot_be_null[generated_artifacts_disposed]"
-      - "tests/test_pilot_record.py::test_an_observed_metric_may_be_null_with_a_reason"
-      - "tests/test_pilot_record.py::test_a_null_with_no_reason_is_refused"
-      - "tests/test_pilot_record.py::test_a_missing_metric_is_not_read_as_zero"
+      - "tests/test_pilot_record.py::test_a_verdict_without_evidence_is_refused"
+      - "tests/test_pilot_record.py::test_unrecorded_is_always_refused"
+      - "tests/test_pilot_record.py::test_unmeasured_is_distinct_from_not_applicable_and_from_unrecorded"
+      - "tests/test_pilot_record.py::test_a_verdict_outside_the_vocabulary_is_refused"
+      - "tests/test_pilot_record.py::test_a_quantity_is_not_a_verdict"
+      - "tests/test_pilot_record.py::test_a_declared_binary_cannot_be_answered_with_a_shrug"
+      - "tests/test_pilot_record.py::test_a_missing_metric_is_not_read_as_an_answer"
       - "tests/test_pilot_record.py::test_an_invented_metric_is_refused"
       - "tests/test_pilot_record.py::test_the_owner_is_required_because_the_gate_asks_for_one"
       - "tests/test_pilot_record.py::test_a_failure_must_name_the_item_tracking_it"
       - "tests/test_pilot_record.py::test_the_shipped_template_does_not_pass_as_written"
-      - "tests/test_pilot_record.py::test_every_roadmap_metric_is_declared"
-      - "tests/test_pilot_record.py::test_an_agent_may_not_supply_a_human_metric"
-      - "tests/test_pilot_record.py::test_an_operator_metric_may_be_recorded_by_an_agent"
-      - "tests/test_pilot_record.py::test_not_applicable_is_a_third_state"
-      - "tests/test_pilot_record.py::test_not_applicable_still_needs_a_reason"
-      - "tests/test_pilot_record.py::test_not_applicable_does_not_excuse_a_human_metric_silently"
-      - "tests/test_pilot_record.py::test_the_greenfield_pilot_record_is_complete_but_for_the_human_metric"
-    evidence:
-      - "Issue #103"
-      - "Issue #104"
-      - "Issue #105"
+      - "tests/test_pilot_record.py::test_the_contract_declares_its_vocabulary_and_its_sources"
+      - "tests/test_pilot_record.py::test_an_agent_may_not_supply_a_human_verdict"
+      - "tests/test_pilot_record.py::test_an_operator_verdict_may_be_recorded_by_an_agent"
+      - "tests/test_pilot_record.py::test_each_written_record_is_complete_but_for_the_human_verdict"
+      - "tests/test_pilot_record.py::test_migration_kept_the_prose_that_always_carried_the_meaning"
 
   - id: REQ-WORKFLOW-TIMEOUT-001
     statement: >-

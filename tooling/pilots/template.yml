@@ -1,25 +1,30 @@
 # Copy to docs/evidence/pilot-<stream>.md and fill in during the run.
 # Validate with: python tooling/pilots/pilot_record.py --record <path>
+#
+# Ships as `unrecorded` throughout, deliberately: a template that validated
+# clean would let a pilot be signed off without anyone filling it in.
 stream: greenfield          # greenfield | brownfield | monorepo | sandbox-org
 owner:                      # the named pilot owner. Required by the 0.9.0 gate.
 target:                     # repository or project the pilot ran against
 started:
 finished:
 
+# verdict: held | breached | observed | not_applicable | unmeasured | unrecorded
+# evidence: how you know. Required for every verdict, including `held`.
 metrics:
-  workflow_completion_without_repair: {value: null, why: }
-  human_interventions: {value: null, why: }
-  incorrect_or_out_of_scope_edits: {value: null, why: }
-  readiness_accuracy: {value: null, why: }
-  duplicate_backlog_rate: {value: null, why: }
-  convergence_findings: {value: null, why: }
-  ready_to_output_done_hours: {value: null, why: }
-  failed_github_operations: {value: null, why: }
-  model_cost: {value: null, why: }
-  model_runtime_minutes: {value: null, why: }
-  test_flakiness: {value: null, why: }
-  developer_satisfaction: {value: null, why: }
-  generated_artifacts_disposed: {value: null, why: }
+  workflow_completion_without_repair: {verdict: unrecorded, evidence: }
+  human_interventions: {verdict: unrecorded, evidence: }
+  incorrect_or_out_of_scope_edits: {verdict: unrecorded, evidence: }
+  readiness_accuracy: {verdict: unrecorded, evidence: }
+  duplicate_backlog_rate: {verdict: unrecorded, evidence: }
+  convergence_findings: {verdict: unrecorded, evidence: }
+  ready_to_output_done_hours: {verdict: unrecorded, evidence: }
+  failed_github_operations: {verdict: unrecorded, evidence: }
+  model_cost: {verdict: unrecorded, evidence: }
+  model_runtime_minutes: {verdict: unrecorded, evidence: }
+  test_flakiness: {verdict: unrecorded, evidence: }
+  developer_satisfaction: {verdict: unrecorded, evidence: , recorded_by: }
+  generated_artifacts_disposed: {verdict: unrecorded, evidence: }
 
 # Every failure becomes a backlog item. One that does not is a finding the
 # pilot lost.

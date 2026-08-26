@@ -10,68 +10,68 @@ finished: 2026-08-24
 
 metrics:
   workflow_completion_without_repair:
-    value: false
-    why: >-
+    verdict: breached
+    evidence: >-
       Three runs were needed. Two failed on step timeouts (#116, #117) and one
       was rejected at the plan gate for an empty product context. The fourth
       completed end to end.
     recorded_by: agent
   human_interventions:
-    value: 7
-    why: >-
+    verdict: observed
+    evidence: >-
       Four gate decisions (mismatch approve, plan reject, plan approve, product
       approve, verification approve counted as four distinct approvals plus one
       reject), one target reconfiguration, and two bundle fixes mid-pilot.
     recorded_by: agent
   incorrect_or_out_of_scope_edits:
-    value: 0
-    why: >-
+    verdict: held
+    evidence: >-
       Diff reviewed against the approved register. Everything written was named
       in the plan; the six AR items the plan refused stayed unwritten.
     recorded_by: agent
   readiness_accuracy:
-    value: not_applicable
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       Not measurable in this run. Bootstrap stops before any item reaches
       Ready, and all nine created items are at Inbox, so no readiness verdict
       was produced to be right or wrong about.
     recorded_by: agent
   duplicate_backlog_rate:
-    value: 0
-    why: Nine items created, none refused as a duplicate.
+    verdict: observed
+    evidence: Nine items created, none refused as a duplicate.
     recorded_by: agent
   convergence_findings:
-    value: null
-    why: No converge step runs in the bootstrap workflow.
+    verdict: not_applicable
+    evidence: No converge step runs in the bootstrap workflow.
   ready_to_output_done_hours:
-    value: null
-    why: >-
+    verdict: not_applicable
+    evidence: >-
       No item reached Output Done. Bootstrap deliberately stops at startable
       work, which AC-GREENFIELD-007 asserts.
   failed_github_operations:
-    value: 0
-    why: >-
+    verdict: unmeasured
+    evidence: >-
       No --audit file was written for the workflow's own calls, but every
       GitHub write in the run was read back by the command that made it and
       none disagreed.
   model_cost:
-    value: null
-    why: Not instrumented in this run.
+    verdict: unmeasured
+    evidence: Not instrumented in this run.
   model_runtime_minutes:
-    value: null
-    why: >-
+    verdict: unmeasured
+    evidence: >-
       Not recorded per step. The apply step alone exceeded ten minutes, which
       is what #116 and #117 were about.
   test_flakiness:
-    value: 0
-    why: No project test suite exists yet; the stack decision is undecided.
+    verdict: not_applicable
+    evidence: No project test suite exists yet; the stack decision is undecided.
     recorded_by: agent
   developer_satisfaction:
-    value: null
-    why: Needs a person. Not recorded by the agent that drove the run.
+    verdict: unrecorded
+    evidence: Needs a person. Not recorded by the agent that drove the run.
   generated_artifacts_disposed:
-    value: 0.0
-    why: >-
+    verdict: observed
+    evidence: >-
       The pilot project is retained until the record is reviewed. One artifact
       the run could not clean up is named in the report: /tmp/specdiag-venv,
       outside the allowed directories, needs a manual removal.

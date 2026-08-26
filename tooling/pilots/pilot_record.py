@@ -3,16 +3,20 @@
 
 A pilot report that looks complete because its hard fields defaulted is worse
 than one that is visibly incomplete: the first ends the phase, the second
-prompts someone to finish it. So this refuses two things.
+prompts someone to finish it. So this refuses three things.
 
-A witnessed metric cannot be absent. It is an observation about a person
-working -- how often they stepped in, whether the run needed repair, what they
-thought of it -- and nobody can reconstruct it afterwards. `null` is not a
-value; if nothing happened, say `0` and say so.
+A verdict with no evidence. The verdict is the part that invites a shrug and
+the evidence is what stops it. `held` on its own says a property held; it does
+not say how anyone knows.
 
-An observed metric that could not be read is `null` with a reason, never
-omitted. "We did not measure it" and "it was zero" are different results, and
-a report that renders them identically is not evidence.
+`unrecorded`, always. It is what the template ships with, so a record nobody
+filled in cannot be signed off, and an empty field can never be read as a
+measured one.
+
+`unmeasured` where the metric declares it cannot apply, and a witnessed verdict
+supplied by an agent. The second is the pattern the rest of this generalises:
+some observations belong to a person, and an agent reporting one would be
+inventing a reading nobody had.
 """
 from __future__ import annotations
 
@@ -33,6 +37,7 @@ def load_contract(path: Path | None = None) -> dict:
 def check(record: dict, contract: dict) -> list[str]:
     problems: list[str] = []
     declared = {m["id"]: m for m in contract.get("metrics") or []}
+    vocabulary = set(contract.get("verdicts") or {})
     metrics = record.get("metrics") or {}
 
     for field in ("stream", "owner", "target", "started", "finished"):
@@ -44,39 +49,49 @@ def check(record: dict, contract: dict) -> list[str]:
     unknown = sorted(set(metrics) - set(declared))
     if unknown:
         problems.append(
-            f"{unknown} are not metrics metrics.yml declares. A value against "
-            f"an invented metric records nothing and reads as though it "
-            f"recorded something.")
+            f"{unknown} are not metrics metrics.yml declares. A verdict "
+            f"against an invented metric records nothing and reads as though "
+            f"it recorded something.")
 
     for name, spec in declared.items():
         if name not in metrics:
             problems.append(
-                f"{name!r} was not recorded. Absent is not zero; state the "
-                f"value or state that it was not collected.")
+                f"{name!r} was not recorded. Absent is not a verdict; state "
+                f"one, or state that nothing could be measured.")
             continue
-        entry = metrics[name]
-        value = entry.get("value") if isinstance(entry, dict) else entry
-        if value == "not_applicable":
-            if not (isinstance(entry, dict) and entry.get("why")):
-                problems.append(
-                    f"{name!r} is not_applicable with no reason. Why it does "
-                    f"not apply is the part a later reader needs.")
-            continue
-        if spec["source"] in ("operator", "human") and value is None:
+        entry = metrics[name] if isinstance(metrics[name], dict) else {}
+        verdict = entry.get("verdict")
+
+        if verdict is None:
             problems.append(
-                f"{name!r} is {spec['source']}-recorded and has no value. "
-                f"Nobody can reconstruct it afterwards, so a null here is a "
-                f"gap in the pilot rather than a gap in the data.")
-        if spec["source"] == "human" and isinstance(entry, dict) \
+                f"{name!r} has no verdict. Every entry answers with one of "
+                f"{sorted(vocabulary)}.")
+            continue
+        if verdict not in vocabulary:
+            problems.append(
+                f"{name!r} has verdict {verdict!r}, which metrics.yml does "
+                f"not declare. The vocabulary is {sorted(vocabulary)}.")
+            continue
+        if verdict == "unrecorded":
+            problems.append(
+                f"{name!r} is unrecorded. Nobody filled it in, which is the "
+                f"one verdict a finished record may never carry.")
+        allowed = spec.get("verdicts")
+        if allowed and verdict not in allowed:
+            problems.append(
+                f"{name!r} answers {verdict!r}, but this one is a judgement "
+                f"the run either upheld or did not: {allowed}.")
+        if not str(entry.get("evidence") or "").strip():
+            problems.append(
+                f"{name!r} states {verdict!r} with no evidence. The verdict is "
+                f"the part that invites a shrug; the evidence is what stops "
+                f"it. Say how it was checked, not that it was.")
+        if spec["source"] == "human" \
                 and str(entry.get("recorded_by", "")).strip().lower() == "agent":
             problems.append(
                 f"{name!r} needs a person. An agent reporting it would be "
                 f"inventing a reading nobody had, which is worse than leaving "
                 f"the pilot visibly unfinished.")
-        if value is None and isinstance(entry, dict) and not entry.get("why"):
-            problems.append(
-                f"{name!r} is null with no reason. Not measured and zero are "
-                f"different results.")
 
     # `[]` is the explicit claim "nothing failed", which is the whole point.
     # A falsy check here would reject the very record shape this asks for.
