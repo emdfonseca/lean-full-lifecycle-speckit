@@ -21,6 +21,11 @@
           {
             "name": "python3",
             "required": true
+          },
+          {
+            "name": "git",
+            "required": false,
+            "why": "transition_plan.py runs `git -C <root> diff --name-only HEAD` to compare the board against the working tree. Without it the audit's working_tree_disagreement rule cannot run; every other rule still does."
           }
         ],
         "python_min": "3.9",

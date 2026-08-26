@@ -17,6 +17,16 @@ requires:
     required: true
   - name: python3
     required: true
+  # Optional, and the cost of its absence is stated rather than silent:
+  # transition_plan.py catches OSError and SubprocessError from `git diff` and
+  # returns None, so the audit reports one fewer rule rather than failing.
+  # Declaring it required: true would fail installs that work.
+  - name: git
+    required: false
+    why: >-
+      transition_plan.py runs `git -C <root> diff --name-only HEAD` to compare
+      the board against the working tree. Without it the audit's
+      working_tree_disagreement rule cannot run; every other rule still does.
   # What the shipped scripts need of the interpreter that runs them. Declared
   # because nothing did: 23 of 31 import yaml, and a greenfield pilot resolved
   # `{SCRIPT}` to a `python3` without it, so every command reading policy died

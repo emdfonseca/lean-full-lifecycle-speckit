@@ -1528,6 +1528,35 @@ requirements:
       - "Issue #114"
       - "Issue #103"
 
+  - id: REQ-PACKAGE-GIT-001
+    statement: >-
+      git, which transition_plan.py runs as `git -C <root> diff --name-only
+      HEAD` to compare the board against the working tree, is declared in the
+      extension's requires.tools as an optional tool that states what its
+      absence costs. It was executed and declared nowhere, so specify check
+      could not report it and a machine without git got a quietly weaker audit
+      rather than a named missing prerequisite. Optional rather than required
+      because the call site catches OSError and SubprocessError and returns
+      None: the working_tree_disagreement rule stops running and every other
+      rule still does, so requiring it would fail installs that work. This
+      requirement is about git and no other binary. opencode is executed from
+      shipped policy and is still undeclared (#159), so any statement here of
+      the form "every binary the bundle executes is declared" would be false
+      on the day it was written.
+    priority: must
+    owner: bundle maintainer
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/extension.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
+    verified_by:
+      - "tests/test_git_dependency.py::test_transition_plan_executes_git"
+      - "tests/test_git_dependency.py::test_git_is_declared_in_requires_tools"
+      - "tests/test_git_dependency.py::test_git_is_declared_optional_and_says_what_its_absence_costs"
+    evidence:
+      - "Issue #157"
+
   - id: REQ-PRODUCT-DOCUMENTS-004
     statement: >-
       Every declared document says when it was last verified and by what
