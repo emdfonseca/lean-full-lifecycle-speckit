@@ -407,3 +407,106 @@ def test_a_field_that_cannot_be_added_is_reported_not_left(monkeypatch):
     with pytest.raises(gh_api.GitHubError, match="could not be added"):
         board.create("acme", "widgets", "Widgets", ROOT,
                      runner=calls, gh=_repo_issues(None, []))
+
+
+# --- reshaping a board that already exists ------------------------------------
+
+class ExistingBoard:
+    """A board already carrying the policy's states, each with a stable id.
+
+    Ids are what an item's stored value points at. A stub without them cannot
+    show the difference between adding an option and replacing the set, which
+    is the difference that cost 160 items their delivery state (#163).
+    """
+
+    def __init__(self, options):
+        self.args: list[list[str]] = []
+        self.options = [{"id": f"opt{i}", "name": n, "color": "GRAY",
+                         "description": ""} for i, n in enumerate(options)]
+        self.mutations: list[str] = []
+
+    def __call__(self, args):
+        self.args.append(list(args))
+        verb = args[2] if len(args) > 2 else ""
+        if verb == "graphql":
+            query = args[args.index("-f") + 1]
+            self.mutations.append(query)
+            # Apply it the way GitHub does: an entry carrying an id keeps that
+            # option; one without gets a fresh id.
+            import re as _re
+            array = query.split("singleSelectOptions: [", 1)[1].split("]", 1)[0]
+            new = []
+            for entry in _re.findall(r"\{[^}]*\}", array):
+                name = _re.search(r'name: "([^"]+)"', entry).group(1)
+                prior = _re.search(r'id: "([^"]+)"', entry)
+                new.append({"id": prior.group(1) if prior else f"fresh-{name}",
+                            "name": name, "color": "GRAY", "description": ""})
+            self.options = new
+            return subprocess.CompletedProcess(args, 0, "{}", "")
+        if verb == "field-list":
+            return subprocess.CompletedProcess(args, 0, json.dumps(
+                {"fields": [{"id": "F1", "name": "Status",
+                             "options": self.options}]}), "")
+        return subprocess.CompletedProcess(args, 0, "{}", "")
+
+
+STATES = list(load_yaml(ROOT / "policy/state-machine.yml")["delivery_status"]["values"])
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-005")
+def test_reshaping_adds_a_new_state_and_keeps_every_existing_option_id():
+    # The whole point. Sending the surviving options by name only makes GitHub
+    # mint new ids, and every item holding one loses its value.
+    runner = ExistingBoard(STATES[:-1])          # everything but the newest state
+    before = {o["name"]: o["id"] for o in runner.options}
+    out = board.reshape("o", "r", 3, ROOT, runner=runner, gh=object())
+    assert out["action"] == "reshaped"
+    assert out["added"] == [STATES[-1]]
+    after = {o["name"]: o["id"] for o in runner.options}
+    for name, ident in before.items():
+        assert after[name] == ident, f"{name} was given a new id; items lose it"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-005")
+def test_a_board_already_matching_policy_is_left_alone():
+    runner = ExistingBoard(STATES)
+    out = board.reshape("o", "r", 3, ROOT, runner=runner, gh=object())
+    assert out["action"] == "unchanged"
+    assert runner.mutations == [], "an unchanged board must not be written to"
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-005")
+def test_reshaping_refuses_to_drop_an_option_items_may_hold():
+    # Removing an option clears it from every item holding it. That is a
+    # decision about those items, not a reshape.
+    runner = ExistingBoard(STATES + ["Parked"])
+    out = board.reshape("o", "r", 3, ROOT, runner=runner, gh=object())
+    assert out["action"] == "refused"
+    assert "Parked" in out["problems"][0]
+    assert runner.mutations == []
+
+
+@pytest.mark.req("REQ-GITHUB-BOARD-005")
+def test_every_flag_the_refusal_names_is_a_real_flag(monkeypatch):
+    """The refusal named --project, which the parser did not accept.
+
+    Anyone who followed the instruction got `unrecognized arguments`, and doing
+    it by hand instead is what cleared 160 items' delivery state (#163).
+    """
+    import re as _re
+
+    monkeypatch.setattr(board.inspect_target, "discover_projects",
+                        lambda *a, **k: [{"number": 3, "title": "Roadmap"}])
+    monkeypatch.setattr(board, "_is_org", lambda *a, **k: False)
+    out = board.create("o", "r", "t", ROOT, runner=Calls(), gh=object())
+    assert out["action"] == "refused"
+
+    named = set(_re.findall(r"(--[a-z-]+)", " ".join(out["problems"])))
+    assert named, "the refusal names no way forward"
+
+    source = (ROOT / "bundle/components/extensions/github-lifecycle/scripts"
+              / "board.py").read_text(encoding="utf-8")
+    declared = set(_re.findall(r'add_argument\("(--[a-z-]+)"', source))
+    assert named <= declared, (
+        f"refusal names flags the parser does not accept: "
+        f"{sorted(named - declared)}")

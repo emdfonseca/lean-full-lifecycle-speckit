@@ -15,6 +15,24 @@ ordinary repository produced a backlog nothing could transition —
 {SCRIPT} --repo <owner>/<name> [--title <title>] [--dry-run]
 ```
 
+## Adding a state to a board already in use
+
+When `state-machine.yml` gains a state, an existing board has to be given the
+option or nothing can hold it:
+
+```bash
+{SCRIPT} --repo <owner>/<name> --project <number> [--dry-run]
+```
+
+Options already present keep their **ids**. That is the whole of it: an item's
+stored value is an option id, not a name, so sending the surviving options by
+name alone makes GitHub mint new ids and every item's value dangles. Doing this
+by hand cleared the delivery state of 160 items once (#163).
+
+Removing an option the policy no longer declares is refused, not performed —
+that clears it from every item holding it, which is a decision about those
+items. A board already matching the policy is not written to at all.
+
 Explicitly invoked, never implicit. Creating a board decides where a project's
 work is tracked, and a bootstrap that did it quietly would be making that
 decision on the project's behalf.

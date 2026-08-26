@@ -2168,6 +2168,28 @@ requirements:
       - "Issue #120"
       - "Issue #104"
 
+  - id: REQ-GITHUB-BOARD-005
+    statement: >-
+      A board that already exists can be given the states the policy declares,
+      and every option it already carries keeps its id. An item's stored value
+      is an option id, not a name, so replacing the option set by name alone
+      clears the value from every item holding one. Removing an option the
+      policy no longer declares is refused rather than performed, because that
+      clears it from every item too and is a decision about those items. A
+      board already matching the policy is not written to at all. Every flag a
+      refusal names is a flag the parser accepts.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - command:speckit.github-lifecycle.board
+    verified_by:
+      - "tests/test_board.py::test_reshaping_adds_a_new_state_and_keeps_every_existing_option_id"
+      - "tests/test_board.py::test_a_board_already_matching_policy_is_left_alone"
+      - "tests/test_board.py::test_reshaping_refuses_to_drop_an_option_items_may_hold"
+      - "tests/test_board.py::test_every_flag_the_refusal_names_is_a_real_flag"
+
   - id: REQ-GITHUB-BOARD-001
     statement: >-
       An item the framework creates must be placed on the board, because

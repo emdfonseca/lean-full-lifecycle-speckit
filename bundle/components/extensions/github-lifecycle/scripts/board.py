@@ -188,8 +188,9 @@ def create(owner: str, repo: str, title: str, root: Path,
         listed = ", ".join(f"#{p['number']} {p['title']!r}" for p in existing)
         return {"action": "refused", "problems": [
             f"{owner}/{repo} is already linked to {len(existing)} board(s): "
-            f"{listed}. This creates the first one only; pass --project to use "
-            f"an existing board, or say which is authoritative."]}
+            f"{listed}. This creates the first one only. To give an existing "
+            f"board the states the policy declares, pass "
+            f"--project <number>."]}
 
     if dry_run:
         return {"action": "dry-run", "would_create": title,
@@ -344,21 +345,98 @@ def _find_field(owner: str, number: int, name: str, runner=None) -> dict | None:
 
 
 def _set_options(field: dict, options: list[str], runner=None):
-    """Replace a single-select's options with the policy's states.
+    """Give a single-select the policy's states, keeping the ids it already has.
 
     GraphQL rather than `gh project field-edit`, which does not exist. The
-    mutation replaces the whole option set, which is what is wanted: a board
-    left carrying Todo/In Progress/Done alongside the real states would let an
-    item hold a value the state machine does not know.
+    mutation replaces the whole option set, which is what is wanted for the
+    names: a board left carrying Todo/In Progress/Done alongside the real states
+    would let an item hold a value the state machine does not know.
+
+    But an option carries an **id**, and an item's stored value is that id, not
+    the name. Sending a name-only list makes GitHub mint new ids and discard the
+    old ones, so every item's value dangles and reads as empty. That is not
+    theoretical: adding one state to a live board this way cleared the delivery
+    state of 160 items (#163).
+
+    So each surviving state is sent with the id, colour and description it
+    already has, and only a genuinely new state is sent without one. On a fresh
+    board nothing matches and the behaviour is unchanged.
     """
-    listing = ", ".join(
-        '{name: "%s", color: GRAY, description: ""}' % state for state in options)
+    present = {o.get("name"): o for o in (field.get("options") or [])}
+    entries = []
+    for state in options:
+        prior = present.get(state)
+        if prior and prior.get("id"):
+            entries.append(
+                '{id: "%s", name: "%s", color: %s, description: "%s"}' % (
+                    prior["id"], state, prior.get("color") or "GRAY",
+                    (prior.get("description") or "").replace('"', "'")))
+        else:
+            entries.append('{name: "%s", color: GRAY, description: ""}' % state)
     mutation = (
         'mutation { updateProjectV2Field(input: {fieldId: "%s", '
         'singleSelectOptions: [%s]}) { projectV2Field { ... on '
-        'ProjectV2SingleSelectField { id name options { name } } } } }'
-        % (field["id"], listing))
+        'ProjectV2SingleSelectField { id name options { id name } } } } }'
+        % (field["id"], ", ".join(entries)))
     return run(["gh", "api", "graphql", "-f", f"query={mutation}"], runner)
+
+
+def reshape(owner: str, repo: str, number: int, root: Path,
+            runner=None, gh: GitHub | None = None, dry_run: bool = False) -> dict:
+    """Give an existing board the states the policy declares.
+
+    `create` refuses when a board already exists and told the caller to pass
+    `--project`, which was not a flag. So adding a state to `state-machine.yml`
+    had no supported path onto a board already in use, and doing it by hand is
+    what cost 160 items their delivery state (#163).
+    """
+    gh = gh or GitHub()
+    name, options = delivery_field(root)
+    field = _find_field(owner, number, name, runner)
+    if field is None:
+        return {"action": "refused", "problems": [
+            f"board #{number} carries no {name!r} field. This reshapes an "
+            f"existing field; it does not create one."]}
+
+    before = [o.get("name") for o in (field.get("options") or [])]
+    losing = [state for state in before if state not in options]
+    if losing:
+        return {"action": "refused", "problems": [
+            f"board #{number} carries {losing}, which "
+            f"state-machine.yml does not declare. Removing an option clears it "
+            f"from every item holding it; decide what those items should be "
+            f"first."]}
+    if before == options:
+        return {"action": "unchanged", "project": number,
+                "field": name, "options": options}
+    if dry_run:
+        return {"action": "dry-run", "project": number, "field": name,
+                "adding": [s for s in options if s not in before],
+                "keeping": before}
+
+    applied = _set_options(field, options, runner)
+    if applied.returncode != 0:
+        raise GitHubError(
+            f"could not give {name!r} the states the policy declares: "
+            f"{applied.stderr.strip()[:200]}")
+
+    after = _find_field(owner, number, name, runner)
+    got = [o.get("name") for o in (after.get("options") or [])] if after else []
+    if got != options:
+        raise GitHubError(
+            f"board #{number} carries {name!r} with {got}, not the states "
+            f"state-machine.yml declares: {options}.")
+
+    kept = {o.get("name"): o.get("id") for o in (field.get("options") or [])}
+    now = {o.get("name"): o.get("id") for o in (after.get("options") or [])}
+    moved = [n for n, i in kept.items() if now.get(n) != i]
+    if moved:
+        raise GitHubError(
+            f"board #{number}: {moved} kept their names and were given new "
+            f"ids, so every item holding one has lost its value. This is the "
+            f"failure the id pass-through exists to prevent.")
+    return {"action": "reshaped", "project": number, "field": name,
+            "added": [s for s in options if s not in before], "options": options}
 
 
 def _is_org(gh: GitHub, owner: str) -> bool:
@@ -372,6 +450,11 @@ def main() -> int:
     ap.add_argument("--title", default=None,
                     help="Board title. Defaults to the repository name.")
     ap.add_argument("--policy-root", type=Path, default=None)
+    ap.add_argument("--project", type=int, default=None,
+                    help="Reshape this existing board's delivery field to the "
+                         "states state-machine.yml declares, instead of "
+                         "creating a board. Options already present keep their "
+                         "ids, so no item loses its value.")
     ap.add_argument("--adopt", action="store_true",
                     help="Place the repository's existing open issues on the "
                          "new board. Without it they are reported and left.")
@@ -390,8 +473,12 @@ def main() -> int:
 
     owner, _, name = args.repo.partition("/")
     try:
-        result = create(owner, name, args.title or name, args.policy_root,
-                        dry_run=args.dry_run, adopt=args.adopt)
+        if args.project is not None:
+            result = reshape(owner, name, args.project, args.policy_root,
+                             dry_run=args.dry_run)
+        else:
+            result = create(owner, name, args.title or name, args.policy_root,
+                            dry_run=args.dry_run, adopt=args.adopt)
     except (GitHubError, FileNotFoundError) as exc:
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
