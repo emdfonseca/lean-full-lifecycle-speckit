@@ -1335,6 +1335,30 @@ requirements:
       - "tests/test_pilot_record.py::test_each_written_record_is_complete_but_for_the_human_verdict"
       - "tests/test_pilot_record.py::test_migration_kept_the_prose_that_always_carried_the_meaning"
 
+  - id: REQ-WORKFLOW-TIMEOUT-002
+    statement: >-
+      A prompt step's declared timeout tier is read against the work its own
+      prompt describes, not against its id. A step whose prompt tells the model
+      to apply, implement, build, remediate, refactor, or migrate is building an
+      artifact from a codebase and declares the artifact_synthesis tier. The
+      verb must open a directive, so a noun in a wrapped line does not retier a
+      step that only reads and reports. When the policy declares no
+      artifact_synthesis tier the check refuses rather than passing silently,
+      because a check that no-ops on missing input reports a coverage it does
+      not have.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-brownfield-adoption
+      - workflow:lifecycle-incident-hotfix
+      - workflow:lifecycle-prototype
+      - workflow:lifecycle-story-delivery
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-APPLY-STEP-BUDGET]"
+      - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
   - id: REQ-WORKFLOW-TIMEOUT-001
     statement: >-
       Every prompt step declares how long it may take, drawn from a named tier

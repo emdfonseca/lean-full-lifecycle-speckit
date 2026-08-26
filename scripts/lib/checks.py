@@ -431,6 +431,60 @@ def build_after_in_progress(ctx: Ctx) -> Iterator[Finding]:
                 f"asserted after the work started.")
 
 
+# Directives that change a codebase, as against ones that write a record. The
+# verb must open a sentence: `validate-adoption` says "build paths, and absence
+# of unrelated changes", where `build` is a noun in a wrapped line and matching
+# it would have retiered a step that reads and reports.
+CODE_CHANGING = re.compile(
+    r"(?:^|(?<=\. ))(Apply|Implement|Build|Remediate|Refactor|Migrate)\b")
+
+
+@check("INV-APPLY-STEP-BUDGET",
+       "A prompt step that changes a codebase is budgeted to synthesise an artifact",
+       scope="workflow")
+def apply_step_budget(ctx: Ctx) -> Iterator[Finding]:
+    """Read the declared tier against the work the step describes.
+
+    `INV-STEP-TIMEOUT-TIER` checks a tier is *a* tier, which catches a typo and
+    nothing else. `targeted-apply-approved-scope` declared `statement` -- 300s,
+    "states something, records a decision" -- and spent five minutes applying an
+    approved scope to a real repository before the runner killed it (#148).
+
+    Not inference from the step id. That was tried, and the very next step of
+    the workflow that prompted it matched no prefix and timed out anyway
+    (#117); `bootstrap-policy.yml` records the conclusion. This reads what the
+    prompt tells the model to do, which is the thing that actually costs.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    tiers = policy.get("step_timeouts") or {}
+    synthesis = tiers.get("artifact_synthesis")
+    if synthesis is None:
+        yield ctx.finding(
+            "INV-APPLY-STEP-BUDGET", "policy/bootstrap-policy.yml",
+            "step_timeouts declares no artifact_synthesis tier, so this check "
+            "has nothing to hold steps to. Refusing rather than passing "
+            "silently: a check that no-ops on missing input reports a coverage "
+            "it does not have")
+        return
+
+    for comp in ctx.inv.by_kind("workflow"):
+        for step in _steps(comp):
+            kind = step.get("type") or ("command" if step.get("command") else "prompt")
+            if kind != "prompt":
+                continue
+            text = _norm(str(step.get("prompt") or ""))
+            match = CODE_CHANGING.search(text)
+            if not match:
+                continue
+            if step.get("timeout") != synthesis:
+                yield ctx.finding(
+                    "INV-APPLY-STEP-BUDGET", f"{comp.id}:{step.get('id')}",
+                    f"tells the model to {match.group(1).lower()}, which builds "
+                    f"an artifact from a codebase, but declares "
+                    f"{step.get('timeout')!r} rather than the "
+                    f"artifact_synthesis tier ({synthesis})")
+
+
 @check("INV-STEP-TIMEOUT-TIER",
        "Every prompt step declares a timeout from a policy tier",
        scope="workflow")

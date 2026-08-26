@@ -138,7 +138,7 @@ steps:
         make the record wrong as well.'
     targeted:
     - id: targeted-apply-approved-scope
-      timeout: 300
+      timeout: 1800
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'Apply approved framework-adoption changes, then perform only the approved

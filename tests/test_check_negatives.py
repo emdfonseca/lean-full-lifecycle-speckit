@@ -21,6 +21,7 @@ import pytest
 import yaml
 
 from lib.inventory import ROOT
+from lib.checks import CODE_CHANGING, _norm
 from lib.registry import REGISTRY
 
 PRESET = "bundle/components/presets/lean-full-lifecycle-governance"
@@ -376,6 +377,24 @@ def _break_nested_write_behind_gate(tmp: Path) -> None:
     _edit_yaml(path, mutate)
 
 
+def break_apply_step_budget(tmp):
+    """Under-budget the nested apply step, where the real defect lived.
+
+    #148's step sits inside a switch case, so a top-level plant would prove the
+    check works somewhere it was never blind.
+    """
+    def mutate(d):
+        for step in d["steps"]:
+            if step.get("type") != "switch":
+                continue
+            for case in step["cases"].values():
+                for nested in case:
+                    if CODE_CHANGING.search(_norm(str(nested.get("prompt") or ""))):
+                        nested["timeout"] = 300
+                        return
+    _edit_yaml(_workflow_with_a_switch(tmp), mutate)
+
+
 # Violations planted inside a switch case rather than at the top level. The
 # top-level mutators above pass with _steps() walking only the outer list, so
 # they confirm each check exactly where it already looks.
@@ -395,6 +414,7 @@ MUTATORS = {
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
+    "INV-APPLY-STEP-BUDGET": break_apply_step_budget,
     "SEC-SHELL-NO-INTERPOLATION": break_shell_interpolation,
     "INV-GATE-VERDICT": break_gate_verdict,
     "INV-GATE-SHAPE": break_gate_shape,
@@ -454,6 +474,7 @@ WARNING_ONLY = {"INV-RELEASE-LADDER"}
 @pytest.mark.req("REQ-TOOLING-CHECKS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 @pytest.mark.req("REQ-RELEASE-LADDER-001")
+@pytest.mark.req("REQ-WORKFLOW-TIMEOUT-002")
 def test_every_check_has_a_negative_case():
     missing = set(REGISTRY) - set(MUTATORS)
     assert not missing, f"checks with no negative fixture: {sorted(missing)}"
@@ -480,6 +501,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 @pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
+@pytest.mark.req("REQ-WORKFLOW-TIMEOUT-002")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

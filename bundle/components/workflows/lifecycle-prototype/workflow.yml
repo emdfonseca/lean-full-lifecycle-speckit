@@ -46,7 +46,7 @@ steps:
       data are out of scope, and no question worth asking requires them.
 
   - id: build-prototype
-    timeout: 300
+    timeout: 1800
     type: prompt
     integration: '{{ inputs.integration }}'
     prompt: >-

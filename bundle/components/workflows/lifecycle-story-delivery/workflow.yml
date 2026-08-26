@@ -208,7 +208,7 @@ steps:
         implement and the ones you will not. Use fake or local data; production credentials and production
         data are out of scope.'
     - id: uncertainty-prototype-build
-      timeout: 300
+      timeout: 1800
       type: prompt
       integration: '{{ inputs.integration }}'
       prompt: 'Build only enough to answer the stated questions. Use the real design system where practical,
