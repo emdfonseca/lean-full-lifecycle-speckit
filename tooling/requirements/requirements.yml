@@ -210,6 +210,44 @@ requirements:
 
   # --- security --------------------------------------------------------------
 
+  - id: REQ-SECURITY-WRITEEFFECT-001
+    statement: >-
+      The list of write-effect commands is checked against the source rather
+      than maintained by hand. Every shipped script that can reach a mutating
+      GitHub call must back at least one declared write-effect command. The
+      check is script-granular, not command-granular: a script backing two
+      commands where only one writes satisfies it on the strength of the
+      writer, so a second undeclared command on the same script would pass.
+      Reachability is resolved by which function is called across a module
+      boundary, not by which module is imported, because import closure alone
+      names modules that only use a writer's read-only functions.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:tooling/invariants.yml
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-WRITE-EFFECT-DECLARED]"
+
+  - id: REQ-SECURITY-EXEMPTION-001
+    statement: >-
+      A read-only exemption suppresses an approval gate only when it survives
+      checking. The step it names must exist in the workflow it names, must
+      invoke the command the exemption claims, and must say in its own
+      instruction that it writes nothing. An exemption failing any of those is
+      reported and suppresses nothing, because two lines of configuration that
+      disable a security gate with no way to tell whether the claim is true is
+      a bypass rather than an exemption.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:tooling/invariants.yml
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-EXEMPTION-TRUTHFUL]"
+
   - id: REQ-SECURITY-SHELL-001
     statement: >-
       Workflow shell steps run only allowlisted commands and interpolate

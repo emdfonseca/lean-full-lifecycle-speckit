@@ -10,6 +10,7 @@ composition properties this bundle chooses to hold.
 """
 from __future__ import annotations
 
+import ast
 import re
 import sys
 
@@ -439,6 +440,142 @@ CODE_CHANGING = re.compile(
     r"(?:^|(?<=\. ))(Apply|Implement|Build|Remediate|Refactor|Migrate)\b")
 
 
+# The adapter's own definition, not a second one. github_api.py:37 declares
+# WRITE_METHODS and only reads are retried by default, so this is the same set
+# the runtime treats as mutating.
+GITHUB_WRITE_VERBS = frozenset({"POST", "PATCH", "PUT", "DELETE"})
+
+
+def _writing_functions(tree: ast.AST) -> set[str]:
+    """Top-level function names whose body contains a mutating verb literal."""
+    out = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for inner in ast.walk(node):
+            if isinstance(inner, ast.Call) and inner.args:
+                first = inner.args[0]
+                if isinstance(first, ast.Constant) and first.value in GITHUB_WRITE_VERBS:
+                    out.add(node.name)
+                    break
+    return out
+
+
+def _reaches_a_github_write(scripts: dict[str, Path]) -> set[str]:
+    """Script stems that can reach a mutating GitHub call.
+
+    Resolved by which FUNCTION is called across a module boundary, not by which
+    module is imported. Import closure alone over-approximates: `triage.py`
+    imports `capture` and uses only `search_duplicates`, `has_evidence` and
+    `DEFAULT_THRESHOLD`, none of which write, so treating the import as
+    reachability would demand `triage` be declared a write-effect command and
+    gate every triage step. That would be the check overstating, which is the
+    class of defect it exists to catch.
+    """
+    trees: dict[str, ast.AST] = {}
+    writers: dict[str, set[str]] = {}
+    aliases: dict[str, dict[str, str]] = {}
+
+    for stem, path in scripts.items():
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        trees[stem] = tree
+        writers[stem] = _writing_functions(tree)
+        alias: dict[str, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for a in node.names:
+                    if a.name in scripts:
+                        alias[a.asname or a.name] = a.name
+        aliases[stem] = alias
+
+    direct = {stem for stem, fns in writers.items() if fns}
+
+    # A module reaches a write when it calls a writing function of another
+    # module through its import alias. Iterate to a fixed point so a two-hop
+    # path (restructure -> retire -> the PATCH) is found.
+    reaching = set(direct)
+    for _ in range(len(scripts) + 1):
+        grown = set(reaching)
+        for stem, tree in trees.items():
+            if stem in grown:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Attribute):
+                    continue
+                owner = getattr(node.value, "id", None)
+                target = aliases.get(stem, {}).get(owner or "")
+                if target and node.attr in writers.get(target, set()):
+                    grown.add(stem)
+                    break
+        if grown == reaching:
+            break
+        reaching = grown
+    return reaching
+
+
+@check("SEC-WRITE-EFFECT-DECLARED",
+       "Every script that can reach a GitHub write backs a declared write-effect command",
+       scope="bundle")
+def write_effect_declared(ctx: Ctx) -> Iterator[Finding]:
+    """Derive the writers from source; do not take the list on trust.
+
+    `write_effect_commands` gates approvals. It was hand-maintained and became
+    a subset of what actually writes: `retire.py` PATCHed an issue to closed
+    while `retire` appeared in neither that list nor `script_backed_commands`,
+    so the gate governed a set it did not complete (#150).
+
+    SCOPE, stated because a check that overstates is the defect this repo keeps
+    finding: this verifies that a writing script backs AT LEAST ONE declared
+    write-effect command. It is script-granular, not command-granular. A script
+    backing two commands where only one writes -- `transition_plan.py`, which
+    backs `transition` and `plan` -- satisfies it on the strength of the
+    writer, and a second undeclared command on the same script would pass.
+    Command granularity needs call-graph analysis per subcommand, which this
+    does not do.
+    """
+    declared = set(ctx.invariants.get("write_effect_commands") or [])
+    if not declared:
+        yield ctx.finding(
+            "SEC-WRITE-EFFECT-DECLARED", "tooling/invariants.yml",
+            "write_effect_commands is empty or absent, so this check has "
+            "nothing to hold scripts to. Refusing rather than passing "
+            "silently")
+        return
+
+    ext = next(iter(ctx.inv.by_kind("extension")), None)
+    if ext is None:
+        return
+    script_dir = ext.path / "scripts"
+    command_dir = ext.path / "commands"
+    if not script_dir.is_dir() or not command_dir.is_dir():
+        return
+
+    scripts = {p.stem: p for p in sorted(script_dir.glob("*.py"))}
+    writers = _reaches_a_github_write(scripts)
+
+    backed: dict[str, set[str]] = {}
+    for doc in sorted(command_dir.glob("*.md")):
+        match = re.search(r"py:\s*scripts/(\S+)\.py", doc.read_text(encoding="utf-8"))
+        if match:
+            backed.setdefault(match.group(1), set()).add(
+                f"speckit.github-lifecycle.{doc.stem}")
+
+    for stem in sorted(writers):
+        commands = backed.get(stem)
+        if not commands:
+            continue  # a library, backing no command of its own
+        if commands & declared:
+            continue
+        yield ctx.finding(
+            "SEC-WRITE-EFFECT-DECLARED", f"scripts/{stem}.py",
+            f"reaches a GitHub write and backs {sorted(commands)}, none of "
+            f"which is in write_effect_commands, so the approval gate does "
+            f"not govern it")
+
+
 @check("INV-APPLY-STEP-BUDGET",
        "A prompt step that changes a codebase is budgeted to synthesise an artifact",
        scope="workflow")
@@ -803,14 +940,70 @@ def command_resolves(ctx: Ctx) -> Iterator[Finding]:
                                   f"command {cmd!r} is provided by no component")
 
 
+# A step's own instruction to write nothing. An exemption is honoured only when
+# the step it names says this, so an exemption cannot cover a step that asks for
+# a write. Prose, not proof -- but a stale or false exemption stops being silent.
+READ_ONLY_DECLARATIONS = ("read-only", "read only", "write nothing", "writes nothing")
+
+
+def _validated_exemptions(ctx: Ctx) -> tuple[set[tuple[str, str]], list[tuple[str, str, str]]]:
+    """Exemptions that survive checking, and the reasons the rest did not.
+
+    `read_only_invocations` was declared and honoured by nothing. Making it
+    load-bearing without a guard would let two lines of YAML disable an approval
+    gate with no one able to tell whether the claim was true -- so each entry is
+    checked against the step it names before it suppresses anything.
+    """
+    good: set[tuple[str, str]] = set()
+    problems: list[tuple[str, str, str]] = []
+    by_id = {c.id: c for c in ctx.inv.by_kind("workflow")}
+
+    for entry in ctx.invariants.get("read_only_invocations") or []:
+        wf, step_id = entry.get("workflow"), entry.get("step")
+        command = entry.get("command")
+        subject = f"{wf}:{step_id}"
+        comp = by_id.get(wf)
+        if comp is None:
+            problems.append((subject, "names a workflow this bundle does not ship", ""))
+            continue
+        step = next((s for s in _steps(comp) if s.get("id") == step_id), None)
+        if step is None:
+            problems.append((subject, "names a step that workflow does not define", ""))
+            continue
+        if step.get("command") != command:
+            problems.append((subject, f"claims to exempt {command!r} but the step "
+                                      f"invokes {step.get('command')!r}", ""))
+            continue
+        args = _norm(_args(step)).lower()
+        if not any(phrase in args for phrase in READ_ONLY_DECLARATIONS):
+            problems.append((subject, "exempts a step whose own instruction does not "
+                                      "say it writes nothing, so the claim cannot be "
+                                      "read back from the step it covers", ""))
+            continue
+        good.add((wf, step_id))
+    return good, problems
+
+
+@check("SEC-EXEMPTION-TRUTHFUL",
+       "Every read-only exemption names a step that declares it writes nothing",
+       scope="bundle")
+def exemption_truthful(ctx: Ctx) -> Iterator[Finding]:
+    _, problems = _validated_exemptions(ctx)
+    for subject, why, _ in problems:
+        yield ctx.finding("SEC-EXEMPTION-TRUTHFUL", subject, why)
+
+
 @check("SEC-WRITE-BEHIND-GATE", "Every state-mutating step sits behind an approval gate",
        scope="workflow")
 def write_behind_gate(ctx: Ctx) -> Iterator[Finding]:
     writes = set(ctx.invariants.get("write_effect_commands", []))
+    exempt, _ = _validated_exemptions(ctx)
     for comp in ctx.inv.by_kind("workflow"):
         steps = _steps(comp)
         for i, step in enumerate(steps):
             if step.get("command") not in writes:
+                continue
+            if (comp.id, step.get("id")) in exempt:
                 continue
             if not any(s.get("type") == "gate" for s in steps[:i]):
                 yield ctx.finding("SEC-WRITE-BEHIND-GATE", f"{comp.id}:{step.get('id')}",

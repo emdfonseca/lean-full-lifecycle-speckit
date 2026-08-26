@@ -15,15 +15,29 @@ write_effect_commands:
   - speckit.github-lifecycle.transition
   - speckit.github-lifecycle.capture
   - speckit.github-lifecycle.link
-# A write-effect command invoked in a mode that cannot write. `capture.py`
-# creates only with `--create`; the search reports candidate duplicates and
-# writes nothing. Gating it would gate the production of the very evidence the
-# gate exists to weigh. Each exemption names a single step, so adding one is a
-# reviewed decision rather than a widened rule.
+  # retire.py PATCHes an issue to closed and POSTs its reason; restructure.py
+  # reaches both create_item and retire. Neither appears as a step in any
+  # workflow today, so declaring them changes no gating -- it stops the list
+  # being a subset of what writes, which is the only thing that made it
+  # load-bearing.
+  - speckit.github-lifecycle.retire
+  - speckit.github-lifecycle.restructure
+  # decompose.py reaches capture_mod.create_item and relationships.link_child.
+  # Its writing step, `create-children`, already sits behind `approve-proposals`.
+  # Its other invocation, `read-horizon`, is read-only and is exempted below.
+  - speckit.github-lifecycle.decompose
+
+# An exemption is honoured only when the step it names says, in its own
+# instruction, that it writes nothing -- SEC-EXEMPTION-TRUTHFUL refuses one that
+# does not. Without that, two lines here would disable an approval gate and
+# nobody could tell whether the claim was true.
 read_only_invocations:
   - workflow: lifecycle-outcome-review
     step: search-for-an-existing-finding
     command: speckit.github-lifecycle.capture
+  - workflow: lifecycle-decompose
+    step: read-horizon
+    command: speckit.github-lifecycle.decompose
 
 plan_command: speckit.github-lifecycle.plan
 

@@ -398,6 +398,30 @@ def break_apply_step_budget(tmp):
 # Violations planted inside a switch case rather than at the top level. The
 # top-level mutators above pass with _steps() walking only the outer list, so
 # they confirm each check exactly where it already looks.
+def break_write_effect_declared(tmp):
+    """Undeclare a command whose script reaches a GitHub write."""
+    def mutate(d):
+        d["write_effect_commands"] = [
+            c for c in d["write_effect_commands"] if not c.endswith(".retire")]
+    _edit_yaml(tmp / "tooling/invariants.yml", mutate)
+
+
+def break_exemption_truthful(tmp):
+    """Exempt the step that actually writes, not the one that reads.
+
+    The plant that got an earlier attempt at #150 rejected: two lines of YAML
+    disabling an approval gate, with nothing able to tell whether the claim was
+    true.
+    """
+    def mutate(d):
+        d.setdefault("read_only_invocations", []).append({
+            "workflow": "lifecycle-decompose",
+            "step": "create-children",
+            "command": "speckit.github-lifecycle.decompose",
+        })
+    _edit_yaml(tmp / "tooling/invariants.yml", mutate)
+
+
 NESTED_MUTATORS = {
     "SEC-SHELL-ALLOWLIST": lambda tmp: _plant_in_first_case(
         _workflow_with_a_switch(tmp),
@@ -414,6 +438,8 @@ MUTATORS = {
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
+    "SEC-WRITE-EFFECT-DECLARED": break_write_effect_declared,
+    "SEC-EXEMPTION-TRUTHFUL": break_exemption_truthful,
     "INV-APPLY-STEP-BUDGET": break_apply_step_budget,
     "SEC-SHELL-NO-INTERPOLATION": break_shell_interpolation,
     "INV-GATE-VERDICT": break_gate_verdict,
@@ -502,6 +528,8 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-003")
 @pytest.mark.req("REQ-PACKAGE-INTERPRETER-001")
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-002")
+@pytest.mark.req("REQ-SECURITY-WRITEEFFECT-001")
+@pytest.mark.req("REQ-SECURITY-EXEMPTION-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(
