@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import subprocess
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -20,8 +21,10 @@ from lib.inventory import ROOT, load_inventory
 
 pytestmark = pytest.mark.requires_specify
 
-EXCLUDED_TOP_LEVEL = ("dist/", "tests/", "scripts/", "tooling/", ".github/",
-                      ".claude/", ".specify/", "catalogs/", "docs/", ".venv/")
+# Files that legitimately sit outside any component directory. Everything else
+# in the artifact must be under a component the inventory declares.
+BUNDLE_ROOT_FILES = frozenset({"bundle.yml", "README.md"})
+LICENCE_NAME = "LICENSE"
 
 
 @pytest.fixture(scope="module")
@@ -39,10 +42,29 @@ def artifact(tmp_path_factory):
 
 
 @pytest.mark.req("REQ-PACKAGE-ARTIFACT-001")
-def test_artifact_contains_no_development_files(artifact):
+def test_every_artifact_entry_is_declared_by_the_inventory(artifact, inv):
+    """A whitelist, because the builder honours no ignore file.
+
+    The previous blacklist named repository-root directories -- `dist/`,
+    `tests/`, `scripts/` -- but the build runs with `--path bundle/`, so those
+    prefixes can never appear in an archive entry. It guarded the old failure
+    mode, matched nothing by construction, and let anything inside `bundle/`
+    ship: a `bundle/.env.local` holding a token passed it green.
+    """
     _, names = artifact
-    leaked = [n for n in names if n.startswith(EXCLUDED_TOP_LEVEL)]
-    assert not leaked, f"development files in the published artifact: {leaked}"
+    declared = tuple(f"{c.path.relative_to(ROOT / 'bundle')}/" for c in inv.components)
+    undeclared = [
+        n for n in names
+        if not n.endswith("/")
+        and n not in BUNDLE_ROOT_FILES
+        and Path(n).name != LICENCE_NAME
+        and not n.startswith(declared)
+    ]
+    assert not undeclared, (
+        f"artifact entries no component declares: {undeclared}. "
+        f"The bundle ships whatever is under bundle/; add it to a component "
+        f"or move it out."
+    )
 
 
 def test_artifact_carries_the_manifest_and_readme(artifact):

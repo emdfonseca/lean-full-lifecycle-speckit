@@ -23,7 +23,7 @@ scenarios:
     expected: The official Spec Kit build produces one archive containing the manifest and every declared component without development files.
     status: covered
     verified_by:
-      - tests/test_packaging.py::test_artifact_contains_no_development_files
+      - tests/test_packaging.py::test_every_artifact_entry_is_declared_by_the_inventory
       - tests/test_packaging.py::test_artifact_carries_the_manifest_and_readme
       - tests/test_packaging.py::test_artifact_carries_every_component
 
