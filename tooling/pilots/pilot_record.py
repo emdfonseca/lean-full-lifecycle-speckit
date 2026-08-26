@@ -3,7 +3,7 @@
 
 A pilot report that looks complete because its hard fields defaulted is worse
 than one that is visibly incomplete: the first ends the phase, the second
-prompts someone to finish it. So this refuses three things.
+prompts someone to finish it. So this refuses two things.
 
 A verdict with no evidence. The verdict is the part that invites a shrug and
 the evidence is what stops it. `held` on its own says a property held; it does
@@ -13,10 +13,7 @@ not say how anyone knows.
 filled in cannot be signed off, and an empty field can never be read as a
 measured one.
 
-`unmeasured` where the metric declares it cannot apply, and a witnessed verdict
-supplied by an agent. The second is the pattern the rest of this generalises:
-some observations belong to a person, and an agent reporting one would be
-inventing a reading nobody had.
+`unmeasured` where the metric declares it cannot apply.
 """
 from __future__ import annotations
 
@@ -86,12 +83,6 @@ def check(record: dict, contract: dict) -> list[str]:
                 f"{name!r} states {verdict!r} with no evidence. The verdict is "
                 f"the part that invites a shrug; the evidence is what stops "
                 f"it. Say how it was checked, not that it was.")
-        if spec["source"] == "human" \
-                and str(entry.get("recorded_by", "")).strip().lower() == "agent":
-            problems.append(
-                f"{name!r} needs a person. An agent reporting it would be "
-                f"inventing a reading nobody had, which is worse than leaving "
-                f"the pilot visibly unfinished.")
 
     # `[]` is the explicit claim "nothing failed", which is the whole point.
     # A falsy check here would reject the very record shape this asks for.

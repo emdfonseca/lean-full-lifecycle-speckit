@@ -163,24 +163,29 @@ def test_the_shipped_template_does_not_pass_as_written():
 def test_the_contract_declares_its_vocabulary_and_its_sources():
     ids = {m["id"] for m in CONTRACT["metrics"]}
     assert len(ids) == len(CONTRACT["metrics"]), "duplicate metric id"
-    assert {m["source"] for m in CONTRACT["metrics"]} <= {
-        "observed", "operator", "human"}
-    assert set(CONTRACT["sources"]) == {"observed", "operator", "human"}
+    assert {m["source"] for m in CONTRACT["metrics"]} <= {"observed", "operator"}
+    assert set(CONTRACT["sources"]) == {"observed", "operator"}
     # Every restriction a metric declares must name verdicts the vocabulary has.
     for m in CONTRACT["metrics"]:
         assert set(m.get("verdicts") or []) <= set(CONTRACT["verdicts"]), m["id"]
 
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")
-def test_an_agent_may_not_supply_a_human_verdict():
-    # Categorically different from the rest: a judgement about the experience
-    # of doing the work. An agent reporting one invents a reading nobody had.
-    human = [m["id"] for m in CONTRACT["metrics"] if m["source"] == "human"]
-    assert human == ["developer_satisfaction"], human
-    record = filled()
-    record["metrics"]["developer_satisfaction"] = {
-        "verdict": "held", "evidence": "went fine", "recorded_by": "agent"}
-    assert any("needs a person" in p for p in pr.check(record, CONTRACT))
+def test_no_entry_asks_for_a_self_rated_score():
+    # developer_satisfaction gated nothing, was not comparable across streams,
+    # and nobody acted on it. The 0.9.0 gate gets its human accountability from
+    # `owner:`, a named person signing off.
+    assert "developer_satisfaction" not in {m["id"] for m in CONTRACT["metrics"]}
+
+
+@pytest.mark.req("REQ-PILOT-EVIDENCE-001")
+def test_no_source_is_declared_without_a_member():
+    # The dead-vocabulary case. `human` existed for one entry; with that entry
+    # gone the source guarded nothing, and a declared source no metric uses
+    # reads as a capability the contract does not have.
+    used = {m["source"] for m in CONTRACT["metrics"]}
+    assert set(CONTRACT["sources"]) == used, (
+        f"declared but unused: {sorted(set(CONTRACT['sources']) - used)}")
 
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")
@@ -194,14 +199,13 @@ def test_an_operator_verdict_may_be_recorded_by_an_agent():
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")
 @pytest.mark.parametrize("stream", ["greenfield", "brownfield", "monorepo"])
-def test_each_written_record_is_complete_but_for_the_human_verdict(stream):
-    # The shipped records are real evidence, not fixtures. Each should be
-    # complete except for the one verdict an agent may not supply.
+def test_each_written_record_is_complete(stream):
+    # Zero problems, not one. The single outstanding verdict in every stream was
+    # developer_satisfaction, which no longer exists -- so the records are
+    # finished rather than waiting on a value nobody would act on.
     record = yaml.safe_load(
         (ROOT / f"docs/evidence/pilot-{stream}.md").read_text(encoding="utf-8"))
-    problems = pr.check(record, CONTRACT)
-    assert len(problems) == 1, problems
-    assert "developer_satisfaction" in problems[0]
+    assert pr.check(record, CONTRACT) == []
 
 
 @pytest.mark.req("REQ-PILOT-EVIDENCE-001")

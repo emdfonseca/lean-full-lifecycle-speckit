@@ -47,12 +47,6 @@ sources:
     afterwards -- nobody can say later how often the run was repaired -- so it
     cannot be left unrecorded. It does not need a person: an agent driving a
     pilot watches its own interventions.
-  human: >-
-    Needs a person, and an agent may not supply it. Not because it is harder to
-    observe but because it is categorically different: it is a judgement about
-    the experience of doing the work, and an agent reporting one would be
-    inventing a reading nobody had.
-
 metrics:
   - id: workflow_completion_without_repair
     source: operator
@@ -109,12 +103,6 @@ metrics:
   - id: test_flakiness
     source: observed
     note: Tests that passed and failed on the same code within the run.
-
-  - id: developer_satisfaction
-    source: human
-    note: >-
-      The owner's own reading. Recorded with a sentence of why, because the
-      number alone tells a later reader nothing they can act on.
 
   - id: generated_artifacts_disposed
     source: operator

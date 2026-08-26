@@ -40,11 +40,6 @@ afterwards.
 The operator can be an agent. An agent driving a pilot observes its own
 interventions and counts them, and `recorded_by: agent` is a fair answer.
 
-`developer_satisfaction` is the one entry that needs a person. Not because it
-is harder to observe but because it is a judgement about the experience of
-doing the work, and an agent reporting one would be inventing a reading nobody
-had. The validator refuses `recorded_by: agent` on it.
-
 Evidence is required for every verdict, `held` included. The verdict is the
 part that invites a shrug; the evidence is what stops it. Three streams once
 reported `0` for out-of-scope edits by three different ad-hoc methods, which is

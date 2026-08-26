@@ -23,7 +23,6 @@ metrics:
   model_cost: {verdict: unrecorded, evidence: }
   model_runtime_minutes: {verdict: unrecorded, evidence: }
   test_flakiness: {verdict: unrecorded, evidence: }
-  developer_satisfaction: {verdict: unrecorded, evidence: , recorded_by: }
   generated_artifacts_disposed: {verdict: unrecorded, evidence: }
 
 # Every failure becomes a backlog item. One that does not is a finding the

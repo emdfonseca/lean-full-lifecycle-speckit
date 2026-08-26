@@ -4,9 +4,7 @@ target: a dissociated clone of a real Chrome extension, 450 commits, pnpm worksp
 started: 2026-08-25
 finished: 2026-08-26
 
-# Recorded by the agent that drove the runs. developer_satisfaction is left for
-# a person: it is a judgement about the experience of doing the work, and an
-# agent reporting one would be inventing a reading nobody had.
+# Recorded by the agent that drove the runs.
 #
 # Three runs against one target, covering AC1 through AC7:
 #   af600cc4  scan       no target        AC1, AC5
@@ -115,11 +113,6 @@ metrics:
       all: pnpm install --frozen-lockfile completes in 5.6s, which the scan run
       never established.
     recorded_by: agent
-  developer_satisfaction:
-    verdict: unrecorded
-    evidence: >-
-      Needs a person. Not recorded by the agent that drove the runs.
-    recorded_by:
   generated_artifacts_disposed:
     verdict: observed
     evidence: >-

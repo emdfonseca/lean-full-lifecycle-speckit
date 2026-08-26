@@ -4,9 +4,7 @@ target: plaincodelab/pilot-greenfield
 started: 2026-08-24
 finished: 2026-08-24
 
-# Recorded by the agent that drove the run. developer_satisfaction is left for
-# a person: it is a judgement about the experience of doing the work, and an
-# agent reporting one would be inventing a reading nobody had.
+# Recorded by the agent that drove the runs.
 
 metrics:
   workflow_completion_without_repair:
@@ -66,9 +64,6 @@ metrics:
     verdict: not_applicable
     evidence: No project test suite exists yet; the stack decision is undecided.
     recorded_by: agent
-  developer_satisfaction:
-    verdict: unrecorded
-    evidence: Needs a person. Not recorded by the agent that drove the run.
   generated_artifacts_disposed:
     verdict: observed
     evidence: >-

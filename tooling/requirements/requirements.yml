@@ -1344,9 +1344,9 @@ requirements:
       An absent entry is not read as an answer, an entry the contract does not
       declare is refused, an empty failure list is an explicit claim rather
       than an omission, every failure names the item tracking it, and the
-      shipped template does not validate clean. A witnessed verdict may not be
-      supplied by an agent: it is a judgement about the experience of doing the
-      work, and an agent reporting one would be inventing a reading nobody had.
+      shipped template does not validate clean. No entry asks for a self-rated
+      score, and no source is declared that no entry uses: a vocabulary with an
+      unused member reads as a capability the contract does not have.
     priority: should
     owner: product/process owner
     release: "0.9.0"
@@ -1368,9 +1368,10 @@ requirements:
       - "tests/test_pilot_record.py::test_a_failure_must_name_the_item_tracking_it"
       - "tests/test_pilot_record.py::test_the_shipped_template_does_not_pass_as_written"
       - "tests/test_pilot_record.py::test_the_contract_declares_its_vocabulary_and_its_sources"
-      - "tests/test_pilot_record.py::test_an_agent_may_not_supply_a_human_verdict"
+      - "tests/test_pilot_record.py::test_no_entry_asks_for_a_self_rated_score"
+      - "tests/test_pilot_record.py::test_no_source_is_declared_without_a_member"
       - "tests/test_pilot_record.py::test_an_operator_verdict_may_be_recorded_by_an_agent"
-      - "tests/test_pilot_record.py::test_each_written_record_is_complete_but_for_the_human_verdict"
+      - "tests/test_pilot_record.py::test_each_written_record_is_complete"
       - "tests/test_pilot_record.py::test_migration_kept_the_prose_that_always_carried_the_meaning"
 
   - id: REQ-WORKFLOW-TIMEOUT-002

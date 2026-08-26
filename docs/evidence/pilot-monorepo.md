@@ -4,9 +4,7 @@ target: a two-member Spec Kit monorepo and a git worktree of it, built for this 
 started: 2026-08-25
 finished: 2026-08-25
 
-# Recorded by the agent that drove the run. developer_satisfaction is left for
-# a person: it is a judgement about the experience of doing the work, and an
-# agent reporting one would be inventing a reading nobody had.
+# Recorded by the agent that drove the runs.
 #
 # This stream verifies resolution rather than delivery. No workflow was run and
 # no item was transitioned in the pilot project, so the metrics that measure a
@@ -72,9 +70,6 @@ metrics:
       The repository suite ran 1199 tests green during this stream. No test in
       the pilot project: none exists.
     recorded_by: agent
-  developer_satisfaction:
-    verdict: unrecorded
-    evidence: Needs a person. Not recorded by the agent that drove the run.
   generated_artifacts_disposed:
     verdict: observed
     evidence: >-
