@@ -3068,3 +3068,40 @@ requirements:
       - "tests/test_retire.py::test_the_read_back_still_guards_a_real_retirement"
     evidence:
       - "Issue #149"
+  - id: REQ-CORE-RATCHET-002
+    statement: >-
+      A ratchet baseline records what it measured, and is compared only with a
+      run under the same conditions. A run that states no conditions is
+      refused, and so is a baseline that records none, rather than being
+      compared against. A gate holds a baseline per set of conditions, so
+      widening what is measured establishes its own baseline instead of reading
+      as a regression, and narrowing it cannot move the baseline the project is
+      held to. The recorder writes exactly the fields quality-gates.yml
+      declares, so a field added to the policy cannot leave the checker writing
+      the old set.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/ratchet.py
+      - command:speckit.github-lifecycle.ratchet
+      - policy:quality-gates.yml
+    verified_by:
+      - "tests/test_ratchet.py::test_a_baseline_recording_no_scope_is_refused_rather_than_compared"
+      - "tests/test_ratchet.py::test_an_unscoped_baseline_is_not_silently_treated_as_no_baseline"
+      - "tests/test_ratchet.py::test_a_run_that_states_no_conditions_is_refused"
+      - "tests/test_ratchet.py::test_widening_what_is_measured_is_not_a_regression"
+      - "tests/test_ratchet.py::test_a_run_under_other_conditions_says_what_it_did_not_compare_against"
+      - "tests/test_ratchet.py::test_narrowing_what_is_measured_does_not_move_the_wider_baseline"
+      - "tests/test_ratchet.py::test_two_conditions_for_one_gate_are_held_separately"
+      - "tests/test_ratchet.py::test_a_run_is_compared_against_the_baseline_for_its_own_conditions"
+      - "tests/test_ratchet.py::test_loosening_names_which_baseline_it_loosens"
+      - "tests/test_ratchet.py::test_the_policy_declares_that_a_baseline_records_its_scope"
+      - "tests/test_ratchet.py::test_the_recorder_writes_exactly_the_fields_the_policy_declares"
+      - "tests/test_ratchet.py::test_a_declared_field_the_recorder_cannot_produce_is_refused"
+      - "tests/test_ratchet.py::test_the_command_line_records_the_conditions_it_measured"
+      - "tests/test_ratchet.py::test_the_command_line_refuses_a_run_that_states_no_conditions"
+      - "tests/test_ratchet.py::test_the_command_documents_what_a_baseline_must_say_it_measured"
+    evidence:
+      - "Issue #142"

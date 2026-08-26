@@ -397,7 +397,9 @@ steps:
   integration: '{{ inputs.integration }}'
   input:
     args: 'Run the ratchet for every gate quality-gates.yml declares ratcheted, with
-      the number this verification produced and --produced-by naming the commit. Report
+      the number this verification produced, --produced-by naming the commit, and --conditions
+      naming what that number covered. A run that states no conditions is refused, because
+      a baseline of one scope cannot be compared with a measurement of another. Report
       baseline_established as a baseline and never as a pass: a first run that reports
       a pass makes every later comparison meaningless. On a refusal, report the gate,
       the baseline, and the measurement, and do not re-run hoping for a different number.'

@@ -54,7 +54,12 @@ ratchet:
 
   # What a baseline entry must carry. `produced_by` is what makes an improved
   # baseline reviewable: a number with no provenance cannot be argued with.
-  baseline_fields: [value, recorded_at, produced_by]
+  # `conditions` is what the number covered — the coverage glob, the database
+  # backend, the analyser's rule set. Without it, widening what is measured
+  # reads as a regression and narrowing it reads as an improvement the ratchet
+  # then enforces. A baseline is compared only against a run whose conditions
+  # match; a run under other conditions gets its own baseline.
+  baseline_fields: [value, recorded_at, produced_by, conditions]
 
   first_run:
     # A first run that reports a pass makes every later comparison meaningless,
