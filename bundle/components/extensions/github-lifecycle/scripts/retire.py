@@ -143,6 +143,18 @@ def retire(gh: GitHub, repo: str, issue: int, reason: str, route: str,
     gh.rest("PATCH", f"repos/{repo}/issues/{issue}",
             body={"state": "closed", "state_reason": routes[route]})
 
+    if getattr(gh, "dry_run", False):
+        # Nothing was written, so there is nothing to read back. Verifying the
+        # close here would read the untouched issue and report the deliberate
+        # skip as a failed write, which made previewing a retirement the one
+        # path that could never succeed.
+        return {
+            "issue": issue, "action": "dry-run", "dry_run": True,
+            "route": route, "state_reason": routes[route],
+            "superseded_by": superseded_by, "reason": reason.strip(),
+            "delivery_state_unchanged": True,
+        }
+
     check = gh.rest("GET", f"repos/{repo}/issues/{issue}") or {}
     if check.get("state") != "closed" or check.get("state_reason") != routes[route]:
         raise GitHubError(

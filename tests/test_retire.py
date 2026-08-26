@@ -193,3 +193,90 @@ def test_a_write_that_does_not_take_is_reported():
     repo = Stubborn()
     with pytest.raises(gh_api.GitHubError, match="did not take"):
         rt.retire(client(repo), "o/r", 1, "x", "not_planned", machine=MACHINE)
+
+
+def preview(repo):
+    return gh_api.GitHub(runner=repo, sleep=lambda _: None, max_attempts=1,
+                         dry_run=True)
+
+
+@pytest.mark.req("REQ-BACKLOG-RETIRE-002")
+def test_a_dry_run_previews_the_retirement_without_writing():
+    # The preview is the safe way to check a retirement before making it, so
+    # it must not verify a write it deliberately did not make.
+    repo = Repo()
+    gh = preview(repo)
+    result = rt.retire(gh, "o/r", 1, "checking the preview", "not_planned",
+                       machine=MACHINE)
+    assert result["action"] == "dry-run"
+    assert result["route"] == "not_planned"
+    assert result["state_reason"] == "not_planned"
+    assert result["reason"] == "checking the preview"
+    assert repo.patched == {} and repo.comments == []
+    # Asserted after the call, so this cannot pass by a dry run that skipped
+    # the read-back and closed the issue anyway.
+    assert repo.issues[1] == "open", "a dry run closed the issue"
+    outcomes = {(r.operation, r.outcome) for r in gh.audit}
+    assert ("PATCH repos/o/r/issues/1", "dry-run") in outcomes, \
+        "the call it would have made was not described"
+
+
+@pytest.mark.req("REQ-BACKLOG-RETIRE-002")
+def test_a_dry_run_supersession_names_the_successor_without_writing():
+    repo = Repo()
+    result = rt.retire(preview(repo), "o/r", 1, "same work as #2", "duplicate",
+                       superseded_by=2, machine=MACHINE)
+    assert result["action"] == "dry-run"
+    assert result["superseded_by"] == 2
+    assert result["state_reason"] == "duplicate"
+    assert repo.comments == [] and repo.patched == {}
+    assert repo.issues[1] == "open" and repo.issues[2] == "open"
+
+
+@pytest.mark.req("REQ-BACKLOG-RETIRE-002")
+def test_a_dry_run_exits_zero(monkeypatch, capsys):
+    # Exit 1 is what made the preview unusable: the one safe way to check a
+    # retirement before making it was the one path that always failed.
+    repo = Repo()
+    monkeypatch.setattr(sys, "argv", [
+        "retire.py", "--repo", "o/r", "--issue", "1", "--route", "not_planned",
+        "--reason", "checking the preview", "--dry-run",
+        "--policy-root", str(ROOT)])
+    monkeypatch.setattr(
+        rt, "GitHub",
+        lambda **kw: gh_api.GitHub(runner=repo, sleep=lambda _: None,
+                                   max_attempts=1,
+                                   dry_run=kw.get("dry_run", False)))
+    assert rt.main() == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["action"] == "dry-run"
+    assert repo.issues[1] == "open"
+
+
+@pytest.mark.req("REQ-BACKLOG-RETIRE-002")
+def test_a_dry_run_still_refuses_what_a_real_retirement_refuses():
+    # A preview reporting a retirement the real command would reject is worse
+    # than no preview.
+    repo = Repo(issues={1: "open", 2: "open", 3: "open"}, children={1: [2, 3]})
+    result = rt.retire(preview(repo), "o/r", 1, "not needed", "not_planned",
+                       machine=MACHINE)
+    assert result["action"] == "refused"
+    assert any("open children [2, 3]" in p for p in result["problems"])
+
+
+@pytest.mark.req("REQ-BACKLOG-RETIRE-002")
+def test_the_read_back_still_guards_a_real_retirement():
+    # The dry-run exemption must not have removed the check from the path
+    # that actually writes.
+    class Stubborn(Repo):
+        def __call__(self, args, stdin):
+            method = args[args.index("--method") + 1] if "--method" in args else "GET"
+            url = (args[args.index("--method") + 2] if "--method" in args
+                   else args[args.index("api") + 1]).split("?")[0]
+            if "/issues/" in url and method == "PATCH":
+                return self._ok({"number": 1})          # accepted, changed nothing
+            return super().__call__(args, stdin)
+
+    with pytest.raises(gh_api.GitHubError, match="did not take"):
+        rt.retire(client(Stubborn()), "o/r", 1, "x", "not_planned",
+                  machine=MACHINE)

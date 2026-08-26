@@ -14,8 +14,13 @@ earn is how a board starts recording fiction.
 ```bash
 {SCRIPT} \
   --issue <n> --route <not_planned|duplicate> --reason "<why>" \
-  [--superseded-by <n>]
+  [--superseded-by <n>] [--dry-run]
 ```
+
+`--dry-run` applies every refusal, describes the calls it would make, writes
+nothing, and reports the route and reason it would have applied. It does not
+read back a close it did not perform, so the preview is usable before the
+retirement rather than only after it.
 
 ## Report
 
