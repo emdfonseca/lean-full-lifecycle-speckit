@@ -8,8 +8,22 @@ scripts:
 
 End an item without delivering it. `state-machine.yml` declares the routes:
 `not_planned` for work decided against, `duplicate` for work another item now
-carries. Both set no delivery state, because requiring one the work did not
-earn is how a board starts recording fiction.
+carries. Neither sets a delivery state, because requiring one the work did not
+earn is how a board starts recording fiction — and because `transition` is the
+only command that writes one, so a second route here would be unaudited.
+
+**The delivery state is moved separately, to `Retired`.** An item abandoned at
+`Refining` or `In Progress` and left there goes on claiming somebody is working
+on it, which the audit reports and no forward transition can fix (#160). So a
+retirement is two audited steps:
+
+```bash
+{SCRIPT-plan} --issue <n> --to Retired --out <plan>   # then apply it
+{SCRIPT} --issue <n> --route <route> --reason "<why>"
+```
+
+Order matters: move first, then close. `Retired` is terminal, so nothing
+follows it.
 
 ```bash
 {SCRIPT} \

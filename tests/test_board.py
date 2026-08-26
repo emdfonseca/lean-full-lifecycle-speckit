@@ -13,7 +13,7 @@ import sys
 
 import pytest
 
-from lib.inventory import ROOT
+from lib.inventory import ROOT, load_yaml
 
 SCRIPTS = ROOT / "bundle/components/extensions/github-lifecycle/scripts"
 
@@ -44,8 +44,11 @@ class Calls:
         self.args: list[list[str]] = []
         self.fail_at = fail_at
         self.has_status = has_status
-        self.options = list(options) if options is not None else [
-            "Inbox", "Refining", "Ready", "In Progress", "Output Done"]
+        # Default to whatever the machine declares, so a state added to policy
+        # does not silently leave this stub describing a board that could not
+        # hold it.
+        self.options = list(options) if options is not None else list(
+            load_yaml(ROOT / "policy/state-machine.yml")["delivery_status"]["values"])
         self.reshaped = False
         self.on_board: list[int] = []
 

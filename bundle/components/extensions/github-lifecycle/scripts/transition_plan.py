@@ -294,17 +294,25 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
 def states_asserting_work(machine: dict) -> list[str]:
     """Delivery states that claim somebody is working on the item right now.
 
-    Everything strictly between the entry state and the terminal one. `Inbox`
-    asserts nothing beyond existence and `Output Done` asserts completion, so
-    a closed item resting at either end says nothing false. The states in
-    between say work is under way, which a closed item cannot make true.
+    Everything that is neither the entry state nor a terminal one. `Inbox`
+    asserts nothing beyond existence, `Output Done` asserts completion and
+    `Retired` asserts abandonment, so a closed item resting at any of those
+    says nothing false. The states in between say work is under way, which a
+    closed item cannot make true.
 
-    Derived from the machine's order rather than named here, for the reason
+    Terminal states are read from the machine, not counted from the end. This
+    was `values[1:-1]`, which silently encoded "one terminal, and it is last";
+    adding `Retired` made `Output Done` assert work and would have flagged
+    every completed item (#160).
+
+    Still derived rather than named here, for the reason
     `closure_exempt_reasons` gives: a second copy of the policy is the copy
     that drifts.
     """
     values = list(machine["delivery_status"]["values"])
-    return values[1:-1]
+    terminal = set(machine["delivery_status"].get("terminal_states") or values[-1:])
+    entry = values[0]
+    return [v for v in values if v != entry and v not in terminal]
 
 
 def closure_exempt_reasons(machine: dict) -> set[str]:

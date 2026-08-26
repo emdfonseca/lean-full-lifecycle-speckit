@@ -60,7 +60,8 @@ ROLE_CANDIDATES: dict[str, tuple[str, ...]] = {
 }
 
 # Must agree with policy/state-machine.yml. tests/test_inspect.py enforces that.
-DELIVERY_STATES = ("Inbox", "Refining", "Ready", "In Progress", "Output Done")
+DELIVERY_STATES = ("Inbox", "Refining", "Ready", "In Progress", "Output Done",
+                   "Retired")
 
 REQUIRED_ROLES = ("delivery_state",)
 

@@ -504,6 +504,33 @@ requirements:
       - "tests/test_field_backend.py::test_write_returns_the_value_it_verified"
       - "tests/test_field_backend.py::test_replaying_an_id_after_the_value_moved_on_is_a_conflict"
 
+  - id: REQ-STATE-RETIRED-001
+    statement: >-
+      Retirement has a terminal state to reach. An item abandoned at any live
+      state can move to Retired, and nothing follows Retired: reviving
+      abandoned work is a new item, not a reopening. The delivery state is
+      written by transition and not by retire, so a retirement is two audited
+      steps rather than one command with a second unaudited write path. States
+      that assert work are read from the machine's declared terminal states,
+      not counted from the end of its values list, so adding a terminal state
+      does not silently make the previous one assert work.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:state-machine.yml
+      - command:speckit.github-lifecycle.retire
+    verified_by:
+      - "tests/test_transition.py::test_retired_is_a_declared_terminal_state"
+      - "tests/test_transition.py::test_every_live_state_can_reach_retired[Inbox]"
+      - "tests/test_transition.py::test_every_live_state_can_reach_retired[Refining]"
+      - "tests/test_transition.py::test_every_live_state_can_reach_retired[Ready]"
+      - "tests/test_transition.py::test_every_live_state_can_reach_retired[In Progress]"
+      - "tests/test_transition.py::test_nothing_follows_retired"
+      - "tests/test_transition.py::test_a_terminal_state_does_not_assert_work"
+      - "tests/test_transition.py::test_asserting_work_is_read_from_the_machine_not_counted_from_the_end"
+
   - id: REQ-STATE-OUTPUT-001
     statement: >-
       Output Done and Outcome Status are independent. Completing engineering

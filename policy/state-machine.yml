@@ -29,6 +29,14 @@ delivery_status:
     - Ready
     - In Progress
     - Output Done
+    - Retired
+  # Which states end an item. Declared rather than inferred from position:
+  # `states_asserting_work` read `values[1:-1]`, which silently encoded "one
+  # terminal, last". Adding a second made `Output Done` assert work and would
+  # have flagged every completed item (#160).
+  terminal_states:
+    - Output Done
+    - Retired
   transitions:
     - from: null
       to: Inbox
@@ -59,6 +67,26 @@ delivery_status:
       to: In Progress
       authority: engineering_authority
       evidence: [reopen_reason]
+    # Retirement ends an item that was never delivered. Reachable from every
+    # live state, because work is abandoned wherever it happened to be -- and
+    # leaving it where it was is how a closed item goes on claiming somebody is
+    # working on it (#160).
+    - from: Inbox
+      to: Retired
+      authority: triager_or_assigned_team
+      evidence: [retirement_route, retirement_reason]
+    - from: Refining
+      to: Retired
+      authority: triager_or_assigned_team
+      evidence: [retirement_route, retirement_reason]
+    - from: Ready
+      to: Retired
+      authority: product_or_refinement_authority
+      evidence: [retirement_route, retirement_reason]
+    - from: In Progress
+      to: Retired
+      authority: assigned_engineering_owner
+      evidence: [retirement_route, retirement_reason]
 
 outcome_status:
   values:

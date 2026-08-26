@@ -897,9 +897,14 @@ def test_a_closed_blocker_no_longer_blocks():
 
 @pytest.mark.req("REQ-BACKLOG-BLOCKED-001")
 def test_the_state_machine_gains_no_state():
+    # A guard against casual growth, not against growth. `Retired` was added
+    # deliberately in #160: a retirement left an item at Refining or In
+    # Progress, the audit correctly reported that it claimed work under way,
+    # and no forward transition could fix it. Blocking is still not a state --
+    # that is the property this test exists for (ADR 0004).
     machine = tp.load_state_machine(ROOT)
     assert machine["delivery_status"]["values"] == [
-        "Inbox", "Refining", "Ready", "In Progress", "Output Done"]
+        "Inbox", "Refining", "Ready", "In Progress", "Output Done", "Retired"]
     assert machine["blocking"]["changes_delivery_status"] is False
 
 
@@ -1175,3 +1180,52 @@ def test_the_states_that_claim_work_come_from_the_machine():
     values = machine["delivery_status"]["values"]
     assert values[0] not in tp.states_asserting_work(machine)
     assert values[-1] not in tp.states_asserting_work(machine)
+
+
+# --- retirement has a terminal state to reach --------------------------------
+
+@pytest.mark.req("REQ-STATE-RETIRED-001")
+def test_retired_is_a_declared_terminal_state():
+    ds = MACHINE["delivery_status"]
+    assert "Retired" in ds["values"]
+    assert "Retired" in ds["terminal_states"]
+
+
+@pytest.mark.req("REQ-STATE-RETIRED-001")
+@pytest.mark.parametrize("state", ["Inbox", "Refining", "Ready", "In Progress"])
+def test_every_live_state_can_reach_retired(state):
+    # Work is abandoned wherever it happened to be. A route from only some
+    # states would leave the rest stuck, which is the defect (#160).
+    edges = {(t["from"], t["to"]) for t in MACHINE["delivery_status"]["transitions"]}
+    assert (state, "Retired") in edges
+
+
+@pytest.mark.req("REQ-STATE-RETIRED-001")
+def test_nothing_follows_retired():
+    # Terminal means terminal. Output Done has a reopen edge deliberately;
+    # abandonment has no equivalent -- reviving abandoned work is a new item.
+    outgoing = [t["to"] for t in MACHINE["delivery_status"]["transitions"]
+                if t["from"] == "Retired"]
+    assert outgoing == []
+
+
+@pytest.mark.req("REQ-STATE-RETIRED-001")
+def test_a_terminal_state_does_not_assert_work():
+    # The regression this guards: states_asserting_work read `values[1:-1]`,
+    # which encoded "one terminal, and it is last". Adding Retired made Output
+    # Done assert work, which would have flagged every completed item.
+    asserting = tp.states_asserting_work(MACHINE)
+    assert "Output Done" not in asserting
+    assert "Retired" not in asserting
+    assert "Inbox" not in asserting
+    assert asserting == ["Refining", "Ready", "In Progress"]
+
+
+@pytest.mark.req("REQ-STATE-RETIRED-001")
+def test_asserting_work_is_read_from_the_machine_not_counted_from_the_end():
+    # Same machine with a further terminal appended: the answer must not change.
+    import copy
+    extended = copy.deepcopy(MACHINE)
+    extended["delivery_status"]["values"].append("Archived")
+    extended["delivery_status"]["terminal_states"].append("Archived")
+    assert tp.states_asserting_work(extended) == tp.states_asserting_work(MACHINE)
