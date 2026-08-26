@@ -312,6 +312,7 @@ requirements:
       - "tests/test_github_api.py::test_secrets_never_reach_the_audit_log"
       - "tests/test_github_api.py::test_the_exception_message_is_redacted_too"
       - "tests/test_github_api.py::test_every_call_is_audited"
+      - "tests/test_github_api.py::test_every_free_text_audit_field_is_redacted"
 
   - id: REQ-GITHUB-INSPECT-001
     statement: >-

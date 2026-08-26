@@ -97,12 +97,12 @@ class AuditRecord:
 
     def to_json(self) -> str:
         return json.dumps({
-            "operation": self.operation,
+            "operation": redact(self.operation),
             "target": redact(self.target),
             "outcome": self.outcome,
             "attempts": self.attempts,
             "dry_run": self.dry_run,
-            "operation_id": self.operation_id,
+            "operation_id": redact(self.operation_id or "") or None,
             "detail": redact(self.detail)[:2000],
         }, sort_keys=True)
 

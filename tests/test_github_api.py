@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+from dataclasses import replace
 import sys
 import subprocess
 from pathlib import Path
@@ -185,14 +186,34 @@ def test_graphql_operation_name_is_audited():
     "github_pat_11ABCDEFG0123456789_abcdefghij",
     "Authorization: Bearer sk-live-abcdef",
 ])
-def test_secrets_never_reach_the_audit_log(secret, tmp_path):
+@pytest.mark.parametrize("route", ["stderr", "path"])
+def test_secrets_never_reach_the_audit_log(secret, route, tmp_path):
+    # Parametrised over the route as well as the shape. Testing only stderr let
+    # `operation` ship unredacted while `target`, built from the same path
+    # string, was masked beside it.
     path = tmp_path / "audit.jsonl"
-    c = client(fake(stderr=f"failed: {secret}", returncode=1), max_attempts=1, audit_path=path)
+    stderr = f"failed: {secret}" if route == "stderr" else "failed"
+    endpoint = "x" if route == "stderr" else f"x?token={secret}"
+    c = client(fake(stderr=stderr, returncode=1), max_attempts=1, audit_path=path)
     with pytest.raises(gh_api.GitHubError):
-        c.rest("GET", "x")
+        c.rest("GET", endpoint)
     written = path.read_text(encoding="utf-8")
     assert secret not in written
     assert "[redacted]" in written
+
+
+@pytest.mark.req("REQ-SECURITY-AUDIT-001")
+@pytest.mark.parametrize("field", ["operation", "target", "detail"])
+def test_every_free_text_audit_field_is_redacted(field):
+    # One case per field that carries caller-supplied text, so removing any
+    # single redact() call fails a test rather than none.
+    secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+    record = gh_api.AuditRecord(
+        operation="GET x", target="x", outcome="failed", attempts=1,
+        dry_run=False, operation_id="op-1", detail="")
+    written = json.loads(replace(record, **{field: f"carrying {secret}"}).to_json())
+    assert secret not in json.dumps(written)
+    assert "[redacted]" in written[field]
 
 
 @pytest.mark.req("REQ-SECURITY-AUDIT-001")
