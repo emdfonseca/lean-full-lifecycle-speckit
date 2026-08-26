@@ -226,6 +226,7 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ALLOWLIST]"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-NO-INTERPOLATION]"
+      - "tests/test_check_negatives.py::test_check_detects_a_violation_nested_in_a_switch_case"
 
   - id: REQ-SECURITY-GATE-001
     statement: >-
@@ -242,6 +243,7 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-WRITE-BEHIND-GATE]"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-GATE-VERDICT]"
+      - "tests/test_check_negatives.py::test_check_detects_a_violation_nested_in_a_switch_case"
 
   - id: REQ-SECURITY-EXTCONFIG-001
     statement: >-
