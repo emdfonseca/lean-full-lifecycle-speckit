@@ -2781,6 +2781,25 @@ requirements:
     evidence:
       - "Issue #82"
 
+  - id: REQ-TOOLING-FAILCLOSED-001
+    statement: >-
+      A registered check whose declared input is absent, empty, or whose key has
+      been renamed reports that and fails the build. It does not return
+      silently. A check that no-ops on a missing input reports a coverage it
+      does not have, and the build says zero errors while the property it guards
+      goes unchecked. This is distinct from a check with nothing to say about a
+      well-formed bundle: a bundle carrying no extension is a true no-op, and
+      INV-SINGLE-EXTENSION owns that failure, whereas an empty tier list because
+      someone renamed step_timeouts is a broken input.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:scripts/lib/checks.py
+    verified_by:
+      - "tests/test_check_negatives.py::test_a_check_refuses_a_missing_input"
+
   - id: REQ-TOOLING-ASSERT-001
     statement: >-
       The suite must not count an assertion that cannot fail as coverage.

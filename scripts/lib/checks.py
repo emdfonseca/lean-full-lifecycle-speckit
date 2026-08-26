@@ -214,6 +214,12 @@ def release_ladder(ctx: Ctx) -> Iterator[Finding]:
     requirements = load_yaml(ctx.root / "tooling/requirements/requirements.yml") or {}
     reqs = requirements.get("requirements") or []
     if not reqs:
+        yield ctx.finding(
+            "INV-RELEASE-LADDER", "tooling/requirements/requirements.yml",
+            "the requirements list is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
 
     def parts(version: str) -> tuple[int, ...]:
@@ -356,6 +362,12 @@ def untrusted_no_command_interpolation(ctx: Ctx) -> Iterator[Finding]:
     policy = load_yaml(ctx.root / "policy" / "agent-policy.yml") or {}
     sources = {str(s) for s in (policy.get("untrusted_inputs") or [])}
     if not sources:
+        yield ctx.finding(
+            "SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION", "policy/agent-policy.yml",
+            "untrusted_inputs is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
     # `{{ ... issue_body ... }}` and friends: the untrusted source named
     # inside an interpolation, not merely mentioned in prose.
@@ -404,6 +416,12 @@ def build_after_in_progress(ctx: Ctx) -> Iterator[Finding]:
         if "work_started" in (edge.get("evidence") or []):
             start = edge["to"]
     if not start:
+        yield ctx.finding(
+            "INV-BUILD-AFTER-IN-PROGRESS", "policy/state-machine.yml",
+            "the In Progress state is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
 
     building = {"speckit.implement"}
@@ -642,6 +660,12 @@ def step_timeout_tier(ctx: Ctx) -> Iterator[Finding]:
     policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
     tiers = policy.get("step_timeouts") or {}
     if not tiers:
+        yield ctx.finding(
+            "INV-STEP-TIMEOUT-TIER", "policy/bootstrap-policy.yml",
+            "step_timeouts is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
     allowed = {value for value in tiers.values() if isinstance(value, int)}
 
@@ -732,6 +756,12 @@ def role_reachable(ctx: Ctx) -> Iterator[Finding]:
     matrix = load_yaml(ctx.root / "tooling" / "compatibility.yml") or {}
     backends = matrix.get("backends") or {}
     if not backends:
+        yield ctx.finding(
+            "INV-ROLE-REACHABLE", "tooling/compatibility.yml",
+            "backends is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
 
     # The role names come from the matrix itself, because the role-to-field
@@ -789,6 +819,12 @@ def bootstrap_documents(ctx: Ctx) -> Iterator[Finding]:
     contract = policy.get("product_documents") or {}
     required = contract.get("required") or []
     if not required:
+        yield ctx.finding(
+            "INV-BOOTSTRAP-DOCUMENTS", "policy/bootstrap-policy.yml",
+            "the required-documents list is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
 
     for spec in required:
@@ -1116,6 +1152,12 @@ def command_script_backed(ctx: Ctx) -> Iterator[Finding]:
 
     required = set(ctx.invariants.get("script_backed_commands", []) or [])
     if not required:
+        yield ctx.finding(
+            "SEC-COMMAND-SCRIPT-BACKED", "tooling/invariants.yml",
+            "script_backed_commands is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
     ext = ctx.inv.extension
     for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
@@ -1277,6 +1319,12 @@ def compat_claims(ctx: Ctx) -> Iterator[Finding]:
     # could not make it fail.
     matrix = ctx.root / "tooling/compatibility.yml"
     if not matrix.is_file():
+        yield ctx.finding(
+            "PUB-COMPAT-CLAIM", "docs/compatibility.md",
+            "the compatibility matrix is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
     compat = load_yaml(matrix)
 
@@ -1320,6 +1368,12 @@ def script_flavour(ctx: Ctx) -> Iterator[Finding]:
     flavours = policy.get("script_flavours") or {}
     provided = set(flavours.get("provided") or [])
     if not provided:
+        yield ctx.finding(
+            "INV-SCRIPT-FLAVOUR", "policy/bootstrap-policy.yml",
+            "script_flavours.provided is absent or empty, so this check has nothing to "
+            "hold anything to. Refusing rather than passing silently: a "
+            "check that no-ops on a missing input reports a coverage it "
+            "does not have")
         return
 
     suffixes = {"py": ".py", "sh": ".sh", "ps1": ".ps1"}

@@ -600,3 +600,47 @@ def test_check_detects_a_violation_nested_in_a_switch_case(check_id, bundle_copy
         f"{check_id} did not fire on a violation nested in a switch case; "
         f"errors={payload['errors']} warnings={payload['warnings']}"
     )
+
+
+# --- checks must refuse a missing input, not no-op on it ----------------------
+
+# Each entry: the check, the file its input lives in, and the key that holds it.
+# Deleting the key must make the check fire. Before this, every one of them
+# returned silently and `make validate` reported 0 errors while the check that
+# would have caught the violation never ran.
+FAIL_CLOSED = [
+    ("INV-SCRIPT-FLAVOUR", "policy/bootstrap-policy.yml", "script_flavours"),
+    ("SEC-COMMAND-SCRIPT-BACKED", "tooling/invariants.yml", "script_backed_commands"),
+    ("INV-BOOTSTRAP-DOCUMENTS", "policy/bootstrap-policy.yml", "product_documents"),
+    ("INV-ROLE-REACHABLE", "tooling/compatibility.yml", "backends"),
+    ("INV-STEP-TIMEOUT-TIER", "policy/bootstrap-policy.yml", "step_timeouts"),
+    ("SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION", "policy/agent-policy.yml", "untrusted_inputs"),
+]
+
+
+@pytest.mark.req("REQ-TOOLING-FAILCLOSED-001")
+@pytest.mark.parametrize("check_id,policy_file,key", FAIL_CLOSED,
+                         ids=[c[0] for c in FAIL_CLOSED])
+def test_a_check_refuses_a_missing_input(check_id, policy_file, key, bundle_copy):
+    """A check whose input is gone must say so, not report a clean run.
+
+    The failure this pins: rename the key and the check returns silently, so the
+    build stays green while the property it guards goes unchecked. Two of these
+    are security checks.
+    """
+    target = bundle_copy / policy_file
+    if not target.is_file():
+        raise AssertionError(f"{policy_file} is missing; this fixture cannot run")
+    _edit_yaml(target, lambda d: d.pop(key, None))
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/validate_source.py"),
+         "--root", str(bundle_copy), "--only", check_id,
+         "--strict-publish", "--format", "json"],
+        text=True, capture_output=True,
+    )
+    payload = json.loads(r.stdout)
+    reported = {f["check_id"] for f in payload["errors"]}
+    assert check_id in reported, (
+        f"{check_id} stayed silent with {key!r} removed from {policy_file}; "
+        f"errors={payload['errors']}"
+    )
