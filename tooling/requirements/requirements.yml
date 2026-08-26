@@ -1446,6 +1446,30 @@ requirements:
       - "Issue #114"
       - "Issue #103"
 
+  - id: REQ-SECURITY-ROUTING-002
+    statement: >-
+      An integration that declares no inventory command does not route by role:
+      its steps run on the model the session already uses, and no id is
+      verified because none is chosen. That is a capability the integration
+      does not have, and is distinct from an inventory that could have been
+      read and was not, which refuses. Collapsing the two made role-based
+      routing impossible under an integration the compatibility matrix claims,
+      by construction rather than by defect. A missing key in the policy is
+      neither: it is a broken policy and is surfaced, not read as a stated
+      limit.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:model-routing.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/opencode_models.py
+    verified_by:
+      - "tests/test_opencode_models.py::test_an_integration_that_cannot_be_asked_does_not_route"
+      - "tests/test_opencode_models.py::test_a_stated_limit_is_distinguishable_from_a_failed_read"
+      - "tests/test_opencode_models.py::test_a_broken_policy_is_not_read_as_a_stated_limit"
+      - "tests/test_opencode_models.py::test_claude_has_no_inventory_command_and_says_so"
+
   - id: REQ-SECURITY-ROUTING-001
     statement: >-
       How the installed model inventory is read is declared per integration,

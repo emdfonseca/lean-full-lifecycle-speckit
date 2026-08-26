@@ -52,11 +52,22 @@ resolution:
     # a capability. Neither is true, and a caller must be able to tell that
     # this integration cannot be asked.
     claude: null
-  # An integration with no command cannot have its provider checked against the
-  # installed inventory. Refusing is the honest response: approving every model
-  # because the inventory is unreadable is how `require_approved_provider`
+  # Two different facts, kept apart. Collapsing them made routing impossible
+  # under Claude Code by construction, and it was invisible only because
+  # nothing takes the code path yet (#162).
+  #
+  # A command that exists and fails is an error: the inventory could have been
+  # read and was not, so nothing is verified and the run refuses. Approving
+  # every model because the call broke is how `require_approved_provider`
   # becomes decorative.
   unreadable_inventory: refuse
+  # A command declared null is not an error. The integration says it cannot be
+  # asked, which is a capability it does not have rather than a failure. Such
+  # an integration does not route by role at all: its steps run on whatever
+  # model the session already uses, and no id is verified because none is
+  # chosen. Stated rather than silent, so a reader can tell that routing
+  # governs OpenCode and not Claude Code.
+  no_inventory_command: do_not_route
   # Where a resolved mapping is written. `record_resolved_mapping: true` above
   # described an intention with no destination.
   record_path: .specify/lifecycle/model-routing-resolved.yml

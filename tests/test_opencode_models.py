@@ -357,13 +357,43 @@ def test_the_record_path_comes_from_policy():
     assert POLICY["resolution"]["record_path"] not in source
 
 
+@pytest.mark.req("REQ-SECURITY-ROUTING-002")
 @pytest.mark.req("REQ-SECURITY-ROUTING-001")
 def test_claude_has_no_inventory_command_and_says_so():
     # Declared null rather than omitted: absent reads as an oversight and a
     # wrong command reads as a capability. Neither is true.
     assert POLICY["resolution"]["inventory_command"]["claude"] is None
-    with pytest.raises(om.InventoryError, match="no inventory command"):
+    with pytest.raises(om.NotRouted, match="does not route by role"):
         om.inventory_command(POLICY, "claude")
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-002")
+def test_an_integration_that_cannot_be_asked_does_not_route():
+    # Not an error. Claude Code has no inventory subcommand, so it routes on
+    # the session's own model and verifies nothing, because it chooses nothing.
+    assert om.routes_by_role(POLICY, "opencode") is True
+    assert om.routes_by_role(POLICY, "claude") is False
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-002")
+def test_a_stated_limit_is_distinguishable_from_a_failed_read():
+    # The defect: both raised InventoryError, so routing refused under Claude
+    # Code by construction. NotRouted is a subclass, so a caller catching the
+    # broad type still works, and a caller that cares can tell them apart.
+    assert issubclass(om.NotRouted, om.InventoryError)
+    with pytest.raises(om.NotRouted):
+        om.inventory_command(POLICY, "claude")
+
+
+@pytest.mark.req("REQ-SECURITY-ROUTING-002")
+def test_a_broken_policy_is_not_read_as_a_stated_limit():
+    # A missing key is not a declared incapacity. routes_by_role must surface
+    # it rather than answering False and letting a typo disable routing.
+    import copy
+    broken = copy.deepcopy(POLICY)
+    del broken["resolution"]["inventory_command"]["opencode"]
+    with pytest.raises(om.InventoryError):
+        om.routes_by_role(broken, "opencode")
 
 
 @pytest.mark.req("REQ-SECURITY-ROUTING-001")
@@ -372,6 +402,8 @@ def test_an_unreadable_inventory_refuses_rather_than_approving_everything():
     # require_approved_provider becomes decorative.
     assert POLICY["resolution"]["unreadable_inventory"] == "refuse"
     assert POLICY["resolution"]["require_approved_provider"] is True
+    # And the other half, kept apart: a null command is not a failed read.
+    assert POLICY["resolution"]["no_inventory_command"] == "do_not_route"
 
 
 @pytest.mark.req("REQ-SECURITY-ROUTING-001")

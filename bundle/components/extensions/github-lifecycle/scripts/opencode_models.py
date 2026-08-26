@@ -50,6 +50,16 @@ class InventoryError(Exception):
     """The installed model list could not be read."""
 
 
+class NotRouted(InventoryError):
+    """This integration does not route by role, by its own declaration.
+
+    A subclass, so a caller catching the broad type keeps working; a distinct
+    type, so a caller that cares can tell a stated limit from a failed read.
+    Collapsing the two made routing refuse under Claude Code by construction,
+    and it was invisible because nothing takes the path yet (#162).
+    """
+
+
 def load_policy(root: Path | None = None) -> dict:
     root = root or project_root.resolve(required=False) or Path.cwd()
     for rel in POLICY_CANDIDATES:
@@ -84,12 +94,32 @@ def inventory_command(policy: dict, integration: str) -> list[str]:
             f"{integration!r}; it has {sorted(declared)}")
     command = declared[integration]
     if not command:
-        raise InventoryError(
-            f"{integration!r} has no inventory command, so no model id can be "
-            f"verified against an installed inventory. model-routing.yml sets "
-            f"unreadable_inventory to "
-            f"{policy['resolution'].get('unreadable_inventory', 'refuse')!r}.")
+        raise NotRouted(
+            f"{integration!r} declares no inventory command, so it does not "
+            f"route by role: its steps run on the model the session already "
+            f"uses. This is a capability it does not have, not a failure to "
+            f"read one -- model-routing.yml sets no_inventory_command to "
+            f"{policy['resolution'].get('no_inventory_command', 'do_not_route')!r}.")
     return list(command)
+
+
+def routes_by_role(policy: dict, integration: str) -> bool:
+    """Whether this integration resolves a model per role at all.
+
+    An integration that cannot be asked what models it has does not route. That
+    is not the same as an inventory that could not be read: the second is an
+    error and refuses, the first is a stated limit and is honoured. Treating
+    them alike made routing refuse under Claude Code by construction (#162).
+    """
+    try:
+        inventory_command(policy, integration)
+    except NotRouted:
+        return False
+    except InventoryError:
+        # A missing key is a broken policy, not a declared limit. Let the
+        # caller surface it rather than reading it as "does not route".
+        raise
+    return True
 
 
 def read_inventory(policy: dict, runner=None, integration: str = "opencode") -> set[str]:
