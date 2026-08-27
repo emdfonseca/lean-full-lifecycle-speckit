@@ -79,6 +79,11 @@ steps:
         Report blocking findings separately from advisory ones. Stop on any
         blocking finding; the item stays in Refining.
 
+        Then record it against the item with --record and the issue number, so
+        delivery reads this judgement rather than making a second one. A verdict
+        keyed to this run is a record of the run; the readiness of the item
+        outlives it.
+
   - id: approve-readiness
     type: gate
     integration: '{{ inputs.integration }}'

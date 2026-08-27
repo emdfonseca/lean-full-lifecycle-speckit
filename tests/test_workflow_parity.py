@@ -103,16 +103,27 @@ def test_every_declared_mode_has_a_case():
 def test_reconciliation_runs_before_planning():
     # Planning against unreconciled findings is how a guess becomes a
     # requirement.
+    # reconcile-spec now sits behind a switch: with uncertainty_mode none there
+    # is nothing learned to reconcile, and the step reduced to saying so. The
+    # ordering it needs is unchanged -- after the uncertainty work, before the
+    # plan built on it.
     wf = INV.by_id("workflow", "lifecycle-story-delivery")
     ids = [s["id"] for s in wf.manifest["steps"]]
-    assert ids.index("resolve-uncertainty") < ids.index("reconcile-spec")
-    assert ids.index("reconcile-spec") < ids.index("plan")
+    holder = next(s for s in wf.manifest["steps"]
+                  if any(x["id"] == "reconcile-spec"
+                         for x in (s.get("default") or [])))
+    assert ids.index("resolve-uncertainty") < ids.index(holder["id"])
+    assert ids.index(holder["id"]) < ids.index("plan")
+    assert holder["cases"]["none"] == [], (
+        "with no uncertainty declared there is nothing to reconcile")
 
 
 @pytest.mark.req("REQ-UNCERTAINTY-MODE-001")
 def test_reconciliation_forbids_promoting_unconfirmed_observations():
     wf = INV.by_id("workflow", "lifecycle-story-delivery")
-    step = next(s for s in wf.manifest["steps"] if s["id"] == "reconcile-spec")
+    step = next(x for s in wf.manifest["steps"]
+                for x in (s.get("default") or [])
+                if x["id"] == "reconcile-spec")
     text = str(step["prompt"]).lower()
     assert "unconfirmed" in text
     assert "acceptance criterion" in text

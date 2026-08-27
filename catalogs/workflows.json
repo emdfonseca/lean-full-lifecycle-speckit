@@ -234,7 +234,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 20
+        "steps": 19
       }
     },
     "lifecycle-triage": {

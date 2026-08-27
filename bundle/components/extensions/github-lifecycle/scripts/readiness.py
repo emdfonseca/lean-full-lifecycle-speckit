@@ -81,10 +81,49 @@ def check(verdict: dict, schema: dict) -> list[str]:
     return problems
 
 
+# One current readiness judgement per item. Keyed by issue rather than by run,
+# because the judgement is about the item and outlives the run that made it --
+# which is why a second workflow used to re-derive it rather than read it.
+RECORD_DIR = ".specify/github-lifecycle/verdicts"
+
+
+def record_path(root: Path, issue: int) -> Path:
+    return root / RECORD_DIR / f"{issue}.yml"
+
+
+def render(verdict: dict, issue: int | None) -> str:
+    """The verdict as a person reads it at a gate."""
+    questions = verdict.get("blocking_questions") or []
+    lines = [
+        f"# Readiness verdict{f' for #{issue}' if issue else ''}",
+        "",
+        "## What you are approving",
+        "",
+        f"- Readiness: **{verdict.get('readiness')}**",
+        f"- Risk: {verdict.get('risk')}",
+        f"- Spec impact: {verdict.get('spec_impact')}",
+        f"- Material uncertainty: {verdict.get('material_uncertainty')}",
+        "",
+        "## Blocking questions",
+        "",
+    ]
+    lines += [f"{i}. {q}" for i, q in enumerate(questions, 1)] or ["None."]
+    lines += ["", "## Next engineering action", "",
+              str(verdict.get("next_engineering_action") or "").strip(), ""]
+    return "\n".join(lines)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--verdict", type=Path, required=True)
+    ap.add_argument("--verdict", type=Path, default=None,
+                    help="The verdict file to validate. Omit with --from-record.")
     ap.add_argument("--issue", type=int, help="Also lint this issue's criteria.")
+    ap.add_argument("--record", action="store_true",
+                    help="Store the validated verdict against the issue, so a later run can read the judgement instead of making a second one.")
+    ap.add_argument("--from-record", action="store_true",
+                    help="Read the stored verdict for --issue rather than a file. Refuses when none was recorded.")
+    ap.add_argument("--emit", type=Path, default=None,
+                    help="Write the verdict where a gate can show it. A gate needs a path in this run; the record is keyed by issue and outlives it.")
     ap.add_argument("--repo", help="owner/name, required with --issue")
     ap.add_argument("--policy-root", type=Path, default=None,
                     help="Spec Kit project root. Defaults to SPECIFY_INIT_DIR, then the nearest ancestor with a .specify/ directory.")
@@ -96,9 +135,27 @@ def main() -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    if args.from_record and not args.issue:
+        print("--from-record needs --issue: the record is keyed by issue",
+              file=sys.stderr)
+        return 2
+    if not args.from_record and args.verdict is None:
+        print("--verdict is required without --from-record", file=sys.stderr)
+        return 2
+
     try:
         schema = load_schema(args.policy_root)
-        verdict = load_verdict(args.verdict)
+        source = (record_path(args.policy_root, args.issue) if args.from_record
+                  else args.verdict)
+        if args.from_record and not source.is_file():
+            # An item reaching delivery with no recorded verdict is exactly
+            # what this refuses. A missing file must not read as an approved
+            # one, which is the failure a per-run path never had to consider.
+            print(f"error: no readiness verdict recorded for #{args.issue} at "
+                  f"{source}. Refine the item before delivering it; an absent "
+                  f"verdict is not a passing one.", file=sys.stderr)
+            return 2
+        verdict = load_verdict(source)
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -107,10 +164,10 @@ def main() -> int:
     lint_account = ""
     advisories: list[str] = []
 
-    if args.issue:
-        if not args.repo:
-            print("--repo is required with --issue", file=sys.stderr)
-            return 2
+    # `--issue` identifies the item; `--repo` opts into fetching and linting
+    # it. Requiring both meant recording a verdict against an item needed a
+    # network call to say which item.
+    if args.issue and args.repo:
         import lint_acceptance
         from github_api import GitHub
 
@@ -142,6 +199,20 @@ def main() -> int:
     if problems:
         print(f"\nNot ready: {len(problems)} blocking problem(s).")
         return 1
+
+    if args.record:
+        if not args.issue:
+            print("--record needs --issue", file=sys.stderr)
+            return 2
+        stored = record_path(args.policy_root, args.issue)
+        stored.parent.mkdir(parents=True, exist_ok=True)
+        stored.write_text(yaml.safe_dump(verdict, sort_keys=False),
+                          encoding="utf-8")
+        print(f"recorded {stored}")
+    if args.emit is not None:
+        args.emit.parent.mkdir(parents=True, exist_ok=True)
+        args.emit.write_text(render(verdict, args.issue), encoding="utf-8")
+        print(f"emitted {args.emit}")
     print(f"\nVerdict is valid. readiness={verdict.get('readiness')!r}"
           + (f", {len(advisories)} advisory finding(s) on the criteria."
              if advisories else "."))

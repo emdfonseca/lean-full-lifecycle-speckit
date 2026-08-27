@@ -68,37 +68,22 @@ inputs:
     - approve
     - reject
 steps:
-- id: assess-readiness
-  timeout: 600
-  type: prompt
-  integration: '{{ inputs.integration }}'
-  prompt: 'Assess Readiness Criteria for issue {{ inputs.issue_ref }}.
-
-    Intended change: {{ inputs.intent }}
-
-
-    Write .specify/lifecycle/readiness-{{ context.run_id }}.md containing
-
-    READY or NOT READY, blocking questions, risk, spec impact, material
-
-    uncertainty, dependencies, and one next engineering action.
-
-
-    Do not require technical design merely for readiness.
-
-    
-
-
-Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing. Where you label items for cross-reference, define them under that same label and under a heading, so searching for the label finds the definition and not only the references.'
-- id: validate-readiness
+- id: confirm-readiness
   command: speckit.github-lifecycle.readiness
   integration: '{{ inputs.integration }}'
   input:
-    args: 'Validate .specify/lifecycle/readiness-{{ context.run_id }}.md against the
-      schema and lint the acceptance criteria of {{ inputs.issue_ref }}. Report blocking
-      findings separately from advisory ones, and stop on a blocking one. A gate over
-      a verdict nothing checked makes the gate the only check, and a person cannot see
-      from prose that a required field is missing.'
+    args: >-
+      Read the readiness verdict recorded for {{ inputs.issue_ref }} with
+      --from-record and the issue number, validate it, and emit it to
+      .specify/lifecycle/readiness-{{ context.run_id }}.md so the gate can show
+      it. Do not assess readiness again: lifecycle-refine already made this
+      judgement and it was validated there, and a second unvalidated opinion is
+      how the item most likely to be wrong gets two chances to pass.
+
+      Stop if no verdict was recorded. An item that reached delivery without
+      passing refine is exactly what this catches, and an absent verdict is not
+      a passing one.
+
 - id: approve-readiness
   type: gate
   message: Review readiness. Continue only when the item is Ready.
@@ -292,22 +277,29 @@ Begin the file with a "What you are approving" block: one line per decision that
       message: Accept this threat analysis. Rejecting stops the run rather than proceeding with the risk
         unexamined.
   default: []
-- id: reconcile-spec
-  timeout: 600
-  type: prompt
-  integration: '{{ inputs.integration }}'
-  prompt: 'Reconcile what was learned with the spec for {{ inputs.issue_ref }} before planning.
+- id: reconcile-what-was-learned
+  type: switch
+  expression: '{{ inputs.uncertainty_mode }}'
+  cases:
+    none: []
+  default:
+  - id: reconcile-spec
+    timeout: 600
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: 'Reconcile what was learned with the spec for {{ inputs.issue_ref }} before planning.
 
 
 
-    Every inferred observation is either confirmed against the spec or recorded as still unconfirmed.
-    An unconfirmed observation must not be written as an acceptance criterion: it is evidence, and evidence
-    is not intent.
+      Every inferred observation is either confirmed against the spec or recorded as still unconfirmed.
+      An unconfirmed observation must not be written as an acceptance criterion: it is evidence, and evidence
+      is not intent.
 
 
 
-    If nothing was learned because the mode was none, say so. Skipping this step silently is how a guess
-    becomes a requirement.'
+      This step runs only when a mode other than none was declared, so something was
+      always learned. Reconcile it or record it as unconfirmed; skipping silently is how
+      a guess becomes a requirement.'
 - id: plan
   timeout: 1800
   command: speckit.plan

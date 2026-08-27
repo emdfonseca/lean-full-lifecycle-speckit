@@ -3068,9 +3068,12 @@ requirements:
       - "tests/test_transition.py::test_ready_is_applied_once_the_evidence_is_asserted"
       - "tests/test_transition.py::test_ready_is_refused_without_that_evidence"
       - "tests/test_transition.py::test_refining_to_ready_requires_the_readiness_evidence"
+      - "tests/test_readiness.py::test_a_recorded_verdict_is_readable_by_a_later_run"
+      - "tests/test_readiness.py::test_delivery_refuses_an_item_with_no_recorded_verdict"
+      - "tests/test_readiness.py::test_an_emitted_verdict_names_what_the_gate_decides"
+      - "tests/test_readiness.py::test_recording_replaces_rather_than_accumulates"
     evidence:
       - "Issue #84"
-
   - id: REQ-BACKLOG-TRIAGE-001
     statement: >-
       Triage decides what an item is and never when it will be done. It cannot

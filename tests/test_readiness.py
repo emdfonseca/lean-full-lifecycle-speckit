@@ -144,3 +144,82 @@ def test_a_not_ready_verdict_with_no_blocking_question_is_still_not_ready(
          str(verdict)],
         cwd=ROOT, capture_output=True, text=True)
     assert result.returncode != 0
+
+
+# --- one judgement per item, not one per run ---------------------------------
+#
+# Every artifact in the bundle was run-scoped, which is right for a record of a
+# run and wrong for a judgement about an item. story delivery could not name
+# the verdict refine had written, so it made a second one -- and that second
+# one was the unvalidated one the Output Done decision rested nearest to.
+
+def _run(tmp_path, *argv):
+    return subprocess.run(
+        [sys.executable, str(SCRIPTS / "readiness.py"), "--policy-root",
+         str(tmp_path)] + list(argv),
+        cwd=ROOT, capture_output=True, text=True)
+
+
+def _project(tmp_path):
+    # the schema comes from installed policy, so mirror what a project has
+    schemas = tmp_path / ".specify/presets/lean-full-lifecycle-governance/schemas"
+    schemas.mkdir(parents=True)
+    (schemas / "readiness-verdict.schema.json").write_text(
+        (ROOT / "tooling/schemas/readiness-verdict.schema.json").read_text(
+            encoding="utf-8"), encoding="utf-8")
+    return tmp_path
+
+
+def _verdict(tmp_path, **over):
+    body = dict(READY)
+    body.update(over)
+    f = tmp_path / "verdict.json"
+    f.write_text(json.dumps(body), encoding="utf-8")
+    return f
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_a_recorded_verdict_is_readable_by_a_later_run(tmp_path):
+    root = _project(tmp_path)
+    assert _run(root, "--verdict", str(_verdict(root)), "--issue", "42",
+                "--record").returncode == 0
+    # a different run, with no idea what the first one's run id was
+    out = _run(root, "--from-record", "--issue", "42")
+    assert out.returncode == 0, out.stderr
+    assert "ready" in out.stdout
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_delivery_refuses_an_item_with_no_recorded_verdict(tmp_path):
+    # An absent verdict must not read as an approved one. An item reaching
+    # delivery without passing refine is exactly what this catches, and it is
+    # the failure a per-run path never had to consider.
+    out = _run(_project(tmp_path), "--from-record", "--issue", "4242")
+    assert out.returncode != 0
+    assert "no readiness verdict recorded" in out.stderr
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_an_emitted_verdict_names_what_the_gate_decides(tmp_path):
+    root = _project(tmp_path)
+    _run(root, "--verdict", str(_verdict(root)), "--issue", "42", "--record")
+    shown = root / "emitted.md"
+    assert _run(root, "--from-record", "--issue", "42", "--emit",
+                str(shown)).returncode == 0
+    text = shown.read_text(encoding="utf-8")
+    assert "What you are approving" in text
+    assert "Blocking questions" in text
+
+
+@pytest.mark.req("REQ-TOOLING-ASSERT-001")
+def test_recording_replaces_rather_than_accumulates(tmp_path):
+    # An item has one current readiness judgement. A second refinement
+    # supersedes the first rather than leaving two on disk to choose between.
+    root = _project(tmp_path)
+    _run(root, "--verdict", str(_verdict(root)), "--issue", "42", "--record")
+    _run(root, "--verdict", str(_verdict(root, risk="high")), "--issue", "42",
+         "--record")
+    store = root / ".specify/github-lifecycle/verdicts"
+    assert [f.name for f in store.iterdir()] == ["42.yml"]
+    assert "high" in (store / "42.yml").read_text(encoding="utf-8")
+
