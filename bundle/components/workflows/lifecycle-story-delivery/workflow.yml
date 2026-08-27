@@ -452,5 +452,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close
-      only if authorized; read back. --expect "In Progress". Post the approved record with --comment .specify/lifecycle/delivery-record-{{
+      only if authorized; read back. --expect "In Progress". Pass --uncertainty-mode {{ inputs.uncertainty_mode
+      }} so a prototype run cannot complete without a disposal record whatever the item
+      is labelled. Post the approved record with --comment .specify/lifecycle/delivery-record-{{
       context.run_id }}.md.'

@@ -42,7 +42,7 @@ steps:
 
     regression test. Identify characterization tests for risky legacy
 
-    behavior. Write .specify/lifecycle/bugfix-assessment.md. Do not fix yet.
+    behavior. Write .specify/lifecycle/bugfix-assessment-{{ context.run_id }}.md. Do not fix yet.
 
     
 
@@ -56,7 +56,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   - reject
   on_reject: abort
   verdict_input: assessment_verdict
-  show_file: .specify/lifecycle/bugfix-assessment.md
+  show_file: .specify/lifecycle/bugfix-assessment-{{ context.run_id }}.md
 - id: transition-in-progress
   command: speckit.github-lifecycle.transition
   integration: '{{ inputs.integration }}'

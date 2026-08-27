@@ -124,9 +124,9 @@ requirements:
     verified_by:
       - "tests/test_packaging.py::test_every_artifact_entry_is_declared_by_the_inventory"
       - "tests/test_packaging.py::test_no_component_archive_ships_build_residue"
+      - "tests/test_policy_shape.py::test_every_workflow_artifact_is_scoped_to_its_run"
     evidence:
       - "docs/decisions/0001-target-spec-kit-1-0-x.md"
-
   - id: REQ-PACKAGE-PIN-001
     statement: >-
       One declared Spec Kit version range governs the bundle, and every manifest
@@ -397,7 +397,7 @@ requirements:
       - "tests/test_field_backend.py::test_dry_run_reports_the_intent_and_writes_nothing"
       - "tests/test_field_backend.py::test_an_unset_field_reads_as_none"
       - "tests/test_field_backend.py::test_selection_returns_the_backend_the_inspection_chose"
-
+      - "tests/test_policy_shape.py::test_the_schema_and_the_state_machine_agree_on_delivery_status"
   - id: REQ-GITHUB-ORGFIELDS-001
     statement: >-
       Where an organization has opted into Issue Fields carrying the delivery
@@ -452,6 +452,9 @@ requirements:
       - "tests/test_transition.py::test_a_transition_refuses_when_the_board_moved_since_approval"
       - "tests/test_transition.py::test_reapplying_a_finished_transition_changes_nothing"
       - "tests/test_transition.py::test_no_workflow_writes_or_reads_a_transition_plan_file"
+      - "tests/test_transition.py::test_a_prototype_run_needs_a_disposal_record_whatever_the_item_is_labelled"
+      - "tests/test_transition.py::test_a_recorded_disposal_satisfies_the_prototype_guard"
+      - "tests/test_transition.py::test_a_run_declaring_no_uncertainty_still_falls_back_to_the_labels"
   - id: REQ-GITHUB-COMMANDS-001
     statement: >-
       A command that reaches GitHub invokes the deterministic adapter rather
@@ -1688,10 +1691,10 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_currently_violated_check_fires_on_clean_source[INV-RELEASE-LADDER]"
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
+      - "tests/test_validator.py::test_the_release_ladder_compares_against_a_status_the_schema_permits"
     evidence:
       - "Issue #130"
       - "Issue #103"
-
   - id: REQ-PACKAGE-INTERPRETER-001
     statement: >-
       The extension declares what the interpreter running its scripts must

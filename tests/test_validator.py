@@ -60,3 +60,20 @@ def test_each_scope_runs(scope):
     r = run_validator("--scope", scope, "--format", "json")
     assert r.returncode == 0
     assert json.loads(r.stdout)["executed"]
+
+# --- a check that can never fire is a check nobody has -----------------------
+
+@pytest.mark.req("REQ-RELEASE-LADDER-001")
+def test_the_release_ladder_compares_against_a_status_the_schema_permits():
+    # It compared against "passed", which requirements.schema.json does not
+    # allow: only `pending` and `met`. Every gate therefore read as pending and
+    # the check returned early every time, silently, for 0.9.0 and 1.0.0 -- the
+    # only two releases that declare gates.
+    schema = json.loads((ROOT / "tooling/schemas/requirements.schema.json").read_text())
+    allowed = set(schema["properties"]["gates"]["items"]["properties"]["status"]["enum"])
+    source = (ROOT / "scripts/lib/checks.py").read_text(encoding="utf-8")
+    block = source.split('@check("INV-RELEASE-LADDER"')[1].split("\n@check(")[0]
+    compared = {m for m in allowed if f'!= "{m}"' in block}
+    assert compared, (
+        f"the ladder compares gate status against a value outside {sorted(allowed)}, "
+        f"so it can never evaluate for a release that declares gates")

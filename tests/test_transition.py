@@ -1310,3 +1310,38 @@ def test_no_workflow_writes_or_reads_a_transition_plan_file():
         assert "github-lifecycle/plans/" not in text, f.parent.name
         assert "speckit.github-lifecycle.plan\n" not in text, f.parent.name
 
+
+# --- the guard against shipping prototype code missed its own main case -------
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_a_prototype_run_needs_a_disposal_record_whatever_the_item_is_labelled(tmp_path):
+    # Detection read the item's labels only. A story labelled `story` and run
+    # with uncertainty_mode: prototype builds a prototype and never triggered
+    # this -- which is the item most likely to ship prototype code, because the
+    # label describes what the item is and not what the run did.
+    assert tp.disposal_required(None, 38, _insp(), None, root=tmp_path,
+                                uncertainty_mode="prototype")
+    assert tp.disposal_required(None, 38, _insp(), None, root=tmp_path,
+                                uncertainty_mode="spike")
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_a_recorded_disposal_satisfies_the_prototype_guard(tmp_path):
+    d = tmp_path / tp.DISPOSAL_DIR
+    d.mkdir(parents=True)
+    (d / "38-run.md").write_text("disposed", encoding="utf-8")
+    assert not tp.disposal_required(None, 38, _insp(), None, root=tmp_path,
+                                    uncertainty_mode="prototype")
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_a_run_declaring_no_uncertainty_still_falls_back_to_the_labels(tmp_path):
+    # The mode is one source, not a replacement: a later run that declares no
+    # mode must not become a way past the guard.
+    assert not tp.disposal_required(None, 38, _insp(), None, root=tmp_path,
+                                    uncertainty_mode="none")
+
+
+def _insp():
+    return inspection()
+

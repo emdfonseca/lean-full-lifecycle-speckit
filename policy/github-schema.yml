@@ -44,7 +44,7 @@ allow_status_labels: false
 issue_fields:
   Delivery Status:
     type: single_select
-    values: [Inbox, Refining, Ready, In Progress, Output Done]
+    values: [Inbox, Refining, Ready, In Progress, Output Done, Retired]
   Outcome Status:
     type: single_select
     values:
@@ -84,5 +84,3 @@ automation:
   infer_output_done_from_closed_issue: false
   status_labels: disabled
 
-# Retained for readers of earlier revisions: what was called a fallback is the
-# `project` backend above, and it is now the default.

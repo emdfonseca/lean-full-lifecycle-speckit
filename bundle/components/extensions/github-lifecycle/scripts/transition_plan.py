@@ -146,12 +146,23 @@ UNCERTAINTY_MARKERS = ("prototype", "spike")
 
 def disposal_required(current_state: str | None, issue_number: int,
                       inspection: Inspection, gh: GitHub | None,
-                      root: Path | None = None) -> bool:
+                      root: Path | None = None,
+                      uncertainty_mode: str | None = None) -> bool:
     """True when this item was informed by a prototype or spike and has no record.
 
-    Detected from the item's labels rather than inferred from its prose: a
-    label is a decision somebody made, and prose is not.
+    Two sources, because one of them missed the case the guard exists for.
+
+    The run's own `uncertainty_mode`. A story labelled `story` and run with
+    `uncertainty_mode: prototype` builds a prototype and never triggered this,
+    which is exactly the item most likely to ship prototype code -- the label
+    describes what the item is, not what the run did.
+
+    And the item's labels, which catch a prototype whose disposal is being
+    skipped in a later run that declares no mode at all. A label is a decision
+    somebody made, and prose is not.
     """
+    if str(uncertainty_mode or "").strip().lower() in UNCERTAINTY_MARKERS:
+        return not _disposal_recorded(issue_number, root)
     if gh is None:
         return False
     try:
@@ -169,11 +180,14 @@ def disposal_required(current_state: str | None, issue_number: int,
               for lbl in issue.get("labels") or [] if isinstance(lbl, dict)}
     if not labels.intersection(UNCERTAINTY_MARKERS):
         return False
-    base = Path(root) if root else Path.cwd()
-    directory = base / DISPOSAL_DIR
+    return not _disposal_recorded(issue_number, root)
+
+
+def _disposal_recorded(issue_number: int, root: Path | None) -> bool:
+    directory = (Path(root) if root else Path.cwd()) / DISPOSAL_DIR
     if not directory.is_dir():
-        return True
-    return not any(directory.glob(f"*{issue_number}*"))
+        return False
+    return any(directory.glob(f"*{issue_number}*"))
 
 
 def child_issue_numbers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[int]:
@@ -207,12 +221,14 @@ def incomplete_children(gh: GitHub, backend: FieldBackend, inspection: Inspectio
 
 def build_plan(backend: FieldBackend, inspection: Inspection, machine: dict,
                issue_number: int, target: str, role: str = "delivery_state",
-               gh: GitHub | None = None) -> TransitionPlan:
+               gh: GitHub | None = None,
+               uncertainty_mode: str | None = None) -> TransitionPlan:
     current = backend.read(issue_number, role)
     edge = find_transition(machine, current.value, target)
 
-    if target == TERMINAL_STATE and disposal_required(current.value, issue_number,
-                                                     inspection, gh):
+    if target == TERMINAL_STATE and disposal_required(
+            current.value, issue_number, inspection, gh,
+            uncertainty_mode=uncertainty_mode):
         raise PlanError(
             f"#{issue_number} was informed by a prototype or spike, and no "
             f"disposal record was found. artifact-policy.yml classes those "
@@ -790,6 +806,8 @@ def main() -> int:
     p_plan.add_argument("--issue", type=int, required=True)
     p_plan.add_argument("--to", required=True)
     p_plan.add_argument("--role", default="delivery_state")
+    p_plan.add_argument("--uncertainty-mode", default=None,
+                        help="The mode a run would use, so the preview refuses the same way the apply will.")
     p_plan.add_argument("--out", type=Path, default=None,
                         help="Write the plan to a file. Optional: without it this previews what the transition needs and writes nothing.")
 
@@ -803,6 +821,8 @@ def main() -> int:
     p_apply.add_argument("--evidence", action="append", default=[],
                          metavar="KEY=VALUE",
                          help="Assert one required evidence item. Repeatable.")
+    p_apply.add_argument("--uncertainty-mode", default=None,
+                         help="The mode this run used. prototype or spike requires a disposal record before Output Done, whatever the item is labelled.")
     p_apply.add_argument("--comment", type=Path, default=None,
                          help="Post this file as an issue comment after the transition succeeds. The record of what was built and what it exposed.")
     p_apply.add_argument("--dry-run", action="store_true")
@@ -838,7 +858,8 @@ def main() -> int:
 
         if args.cmd == "plan":
             plan = build_plan(backend, inspection, machine, args.issue,
-                              args.to, args.role, gh=gh)
+                              args.to, args.role, gh=gh,
+                              uncertainty_mode=args.uncertainty_mode)
             if args.out is not None:
                 out = project_root.ensure_within(args.policy_root, args.out)
                 out.parent.mkdir(parents=True, exist_ok=True)
@@ -912,7 +933,8 @@ def main() -> int:
                 f"{current.value!r}. Re-read the board rather than overwriting a "
                 f"change this run did not account for.")
         plan = build_plan(backend, inspection, machine, args.issue, args.to,
-                          args.role, gh=gh)
+                          args.role, gh=gh,
+                          uncertainty_mode=args.uncertainty_mode)
         evidence = dict(
             item.split("=", 1) if "=" in item else (item, "asserted")
             for item in args.evidence

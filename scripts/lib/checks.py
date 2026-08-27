@@ -249,9 +249,14 @@ def release_ladder(ctx: Ctx) -> Iterator[Finding]:
     # for four completed pilot streams. A rung with an unmet gate is silent:
     # every requirement passing is not the same as the release being ready, and
     # this file already says so.
+    # `met`, not `passed`: requirements.schema.json permits only `pending` and
+    # `met`, so comparing against `passed` made every gate read as pending and
+    # this check return early every time. It has never fired for 0.9.0 or
+    # 1.0.0, the only two releases that declare gates, and nothing noticed
+    # because its own negative-case mutator is `pass`.
     pending = [gate for gate in (requirements.get("gates") or [])
                if str(gate.get("release") or "").strip() == nxt
-               and str(gate.get("status") or "").strip() != "passed"]
+               and str(gate.get("status") or "").strip() != "met"]
     if pending:
         return
     # A warning, not an error. What this knows is requirement status, and a
