@@ -8,25 +8,35 @@ scripts:
 
 Apply exactly one approved transition and read it back.
 
-Requires an approved plan written by `plan`. Do not proceed without one.
-
 Run:
 
 ```bash
 {SCRIPT} \
   --repo <owner>/<name> \
-  apply --plan <approved plan path> \
+  apply --issue <number> --to "<target state>" \
+  --expect "<the state a person approved this against>" \
   --evidence <key>=<value> ...
 ```
 
-Approved plan: `.specify/github-lifecycle/plans/<descriptive-id>.md`
+`--expect` is the guard. The write is refused when the board is no longer in
+that state, because a run that overwrites a change it never saw is how two
+people working in parallel lose one of them. It replaced a plan file that
+recorded the same value: the file claimed to be a durable approval record and
+was not, since `.specify/` is gitignored and each one was read exactly once, by
+the apply that ran seconds after it was written.
 
-Supply one `--evidence` for each item the plan lists. The script refuses the
-write when any is missing, and names what is absent. Assert only evidence that
-is true; the audit record is what a reviewer will read afterwards.
+Supply one `--evidence` for each item the transition requires. The script
+refuses the write when any is missing, and names what is absent. It also
+refuses a value that denies its own key — `--evidence required_ci_green=false`
+is not an assertion of anything.
 
-Use `--dry-run` first when the transition is consequential. It prints the exact
-call and performs nothing.
+Assert only evidence that is true. Nothing verifies it for you, which is
+exactly why there is one item left rather than five: what cannot be derived is
+worth asking, and what the workflow already enforces is not worth retyping.
+
+Use `--dry-run` when the transition is consequential. It prints the exact call
+and performs nothing. `plan` previews what a transition needs without touching
+anything.
 
 ## Report
 
@@ -36,12 +46,23 @@ success while the read disagrees is not a success.
 
 ## Never
 
-- Mutate without an approved plan, or with a plan whose path you did not verify.
+- Mutate without the approval `--expect` names. The flag records what a person
+  agreed to; supplying the current value to get past a refusal defeats it
+  entirely.
 - Retry a refused transition with different evidence to get past it. A refusal
   is a finding to report, not an obstacle.
 - Infer that work is complete because an issue was closed. Closure follows the
   delivery state and never sets it.
-- Change more than the one value the plan names.
+- Change more than the one value the transition names.
+
+## Posting the record
+
+`--comment <path>` posts a file as an issue comment after the transition
+succeeds, never before: a comment describing a transition that was then refused
+is a false record. It rides on the transition because that already sits behind
+a gate, already names what it expects, and already writes to this issue.
+
+This is the record a later reader is told to trust over re-deriving the work.
 
 ## What the audit adds
 
@@ -58,4 +79,4 @@ prevention here. Inside a workflow the ordering *is* enforced, and
 `INV-BUILD-AFTER-IN-PROGRESS` asserts it.
 
 Untracked files do not count: a scratch file is not evidence that delivery
-began. Git being unable to answer is reported as unknown rather than as clean.
+started.

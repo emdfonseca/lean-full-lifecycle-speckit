@@ -114,12 +114,6 @@ Begin the file with a "What you are approving" block: one line per decision that
     measurable.
 
     '
-- id: plan-outcome-transition
-  command: speckit.github-lifecycle.plan
-  integration: '{{ inputs.integration }}'
-  input:
-    args: Plan issue {{ inputs.issue_ref }} Outcome Status → Measuring. Write exactly .specify/github-lifecycle/plans/{{ context.run_id
-      }}-outcome-measuring.md. Do not mutate.
 - id: approve-outcome-transition
   type: gate
   message: Review the outcome record and planned transition to Measuring.
@@ -128,10 +122,10 @@ Begin the file with a "What you are approving" block: one line per decision that
   - reject
   on_reject: abort
   verdict_input: outcome_verdict
-  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md
+  show_file: .specify/lifecycle/release-readiness.md
 - id: transition-outcome-measuring
   command: speckit.github-lifecycle.transition
   integration: '{{ inputs.integration }}'
   input:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Outcome Status → Measuring. Do not claim Outcome Validated.
-      Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.'
+      --expect "Not Yet Measurable".'

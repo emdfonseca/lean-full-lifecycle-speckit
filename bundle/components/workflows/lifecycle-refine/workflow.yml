@@ -92,20 +92,11 @@ steps:
       Approve moving this item to Ready on this verdict. Rejecting leaves it in
       Refining, which is the correct outcome when a question is still open.
 
-  - id: plan-ready-transition
-    command: speckit.github-lifecycle.plan
-    integration: '{{ inputs.integration }}'
-    input:
-      args: >-
-        Plan issue {{ inputs.issue_ref }} Delivery Status → Ready. Write exactly
-        .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Do not mutate.
-
   - id: transition-ready
     command: speckit.github-lifecycle.transition
     integration: '{{ inputs.integration }}'
     input:
       args: >-
         Apply approved transition for {{ inputs.issue_ref }}: Delivery Status →
-        Ready; read back. Approved plan:
-        .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Assert the
+        Ready; read back. --expect "Refining". Assert the
         evidence the plan requires. Report the value before and after.

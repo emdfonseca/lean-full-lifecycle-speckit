@@ -449,6 +449,9 @@ requirements:
       - "tests/test_transition.py::test_evidence_asserted_as_false_is_refused"
       - "tests/test_transition.py::test_an_empty_evidence_value_is_refused"
       - "tests/test_transition.py::test_output_done_asks_for_one_thing_nobody_can_derive"
+      - "tests/test_transition.py::test_a_transition_refuses_when_the_board_moved_since_approval"
+      - "tests/test_transition.py::test_reapplying_a_finished_transition_changes_nothing"
+      - "tests/test_transition.py::test_no_workflow_writes_or_reads_a_transition_plan_file"
   - id: REQ-GITHUB-COMMANDS-001
     statement: >-
       A command that reaches GitHub invokes the deterministic adapter rather
@@ -703,7 +706,7 @@ requirements:
       - check:INV-GATE-SHAPE
     verified_by:
       - "tests/test_workflow_refine.py::test_the_workflow_gates_before_every_write"
-      - "tests/test_workflow_refine.py::test_the_transition_applies_a_plan_a_prior_step_wrote"
+      - "tests/test_workflow_refine.py::test_the_transition_names_the_state_it_expects"
       - "tests/test_workflow_refine.py::test_rejecting_a_gate_aborts_the_run"
       - "tests/test_workflow_refine.py::test_the_workflow_is_registered_by_generation"
 
@@ -1161,9 +1164,9 @@ requirements:
       - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[measuring]
       - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[validated]
       - tests/test_outcome_review.py::test_every_write_effect_step_is_preceded_by_a_gate[missed]
-      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[measuring]
-      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[validated]
-      - tests/test_outcome_review.py::test_each_transition_names_the_plan_it_applies[missed]
+      - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[measuring]
+      - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[validated]
+      - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[missed]
     evidence:
       - "Issue #54"
 

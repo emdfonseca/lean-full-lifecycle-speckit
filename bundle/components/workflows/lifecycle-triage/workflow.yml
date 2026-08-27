@@ -78,21 +78,10 @@ steps:
       Approve this assessment. Rejecting writes nothing and leaves the item
       where it is, which is correct when the item is a duplicate or a note.
 
-  - id: plan-refining-transition
-    command: speckit.github-lifecycle.plan
-    integration: '{{ inputs.integration }}'
-    input:
-      args: >-
-        Plan issue {{ inputs.issue_ref }} Delivery Status → Refining. Write
-        exactly .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
-        Do not mutate. Triage proposes Refining only; Ready is a separate
-        decision.
-
   - id: transition-refining
     command: speckit.github-lifecycle.transition
     integration: '{{ inputs.integration }}'
     input:
       args: >-
         Apply approved transition for {{ inputs.issue_ref }}: Delivery Status →
-        Refining; read back. Approved plan:
-        .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
+        Refining; read back. --expect "Inbox".

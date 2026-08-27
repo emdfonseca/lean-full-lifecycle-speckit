@@ -90,12 +90,15 @@ steps:
 
 
 Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing. Where you label items for cross-reference, define them under that same label and under a heading, so searching for the label finds the definition and not only the references.'
-- id: plan-in-progress-transition
-  command: speckit.github-lifecycle.plan
+- id: validate-readiness
+  command: speckit.github-lifecycle.readiness
   integration: '{{ inputs.integration }}'
   input:
-    args: Plan issue {{ inputs.issue_ref }} Delivery Status → In Progress. Write exactly .specify/github-lifecycle/plans/{{
-      context.run_id }}-in-progress.md. Do not mutate.
+    args: 'Validate .specify/lifecycle/readiness-{{ context.run_id }}.md against the
+      schema and lint the acceptance criteria of {{ inputs.issue_ref }}. Report blocking
+      findings separately from advisory ones, and stop on a blocking one. A gate over
+      a verdict nothing checked makes the gate the only check, and a person cannot see
+      from prose that a required field is missing.'
 - id: approve-readiness
   type: gate
   message: Review readiness. Continue only when the item is Ready.
@@ -110,7 +113,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back.
-      Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-in-progress.md.'
+      --expect "Ready".'
 - id: specify
   timeout: 1800
   command: speckit.specify
@@ -414,12 +417,6 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: Converge implementation, spec, tasks, Constitution, and Output Done evidence.
-- id: plan-output-done-transition
-  command: speckit.github-lifecycle.plan
-  integration: '{{ inputs.integration }}'
-  input:
-    args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done and optional completed closure.
-      Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md. Do not mutate.
 - id: write-delivery-record
   type: prompt
   timeout: 600
@@ -455,6 +452,5 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close
-      only if authorized; read back. Approved plan: .specify/github-lifecycle/plans/{{ context.run_id
-      }}-output-done.md. Post the approved record with --comment .specify/lifecycle/delivery-record-{{
+      only if authorized; read back. --expect "In Progress". Post the approved record with --comment .specify/lifecycle/delivery-record-{{
       context.run_id }}.md.'

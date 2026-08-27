@@ -1266,3 +1266,47 @@ def test_output_done_asks_for_one_thing_nobody_can_derive():
     edge = [t for t in MACHINE["delivery_status"]["transitions"]
             if t["from"] == "In Progress" and t["to"] == "Output Done"][0]
     assert edge["evidence"] == ["acceptance_criteria_satisfied"]
+
+
+# --- --expect is the compare-and-swap the plan file used to carry -------------
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_a_transition_refuses_when_the_board_moved_since_approval():
+    # The plan file recorded an observed value so applying could refuse when
+    # the board had moved. That refusal is the only thing the plan bought, and
+    # losing it in a simplification would trade ceremony for a real bug: two
+    # runs in parallel, and the second overwrites a change it never saw.
+    plan, be, insp, board = plan_for("In Progress", initial="Ready")
+    # Somebody else moves it while this run is at its gate.
+    board.values[900]["403"] = OPT["Refining"]
+    with pytest.raises(gh_api.Conflict) as exc:
+        tp.apply_plan(be, insp, plan,
+                      {"owner_assigned": "me", "work_started": "yes"},
+                      machine=MACHINE)
+    assert "Ready" in str(exc.value) and "Refining" in str(exc.value)
+    assert not any("PATCH" in " ".join(c) for c in board.calls)
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_reapplying_a_finished_transition_changes_nothing():
+    # A retry after a timeout must not report drift against a value it wrote.
+    plan, be, insp, _ = plan_for("In Progress", initial="Ready")
+    tp.apply_plan(be, insp, plan,
+                  {"owner_assigned": "me", "work_started": "yes"},
+                  machine=MACHINE)
+    again = tp.apply_plan(be, insp, plan,
+                          {"owner_assigned": "me", "work_started": "yes"},
+                          machine=MACHINE)
+    assert again.value == "In Progress"
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_no_workflow_writes_or_reads_a_transition_plan_file():
+    # 335 accumulated under a gitignored path, each read once by the apply that
+    # ran seconds after writing it.
+    import pathlib as _p
+    for f in sorted(_p.Path(ROOT / "bundle/components/workflows").glob("*/workflow.yml")):
+        text = f.read_text(encoding="utf-8")
+        assert "github-lifecycle/plans/" not in text, f.parent.name
+        assert "speckit.github-lifecycle.plan\n" not in text, f.parent.name
+

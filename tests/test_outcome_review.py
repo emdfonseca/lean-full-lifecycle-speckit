@@ -163,13 +163,28 @@ def test_every_write_effect_step_is_preceded_by_a_gate(case):
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")
 @pytest.mark.parametrize("case", ["measuring", "validated", "missed"])
-def test_each_transition_names_the_plan_it_applies(case):
+def test_each_transition_names_the_state_it_expects(case):
+    # The plan file is gone. What it bought was compare-and-swap -- a recorded
+    # observed value so applying could refuse when the board had moved -- and
+    # that is now --expect. A transition without one overwrites whatever it
+    # finds, including a change this run never saw.
+    machine = load_yaml(ROOT / "policy/state-machine.yml")
+    sources = {str(e["to"]): {str(e["from"])} for spec in machine.values()
+               if isinstance(spec, dict)
+               for e in spec.get("transitions") or []}
+    for spec in machine.values():
+        if isinstance(spec, dict):
+            for e in spec.get("transitions") or []:
+                sources.setdefault(str(e["to"]), set()).add(str(e["from"]))
     for step in branch(case):
         if step.get("command") == TRANSITION:
             args = step["input"]["args"]
-            assert "Approved plan:" in args
-            slug = f"outcome-{'missed' if case == 'missed' else case}.md"
-            assert slug in args, (case, step["id"])
+            assert "--expect" in args, (case, step["id"])
+            assert "Approved plan:" not in args
+            expected = args.split("--expect")[1].split('"')[1]
+            target = args.split("\u2192")[1].split(".")[0].strip()
+            assert expected in sources.get(target, set()), (
+                case, step["id"], expected, target)
 
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")

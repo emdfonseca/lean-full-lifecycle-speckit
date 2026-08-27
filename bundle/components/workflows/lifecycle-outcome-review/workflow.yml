@@ -70,20 +70,11 @@ steps:
             Do not record this as a miss. Insufficient evidence is not failure,
             and reporting it as one invents a result the data does not support.
 
-        - id: plan-measuring
-          command: speckit.github-lifecycle.plan
-          integration: '{{ inputs.integration }}'
-          input:
-            args: >-
-              Plan issue {{ inputs.issue_ref }} Outcome Status → Measuring.
-              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.
-              Do not mutate. Do not plan any Delivery Status change.
-
         - id: approve-measuring
           type: gate
           integration: '{{ inputs.integration }}'
           verdict_input: outcome_verdict
-          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md
+          show_file: '{{ inputs.record_path }}'
           on_reject: abort
           options:
             - approve
@@ -99,7 +90,7 @@ steps:
             args: >-
               Apply approved transition for {{ inputs.issue_ref }}: Outcome
               Status → Measuring. Leave Delivery Status untouched.
-              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-measuring.md.
+              --expect "Not Yet Measurable".
 
       validated:
         - id: validated-name-the-authority
@@ -118,20 +109,11 @@ steps:
             its result, so the approver is deciding on evidence rather than on
             your summary of it.
 
-        - id: plan-validated
-          command: speckit.github-lifecycle.plan
-          integration: '{{ inputs.integration }}'
-          input:
-            args: >-
-              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Validated.
-              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md.
-              Do not mutate. Do not plan any Delivery Status change.
-
         - id: approve-validated
           type: gate
           integration: '{{ inputs.integration }}'
           verdict_input: outcome_verdict
-          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md
+          show_file: '{{ inputs.record_path }}'
           on_reject: abort
           options:
             - approve
@@ -149,7 +131,7 @@ steps:
               Apply approved transition for {{ inputs.issue_ref }}: Outcome
               Status → Outcome Validated. Record the approving authority.
               Leave Delivery Status untouched.
-              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-validated.md.
+              --expect "Measuring".
 
       inconclusive:
         - id: inconclusive-say-the-question-is-open
@@ -170,20 +152,11 @@ steps:
             cleaner data source. Be specific enough that somebody could go and
             do it.
 
-        - id: plan-inconclusive
-          command: speckit.github-lifecycle.plan
-          integration: '{{ inputs.integration }}'
-          input:
-            args: >-
-              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Missed / Inconclusive.
-              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md.
-              Do not mutate. Do not plan any Delivery Status change.
-
         - id: approve-inconclusive
           type: gate
           integration: '{{ inputs.integration }}'
           verdict_input: outcome_verdict
-          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md
+          show_file: '{{ inputs.record_path }}'
           on_reject: abort
           options:
             - approve
@@ -202,7 +175,7 @@ steps:
               Apply approved transition for {{ inputs.issue_ref }}: Outcome
               Status → Outcome Missed / Inconclusive, recording the finding as
               inconclusive rather than missed. Leave Delivery Status untouched.
-              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-inconclusive.md.
+              --expect "Measuring".
 
       missed:
         - id: missed-say-what-happened
@@ -221,20 +194,11 @@ steps:
             the result look better. Each is the assessment choosing its own
             inputs, and it is the failure this whole record exists to prevent.
 
-        - id: plan-missed
-          command: speckit.github-lifecycle.plan
-          integration: '{{ inputs.integration }}'
-          input:
-            args: >-
-              Plan issue {{ inputs.issue_ref }} Outcome Status → Outcome Missed / Inconclusive.
-              Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md.
-              Do not mutate. Do not plan any Delivery Status change.
-
         - id: approve-missed
           type: gate
           integration: '{{ inputs.integration }}'
           verdict_input: outcome_verdict
-          show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md
+          show_file: '{{ inputs.record_path }}'
           on_reject: abort
           options:
             - approve
@@ -251,7 +215,7 @@ steps:
               Apply approved transition for {{ inputs.issue_ref }}: Outcome
               Status → Outcome Missed / Inconclusive. Leave Delivery Status
               untouched.
-              Approved plan: .specify/github-lifecycle/plans/{{ context.run_id }}-outcome-missed.md.
+              --expect "Measuring".
 
         - id: search-for-an-existing-finding
           command: speckit.github-lifecycle.capture

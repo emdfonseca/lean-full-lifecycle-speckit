@@ -599,11 +599,15 @@ def write_effect_declared(ctx: Ctx) -> Iterator[Finding]:
 DECISION_HEADINGS = ("what you are approving", "what you are deciding",
                      "decisions", "what this gate decides")
 
-# Files a shipped script owns and no prompt may edit. `transition_plan.py` writes
-# a plan itself (`to_markdown`), and `plan.md` forbids editing one by hand, so a
-# gate showing one is approving a machine-written record rather than authored
-# prose. Exempted by ownership, which is what the exclusion is actually about.
-SCRIPT_OWNED_GATE_ARTIFACTS = ("/plans/",)
+# Files a shipped script owns and no prompt may edit; a gate showing one is
+# approving a machine-written record rather than authored prose, so requiring a
+# decision heading in a writing prompt would have no prompt to require it of.
+#
+# `/plans/` used to be here. No gate shows a transition plan any more: showing
+# one displayed the request -- issue, from, to, and a list of evidence key
+# names -- rather than the evidence, which is a signature manufactured rather
+# than earned. The exemption went with the practice.
+SCRIPT_OWNED_GATE_ARTIFACTS: tuple[str, ...] = ()
 
 
 @check("INV-GATE-ARTIFACT-STATES-THE-DECISION",
@@ -1160,41 +1164,56 @@ def write_behind_gate(ctx: Ctx) -> Iterator[Finding]:
                                   f"{step['command']} has no prior approval gate")
 
 
-@check("SEC-TRANSITION-CONTRACT", "Transitions apply a named, previously planned change",
+@check("SEC-TRANSITION-CONTRACT", "Transitions name the state they were approved against",
        scope="workflow")
 def transition_contract(ctx: Ctx) -> Iterator[Finding]:
-    plan_cmd = ctx.invariants.get("plan_command")
+    """A transition must say what it expects the board to be, and be right.
+
+    This required a transition step to name a plan file a prior step wrote.
+    The plan file is gone: it claimed to be a durable approval artifact and was
+    not -- `.specify/` is gitignored, and the 335 that accumulated were each
+    read once, by the apply that ran seconds after writing. What the plan
+    genuinely bought was compare-and-swap, and that now rides on `--expect`.
+
+    So the check moves with it, and gets stronger doing so. It used to compare
+    one step's string against another step's string, both written by the same
+    author in the same commit. It now checks the named state against
+    `state-machine.yml`: a transition expecting a state the machine does not
+    allow as a source for its target is refused here rather than at run time.
+    """
+    from .inventory import load_yaml
+
     transition = "speckit.github-lifecycle.transition"
+    machine = load_yaml(ctx.root / "policy/state-machine.yml") or {}
+    edges = {}
+    for role, spec in machine.items():
+        for edge in (spec or {}).get("transitions") or []:
+            edges.setdefault(str(edge.get("to")), set()).add(str(edge.get("from")))
+
     for comp in ctx.inv.by_kind("workflow"):
-        steps = _steps(comp)
-        for i, step in enumerate(steps):
+        for step in _steps(comp):
             if step.get("command") != transition:
                 continue
             subject = f"{comp.id}:{step.get('id')}"
-            args = _args(step)
-            if "Approved plan:" not in args:
-                yield ctx.finding("SEC-TRANSITION-CONTRACT", subject,
-                                  "transition does not name an approved plan")
-                continue
-            match = re.search(r"Approved plan:\s*(.+?\.md)", args, flags=re.DOTALL)
+            args = _norm(_args(step))
+            match = re.search(r"--expect\s+[\"\']?([A-Za-z ]+?)[\"\']?(?:\s*[.;]|\s+--|$)",
+                              args)
             if not match:
-                yield ctx.finding("SEC-TRANSITION-CONTRACT", subject,
-                                  "approved plan path is not explicit")
+                yield ctx.finding(
+                    "SEC-TRANSITION-CONTRACT", subject,
+                    "transition names no --expect, so it will overwrite whatever "
+                    "the board holds, including a change this run never saw")
                 continue
-            wanted = _norm(match.group(1))
-            planned = []
-            for prior in steps[:i]:
-                if prior.get("command") != plan_cmd:
-                    continue
-                m = re.search(r"Write exactly\s*(.+?\.md)", _args(prior), flags=re.DOTALL)
-                if m:
-                    planned.append(_norm(m.group(1)))
-            if not planned:
-                yield ctx.finding("SEC-TRANSITION-CONTRACT", subject,
-                                  "no prior plan step writes a plan file")
-            elif wanted not in planned:
-                yield ctx.finding("SEC-TRANSITION-CONTRACT", subject,
-                                  f"plan path {wanted!r} matches no prior plan {planned!r}")
+            expected = match.group(1).strip()
+            target = re.search(r"\u2192\s*([A-Za-z ]+?)(?:\s*[.;]|\s+--|$)", args)
+            if not target:
+                continue        # the target is prose here; --expect is the guard
+            legal = edges.get(target.group(1).strip())
+            if legal and expected not in legal:
+                yield ctx.finding(
+                    "SEC-TRANSITION-CONTRACT", subject,
+                    f"expects {expected!r}, which state-machine.yml does not allow "
+                    f"as a source for {target.group(1).strip()!r}: {sorted(legal)}")
 
 
 # --------------------------------------------------------------------------

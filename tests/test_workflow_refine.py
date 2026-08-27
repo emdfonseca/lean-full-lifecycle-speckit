@@ -28,15 +28,17 @@ def test_the_workflow_gates_before_every_write():
 
 
 @pytest.mark.req("REQ-BACKLOG-REFINE-001")
-def test_the_transition_applies_a_plan_a_prior_step_wrote():
-    plan_step = next(s for s in STEPS
-                     if s.get("command") == "speckit.github-lifecycle.plan")
+def test_the_transition_names_the_state_it_expects():
+    # The plan file recorded an observed value so applying could refuse when
+    # the board had moved. --expect says the same thing without a file that
+    # nothing reads twice, and it is checked against the state machine rather
+    # than against another step's string.
     trans_step = next(s for s in STEPS
                       if s.get("command") == "speckit.github-lifecycle.transition")
-    assert index(plan_step["id"]) < index(trans_step["id"])
-    written = plan_step["input"]["args"].split("Write exactly")[1].split(".md")[0].strip()
-    applied = trans_step["input"]["args"].split("Approved plan:")[1].split(".md")[0].strip()
-    assert written == applied, "the transition applies a plan nothing wrote"
+    args = trans_step["input"]["args"]
+    assert '--expect "Refining"' in args, (
+        "Refining is the only state state-machine.yml allows Ready to come from")
+    assert "Approved plan:" not in args
 
 
 @pytest.mark.req("REQ-BACKLOG-REFINE-001")

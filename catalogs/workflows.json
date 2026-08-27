@@ -36,7 +36,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 15
+        "steps": 14
       }
     },
     "lifecycle-decompose": {
@@ -108,7 +108,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 11
+        "steps": 10
       }
     },
     "lifecycle-outcome-review": {
@@ -162,7 +162,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 6
+        "steps": 5
       }
     },
     "lifecycle-release-outcome": {
@@ -180,7 +180,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 9
+        "steps": 8
       }
     },
     "lifecycle-retirement": {
@@ -198,7 +198,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 13
+        "steps": 12
       }
     },
     "lifecycle-spike": {
@@ -234,7 +234,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 21
+        "steps": 20
       }
     },
     "lifecycle-triage": {
@@ -252,7 +252,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 5
+        "steps": 4
       }
     }
   }

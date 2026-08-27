@@ -790,10 +790,16 @@ def main() -> int:
     p_plan.add_argument("--issue", type=int, required=True)
     p_plan.add_argument("--to", required=True)
     p_plan.add_argument("--role", default="delivery_state")
-    p_plan.add_argument("--out", type=Path, required=True)
+    p_plan.add_argument("--out", type=Path, default=None,
+                        help="Write the plan to a file. Optional: without it this previews what the transition needs and writes nothing.")
 
-    p_apply = sub.add_parser("apply", help="Apply an approved plan.")
-    p_apply.add_argument("--plan", type=Path, required=True)
+    p_apply = sub.add_parser(
+        "apply", help="Apply one approved transition, refusing if the board moved.")
+    p_apply.add_argument("--issue", type=int, required=True)
+    p_apply.add_argument("--to", required=True)
+    p_apply.add_argument("--role", default="delivery_state")
+    p_apply.add_argument("--expect", required=True, metavar="STATE",
+                         help="The state this transition was approved against. The write is refused if the board is no longer there, which is what stops one run overwriting a change it never saw.")
     p_apply.add_argument("--evidence", action="append", default=[],
                          metavar="KEY=VALUE",
                          help="Assert one required evidence item. Repeatable.")
@@ -833,10 +839,11 @@ def main() -> int:
         if args.cmd == "plan":
             plan = build_plan(backend, inspection, machine, args.issue,
                               args.to, args.role, gh=gh)
-            out = project_root.ensure_within(args.policy_root, args.out)
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(plan.to_markdown(), encoding="utf-8")
-            print(f"Write exactly {out}")
+            if args.out is not None:
+                out = project_root.ensure_within(args.policy_root, args.out)
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(plan.to_markdown(), encoding="utf-8")
+                print(f"Write exactly {out}")
             print(plan.to_yaml())
             return 0
 
@@ -883,7 +890,29 @@ def main() -> int:
                 print(f"\nQueue is at target ({args.target}).")
             return 0
 
-        plan = TransitionPlan.from_markdown(args.plan.read_text(encoding="utf-8"))
+        # Compare-and-swap, which is the whole of what the plan file bought.
+        # It recorded an observed value so applying could refuse when the board
+        # had moved since; `--expect` says the same thing in one flag, and
+        # without a 335-file directory nothing reads twice.
+        current = backend.read(args.issue, args.role)
+        issue_ref = f"{inspection.owner}/{inspection.repo}#{args.issue}"
+        if current.value == args.to:
+            # Already applied. A retry after a timeout changes nothing rather
+            # than reporting drift against a value it itself wrote.
+            print(json.dumps({
+                "issue": issue_ref, "role": args.role,
+                "from": args.to, "to": args.to,
+                "operation_id": None, "commented": None,
+                "audit": [a.outcome for a in gh.audit],
+            }, indent=2))
+            return 0
+        if current.value != args.expect:
+            raise Conflict(
+                f"expected {args.expect!r} but {issue_ref} {args.role} is now "
+                f"{current.value!r}. Re-read the board rather than overwriting a "
+                f"change this run did not account for.")
+        plan = build_plan(backend, inspection, machine, args.issue, args.to,
+                          args.role, gh=gh)
         evidence = dict(
             item.split("=", 1) if "=" in item else (item, "asserted")
             for item in args.evidence
