@@ -37,21 +37,7 @@ inputs:
     - ''
     - approve
     - reject
-  spec_verdict:
-    type: string
-    default: ''
-    enum:
-    - ''
-    - approve
-    - reject
-  plan_verdict:
-    type: string
-    default: ''
-    enum:
-    - ''
-    - approve
-    - reject
-  tasks_verdict:
+  work_verdict:
     type: string
     default: ''
     enum:
@@ -136,14 +122,6 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: '{{ inputs.intent }} Source issue: {{ inputs.issue_ref }}'
-- id: review-spec
-  type: gate
-  message: Review specification and Acceptance Criteria.
-  options:
-  - approve
-  - reject
-  on_reject: abort
-  verdict_input: spec_verdict
 - id: resolve-uncertainty
   type: switch
   expression: '{{ inputs.uncertainty_mode }}'
@@ -364,14 +342,6 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: Create only risk-appropriate product, security, migration, operability, and accessibility checks.
-- id: review-plan
-  type: gate
-  message: Review technical plan and risk-triggered controls.
-  options:
-  - approve
-  - reject
-  on_reject: abort
-  verdict_input: plan_verdict
 - id: tasks
   timeout: 1800
   command: speckit.tasks
@@ -383,15 +353,21 @@ Begin the file with a "What you are approving" block: one line per decision that
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
-    args: Analyze spec, plan, tasks, Constitution, risk controls, and safe parallelism.
-- id: review-tasks
+    args: 'Analyze spec, plan, tasks, Constitution, risk controls, and safe parallelism.
+      Write the findings, by severity and naming the authoritative artifact to correct,
+      to exactly .specify/lifecycle/analysis-{{ context.run_id }}.md. This is the file
+      the reviewer is shown, so a finding that is not in it is a finding nobody sees.'
+- id: review-work
   type: gate
-  message: Review TDD ordering, dependencies, and ownership.
+  message: 'Review the analysis of spec, plan, and tasks together: acceptance criteria
+    without evidence, constitution or risk violations, missing TDD ordering, unsafe
+    parallelism. Rejecting stops before any code is written.'
   options:
   - approve
   - reject
   on_reject: abort
-  verdict_input: tasks_verdict
+  verdict_input: work_verdict
+  show_file: .specify/lifecycle/analysis-{{ context.run_id }}.md
 - id: implement
   timeout: 1800
   command: speckit.implement
@@ -481,19 +457,41 @@ Begin the file with a "What you are approving" block: one line per decision that
   input:
     args: Plan issue {{ inputs.issue_ref }} Delivery Status → Output Done and optional completed closure.
       Write exactly .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md. Do not mutate.
+- id: write-delivery-record
+  type: prompt
+  timeout: 600
+  integration: '{{ inputs.integration }}'
+  prompt: 'Write the delivery record for {{ inputs.issue_ref }} to exactly .specify/lifecycle/delivery-record-{{
+    context.run_id }}.md.
+
+    Open with `## Decisions` naming what this gate decides: every judgement taken during
+    the build that a reader could disagree with -- a scope that narrowed, a criterion
+    dropped, an approach rejected. One line each. If there were none, say so in one line;
+    an empty heading is the failure this ordering exists to prevent.
+
+    Then `## What was built`, `## What verification reported` (what the verify, ratchet
+    and converge steps actually said, not that they ran), and `## What this exposed`
+    -- a correction to the item''s own text, a defect found, a thing that turned out
+    harder than the item assumed.
+
+    This is posted on the issue and is the record a later reader is told to trust over
+    re-deriving the work, so write it for someone who was not here. Do not restate the
+    acceptance criteria back; say whether they held.'
 - id: approve-output-done
   type: gate
-  message: Review verification and convergence. Approve Output Done?
+  message: 'Review the delivery record against the verification and convergence output.
+    Approving posts it on the issue and moves the item to Output Done.'
   options:
   - approve
   - reject
   on_reject: abort
   verdict_input: output_verdict
-  show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-output-done.md
+  show_file: .specify/lifecycle/delivery-record-{{ context.run_id }}.md
 - id: transition-output-done
   command: speckit.github-lifecycle.transition
   integration: '{{ inputs.integration }}'
   input:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → Output Done; close
       only if authorized; read back. Approved plan: .specify/github-lifecycle/plans/{{ context.run_id
-      }}-output-done.md.'
+      }}-output-done.md. Post the approved record with --comment .specify/lifecycle/delivery-record-{{
+      context.run_id }}.md.'

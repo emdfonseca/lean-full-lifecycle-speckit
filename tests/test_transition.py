@@ -1229,3 +1229,40 @@ def test_asserting_work_is_read_from_the_machine_not_counted_from_the_end():
     extended["delivery_status"]["values"].append("Archived")
     extended["delivery_status"]["terminal_states"].append("Archived")
     assert tp.states_asserting_work(extended) == tp.states_asserting_work(MACHINE)
+
+
+# --- evidence that denies itself is not evidence ------------------------------
+#
+# Presence was the whole check, so `--evidence work_started=false` passed
+# exactly as `=true` did.
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_evidence_asserted_as_false_is_refused():
+    plan, be, insp, board = plan_for("In Progress")
+    with pytest.raises(gh_api.Forbidden) as exc:
+        tp.apply_plan(be, insp, plan,
+                      {"owner_assigned": "me", "work_started": "false"},
+                      machine=MACHINE)
+    assert "asserted as false" in str(exc.value)
+    assert "work_started" in str(exc.value)
+    assert not any("PATCH" in c for c in board.calls), (
+        "a denial that still wrote would be the defect wearing a refusal")
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_an_empty_evidence_value_is_refused():
+    # `--evidence work_started=` is the same denial with fewer characters.
+    plan, be, insp, _ = plan_for("In Progress")
+    with pytest.raises(gh_api.Forbidden):
+        tp.apply_plan(be, insp, plan,
+                      {"owner_assigned": "me", "work_started": ""},
+                      machine=MACHINE)
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_output_done_asks_for_one_thing_nobody_can_derive():
+    # The other four restated step ordering or were defined nowhere. What is
+    # left is the judgement: did the acceptance criteria hold.
+    edge = [t for t in MACHINE["delivery_status"]["transitions"]
+            if t["from"] == "In Progress" and t["to"] == "Output Done"][0]
+    assert edge["evidence"] == ["acceptance_criteria_satisfied"]

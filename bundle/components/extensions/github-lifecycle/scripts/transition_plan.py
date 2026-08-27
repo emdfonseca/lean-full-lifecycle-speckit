@@ -271,6 +271,16 @@ def apply_plan(backend: FieldBackend, inspection: Inspection, plan: TransitionPl
         raise Forbidden(
             f"evidence required by {plan.authority!r} not asserted: {missing}"
         )
+    # Presence was the whole check, so `--evidence required_ci_green=false`
+    # passed exactly as `=true` did. A key whose value denies the thing the key
+    # names is not an assertion, and reading it as one is worse than not asking.
+    denied = sorted(e for e in plan.evidence_required
+                    if str(evidence[e]).strip().lower() in DENIALS)
+    if denied:
+        raise Forbidden(
+            f"evidence asserted as false: {denied}. Supply the evidence or do "
+            f"not make the transition; a recorded denial is not an approval."
+        )
 
     # Re-validate against policy: a plan can outlive a policy change.
     find_transition(machine, plan.observed, plan.target)
@@ -738,6 +748,34 @@ def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = F
     return gh, inspection, for_inspection(gh, inspection)
 
 
+# Values that deny what their key names. Not an allowlist of truth: an agent
+# writes free text here and no word list can make an assertion honest. This
+# only stops the reading where a denial counted as evidence.
+DENIALS = frozenset({"false", "no", "none", "0", "not", "unverified", "unknown", ""})
+
+
+def post_comment(gh, inspection, plan, path: Path) -> str:
+    """Post the delivery record on the issue the plan named.
+
+    CLAUDE.md tells a reader to read the issue rather than re-derive the work,
+    and nothing in the bundle produced that comment. It rides on the transition
+    because the transition already sits behind a gate, already names an
+    approved plan, and already writes to this issue -- a second command would
+    be a second thing to forget.
+    """
+    body = path.read_text(encoding="utf-8").strip()
+    if not body:
+        raise Forbidden(
+            f"{path} is empty. A comment that says nothing is worse than no "
+            f"comment: it looks like the record was written.")
+    issue = int(plan.issue.rsplit("#", 1)[1])
+    gh.rest("POST",
+            f"repos/{inspection.owner}/{inspection.repo}/issues/{issue}/comments",
+            body={"body": body},
+            operation_id=f"{plan.operation_id}-comment")
+    return str(path)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--repo", default=None,
@@ -759,6 +797,8 @@ def main() -> int:
     p_apply.add_argument("--evidence", action="append", default=[],
                          metavar="KEY=VALUE",
                          help="Assert one required evidence item. Repeatable.")
+    p_apply.add_argument("--comment", type=Path, default=None,
+                         help="Post this file as an issue comment after the transition succeeds. The record of what was built and what it exposed.")
     p_apply.add_argument("--dry-run", action="store_true")
 
     sub.add_parser("audit", help="Report board state that contradicts the policy.")
@@ -849,10 +889,17 @@ def main() -> int:
             for item in args.evidence
         )
         result = apply_plan(backend, inspection, plan, evidence, machine=machine)
+        commented = None
+        if args.comment is not None:
+            # After the write, never before. A comment describing a transition
+            # that was then refused is a false record, and this one is the
+            # record a reader is told to trust over re-deriving the work.
+            commented = post_comment(gh, inspection, plan, args.comment)
         print(json.dumps({
             "issue": plan.issue, "role": plan.role,
             "from": plan.observed, "to": result.value,
             "operation_id": plan.operation_id,
+            "commented": commented,
             "audit": [a.outcome for a in gh.audit],
         }, indent=2))
         return 0

@@ -446,7 +446,9 @@ requirements:
       - "tests/test_transition.py::test_applying_moves_the_value_and_reads_it_back"
       - "tests/test_transition.py::test_reapplying_the_same_plan_is_idempotent"
       - "tests/test_transition.py::test_a_plan_round_trips_through_markdown"
-
+      - "tests/test_transition.py::test_evidence_asserted_as_false_is_refused"
+      - "tests/test_transition.py::test_an_empty_evidence_value_is_refused"
+      - "tests/test_transition.py::test_output_done_asks_for_one_thing_nobody_can_derive"
   - id: REQ-GITHUB-COMMANDS-001
     statement: >-
       A command that reaches GitHub invokes the deterministic adapter rather

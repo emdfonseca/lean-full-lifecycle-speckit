@@ -57,12 +57,18 @@ delivery_status:
     - from: In Progress
       to: Output Done
       authority: automated_gates_and_authorized_review
+      # One item, because one is all anybody can honestly assert here.
+      # `required_ci_green` and `convergence_clear` were restatements of step
+      # ordering: a workflow aborts on a non-zero step, so reaching this
+      # transition already means verify, the ratchet and converge passed, and
+      # asserting it again only records that somebody retyped it.
+      # `operability_complete` was defined nowhere, so nothing could check it
+      # even in principle. `applicable_security_green` folded the judgement
+      # ("is security applicable here") into a word that looked mechanical.
+      # What is left cannot be derived and cannot be faked into meaning
+      # something else: did the acceptance criteria hold.
       evidence:
         - acceptance_criteria_satisfied
-        - required_ci_green
-        - applicable_security_green
-        - convergence_clear
-        - operability_complete
     - from: Output Done
       to: In Progress
       authority: engineering_authority
