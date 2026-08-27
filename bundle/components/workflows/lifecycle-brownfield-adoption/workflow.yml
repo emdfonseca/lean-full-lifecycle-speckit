@@ -77,7 +77,10 @@ steps:
 
     scan only. Do not inventory the whole estate.
 
-    '
+    
+
+
+Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing. Where you label items for cross-reference, define them under that same label and under a heading, so searching for the label finds the definition and not only the references.'
 - id: approve-adoption-plan
   type: gate
   message: Review .specify/lifecycle/brownfield-adoption-plan.md. Approve adoption?
@@ -125,7 +128,10 @@ steps:
 
         Write .specify/lifecycle/brownfield-discovery.md and an explicit readiness verdict.
         Recommend exactly one bounded first target: a scan that recommends five is a
-        modernization backlog, which is the thing this workflow exists not to produce.'
+        modernization backlog, which is the thing this workflow exists not to produce.
+
+
+Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing. Where you label items for cross-reference, define them under that same label and under a heading, so searching for the label finds the definition and not only the references.'
     - id: scan-report-what-was-touched
       timeout: 600
       type: prompt

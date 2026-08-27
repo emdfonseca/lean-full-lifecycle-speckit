@@ -594,6 +594,66 @@ def write_effect_declared(ctx: Ctx) -> Iterator[Finding]:
             f"not govern it")
 
 
+# A gate artifact must open by naming what the approver is deciding. The phrases
+# an author can reasonably use for that heading; matched case-insensitively.
+DECISION_HEADINGS = ("what you are approving", "what you are deciding",
+                     "decisions", "what this gate decides")
+
+# Files a shipped script owns and no prompt may edit. `transition_plan.py` writes
+# a plan itself (`to_markdown`), and `plan.md` forbids editing one by hand, so a
+# gate showing one is approving a machine-written record rather than authored
+# prose. Exempted by ownership, which is what the exclusion is actually about.
+SCRIPT_OWNED_GATE_ARTIFACTS = ("/plans/",)
+
+
+@check("INV-GATE-ARTIFACT-STATES-THE-DECISION",
+       "A gate whose artifact is authored prose says what is being decided",
+       scope="workflow")
+def gate_artifact_states_the_decision(ctx: Ctx) -> Iterator[Finding]:
+    """The approver must be able to find the decision without reading it all.
+
+    A 196-line adoption plan carried exactly one judgement call -- hold coverage
+    at the measured figure rather than the configured one -- assembled from
+    seven fragments across five sections, and the `## Approvals` table said the
+    gate decides "this file". A second gate named seven blocking questions as
+    `Q1`-`Q7` and defined them in an unheaded numbered list, so searching for
+    `Q7` returned only the references (#155).
+
+    An approval whose subject cannot be located is not an approval: the person
+    approves all of it or none of it, and both are the same shrug.
+
+    SCOPE, stated because a check that overstates is what this repo keeps
+    removing: this covers a gate whose `show_file` names authored prose. A gate
+    showing a file a shipped script writes is exempt -- nothing a prompt does
+    could add a heading to it. A gate showing no file is not covered at all,
+    because the artifact it approves comes from outside this bundle.
+    """
+    for comp in ctx.inv.by_kind("workflow"):
+        steps = _steps(comp)
+        for gate in steps:
+            if gate.get("type") != "gate":
+                continue
+            shown = str(gate.get("show_file") or "")
+            if not shown or any(o in shown for o in SCRIPT_OWNED_GATE_ARTIFACTS):
+                continue
+            # The step that writes it: the one whose prompt names the same file.
+            stem = shown.rsplit("/", 1)[-1].split("{{")[0].strip(" -_.")
+            writer = next(
+                (s for s in steps
+                 if s is not gate and stem and stem in _norm(str(s.get("prompt") or ""))),
+                None)
+            if writer is None:
+                continue
+            prompt = _norm(str(writer.get("prompt") or "")).lower()
+            if not any(h in prompt for h in DECISION_HEADINGS):
+                yield ctx.finding(
+                    "INV-GATE-ARTIFACT-STATES-THE-DECISION",
+                    f"{comp.id}:{writer.get('id')}",
+                    f"writes {shown}, which {gate.get('id')!r} asks a person to "
+                    f"approve, and does not instruct it to open by naming the "
+                    f"decisions that need judgement")
+
+
 @check("INV-APPLY-STEP-BUDGET",
        "A prompt step that changes a codebase is budgeted to synthesise an artifact",
        scope="workflow")

@@ -1401,6 +1401,27 @@ requirements:
       - "tests/test_pilot_record.py::test_each_written_record_is_complete"
       - "tests/test_pilot_record.py::test_migration_kept_the_prose_that_always_carried_the_meaning"
 
+  - id: REQ-WORKFLOW-GATEART-001
+    statement: >-
+      A step that writes an artifact a later gate asks a person to approve
+      instructs that artifact to open by naming the decisions needing
+      judgement, each pointing at the section holding its evidence, and to
+      define a cross-referenced label under that same label and under a
+      heading. The check covers a gate whose show_file names authored prose; a
+      gate showing a file a shipped script writes is exempt by ownership, and a
+      gate showing no file is not covered because the artifact it approves comes
+      from outside this bundle.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-brownfield-adoption
+      - workflow:lifecycle-greenfield-bootstrap
+      - workflow:lifecycle-story-delivery
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-GATE-ARTIFACT-STATES-THE-DECISION]"
+
   - id: REQ-WORKFLOW-TIMEOUT-002
     statement: >-
       A prompt step's declared timeout tier is read against the work its own

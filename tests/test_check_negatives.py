@@ -422,6 +422,30 @@ def break_exemption_truthful(tmp):
     _edit_yaml(tmp / "tooling/invariants.yml", mutate)
 
 
+def break_gate_artifact_states_the_decision(tmp):
+    """Strip the decision-block instruction from a nested writer.
+
+    Four of the affected steps sit inside switch cases in
+    lifecycle-story-delivery, so planting at the top level would prove the check
+    works where it was never blind.
+    """
+    path = tmp / WF / "lifecycle-story-delivery" / "workflow.yml"
+
+    def mutate(d):
+        def walk(steps):
+            for s in steps:
+                if s.get("type") == "switch":
+                    for case in (s.get("cases") or {}).values():
+                        if walk(case):
+                            return True
+                elif "what you are approving" in str(s.get("prompt", "")).lower():
+                    s["prompt"] = str(s["prompt"]).split("Begin the file with")[0]
+                    return True
+            return False
+        assert walk(d["steps"]), "no writer carries the instruction to strip"
+    _edit_yaml(path, mutate)
+
+
 NESTED_MUTATORS = {
     "SEC-SHELL-ALLOWLIST": lambda tmp: _plant_in_first_case(
         _workflow_with_a_switch(tmp),
@@ -438,6 +462,7 @@ MUTATORS = {
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
+    "INV-GATE-ARTIFACT-STATES-THE-DECISION": break_gate_artifact_states_the_decision,
     "SEC-WRITE-EFFECT-DECLARED": break_write_effect_declared,
     "SEC-EXEMPTION-TRUTHFUL": break_exemption_truthful,
     "INV-APPLY-STEP-BUDGET": break_apply_step_budget,
@@ -530,6 +555,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-WORKFLOW-TIMEOUT-002")
 @pytest.mark.req("REQ-SECURITY-WRITEEFFECT-001")
 @pytest.mark.req("REQ-SECURITY-EXEMPTION-001")
+@pytest.mark.req("REQ-WORKFLOW-GATEART-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

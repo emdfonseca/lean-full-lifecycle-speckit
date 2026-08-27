@@ -44,7 +44,10 @@ steps:
 
     rollback, and emergency authority. Do not remediate yet.
 
-    '
+    
+
+
+Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing. Where you label items for cross-reference, define them under that same label and under a heading, so searching for the label finds the definition and not only the references.'
 - id: plan-in-progress-transition
   command: speckit.github-lifecycle.plan
   integration: '{{ inputs.integration }}'

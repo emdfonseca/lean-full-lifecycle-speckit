@@ -60,6 +60,15 @@ steps:
       anything. Technical design is not a prerequisite; not knowing what
       "done" means is.
 
+
+
+      Begin the file with a "What you are approving" block: one line per decision
+      that needs a person's judgement, each naming the section holding its
+      evidence. Only decisions -- a baseline, a file inventory or a rollback
+      procedure is a fact and does not belong there; a block naming everything
+      names nothing. Where you label items for cross-reference, define them under
+      that same label and under a heading, so searching for the label finds the
+      definition and not only the references.
   - id: validate-readiness
     command: speckit.github-lifecycle.readiness
     integration: '{{ inputs.integration }}'
