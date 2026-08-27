@@ -1232,6 +1232,49 @@ requirements:
       - "Issue #136"
       - "Issue #103"
 
+  - id: REQ-CORE-GATERES-001
+    statement: >-
+      Every quality gate quality-gates.yml declares must carry exactly one
+      recorded outcome on a project: resolved with the command that satisfies
+      it, declined with the reason it was rejected, or filed naming the backlog
+      item created for it. A gate with no outcome is reported unexamined rather
+      than omitted, because an absent gate reads as a gate with nothing wrong.
+      A filed gate names work not yet done and leaves the project unsettled. A
+      conditional gate is reported with the condition it applies under, which
+      is rendered from policy rather than stored. A merge that cannot be
+      applied whole is applied not at all, so a run that stops mid-way leaves
+      no outcome nobody decided.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/verify_bootstrap.py
+      - command:speckit.github-lifecycle.verify-bootstrap
+      - policy:quality-gates.yml
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_verify_bootstrap.py::test_a_resolved_gate_records_the_command_that_satisfies_it"
+      - "tests/test_verify_bootstrap.py::test_a_resolved_gate_naming_no_command_is_refused"
+      - "tests/test_verify_bootstrap.py::test_a_declined_gate_records_its_reason_and_the_run_proceeds"
+      - "tests/test_verify_bootstrap.py::test_a_declined_gate_is_distinguishable_from_one_nobody_looked_at"
+      - "tests/test_verify_bootstrap.py::test_a_declined_gate_with_no_reason_is_refused"
+      - "tests/test_verify_bootstrap.py::test_a_gate_the_owner_wants_becomes_a_pending_filing_and_stays_unexamined"
+      - "tests/test_verify_bootstrap.py::test_a_proposed_filing_that_could_not_be_created_is_refused"
+      - "tests/test_verify_bootstrap.py::test_a_filed_gate_names_its_backlog_item"
+      - "tests/test_verify_bootstrap.py::test_a_filed_gate_leaves_the_project_unsettled"
+      - "tests/test_verify_bootstrap.py::test_a_filed_gate_naming_no_item_is_refused"
+      - "tests/test_verify_bootstrap.py::test_recording_a_filing_clears_its_pending_entry"
+      - "tests/test_verify_bootstrap.py::test_every_declared_gate_appears_in_the_report"
+      - "tests/test_verify_bootstrap.py::test_a_conditional_gates_outcome_carries_the_condition_it_applies_under"
+      - "tests/test_verify_bootstrap.py::test_an_outcome_for_an_undeclared_gate_is_refused"
+      - "tests/test_verify_bootstrap.py::test_an_outcome_outside_the_three_words_is_refused"
+      - "tests/test_verify_bootstrap.py::test_a_refused_entry_writes_no_part_of_the_record"
+      - "tests/test_verify_bootstrap.py::test_resolution_writes_nothing_without_write"
+      - "tests/test_verify_bootstrap.py::test_the_record_survives_a_second_merge_and_keeps_earlier_outcomes"
+      - "tests/test_verify_bootstrap.py::test_a_gate_with_no_outcome_keeps_the_command_from_passing"
+    evidence:
+      - "Issue #165"
   - id: REQ-CORE-VERIFYCMD-001
     statement: >-
       Bootstrap must establish that the project defines the verification

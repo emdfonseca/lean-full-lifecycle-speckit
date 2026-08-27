@@ -216,6 +216,246 @@ def test_the_gate_says_what_rejecting_costs(name):
     assert "first delivery will fail" in gate["message"]
 
 
+# --- gate resolution: resolved, declined, or filed -----------------------------
+#
+# The contract before this produced no outcome for any gate at once, so nothing
+# distinguished a gate the owner rejected from one nobody looked at. Every test
+# below drives the property that ends that: sixteen declared gates, each in
+# exactly one bucket, and `unexamined` is a bucket rather than an absence.
+
+GATES = vb.declared_gates(vb.load_gate_policy(ROOT))
+ITEM_TYPES = vb.load_item_types(ROOT)
+REQUIRED = vb.required_sections(ITEM_TYPES, "story")
+FILING_BODY = "\n".join(f"## {s}\n\nsomething" for s in REQUIRED)
+
+
+def resolve(record, incoming):
+    return vb.merge(record, incoming, GATES, POLICY, ITEM_TYPES)
+
+
+def run(monkeypatch, *argv):
+    """Through the CLI, because writing and the exit code live only there."""
+    monkeypatch.setattr(sys, "argv", ["verify_bootstrap.py",
+                                      "--policy-root", str(ROOT)] + list(argv))
+    return vb.main()
+
+
+def resolution(tmp_path, incoming):
+    path = tmp_path / "resolve.yml"
+    path.write_text(vb.yaml.safe_dump(incoming), encoding="utf-8")
+    return path
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_resolved_gate_records_the_command_that_satisfies_it():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "secret_detection": {"outcome": "resolved",
+                             "command": "gitleaks detect"}}})
+    assert problems == []
+    row = vb.report_gates(record, GATES, POLICY).resolved[0]
+    assert row == {"gate": "secret_detection", "command": "gitleaks detect"}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_resolved_gate_naming_no_command_is_refused():
+    # An outcome with no command leaves the gate satisfied by nothing nameable.
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "secret_detection": {"outcome": "resolved", "command": "  "}}})
+    assert problems and "secret_detection" in problems[0]
+    assert record["gates"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_declined_gate_records_its_reason_and_the_run_proceeds():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "accessibility": {"outcome": "declined", "reason": "no user surface"}}})
+    assert problems == []
+    report = vb.report_gates(record, GATES, POLICY)
+    assert report.declined[0]["reason"] == "no user surface"
+    assert "accessibility" not in [r["gate"] for r in report.unexamined]
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_declined_gate_is_distinguishable_from_one_nobody_looked_at():
+    # The story exists for this line. Both gates are unsatisfied; only one was
+    # decided, and a report that cannot tell them apart is the defect.
+    record, _ = resolve(vb.EMPTY_RECORD, {"gates": {
+        "accessibility": {"outcome": "declined", "reason": "no user surface"}}})
+    report = vb.report_gates(record, GATES, POLICY)
+    assert [r["gate"] for r in report.declined] == ["accessibility"]
+    assert "security_review" in [r["gate"] for r in report.unexamined]
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_declined_gate_with_no_reason_is_refused():
+    # A decline with no reason is silence wearing a word.
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "accessibility": {"outcome": "declined", "reason": ""}}})
+    assert problems
+    assert record["gates"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_gate_the_owner_wants_becomes_a_pending_filing_and_stays_unexamined():
+    record, problems = resolve(vb.EMPTY_RECORD, {"pending_filings": {
+        "performance_tests": {"title": "Add a performance gate",
+                              "body": FILING_BODY}}})
+    assert problems == []
+    report = vb.report_gates(record, GATES, POLICY)
+    row = [r for r in report.unexamined if r["gate"] == "performance_tests"][0]
+    assert row["pending_filing"] == "Add a performance gate"
+    assert report.filed == []
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_proposed_filing_that_could_not_be_created_is_refused():
+    # Approving a batch containing an item capture would refuse moves the
+    # refusal to after the person decided.
+    record, problems = resolve(vb.EMPTY_RECORD, {"pending_filings": {
+        "performance_tests": {"title": "Add a performance gate",
+                              "body": "## Scope\n\nonly this"}}})
+    assert problems and "Acceptance criteria" in problems[0]
+    assert record["pending_filings"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_filed_gate_names_its_backlog_item():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "end_to_end_tests": {"outcome": "filed", "item": 171}}})
+    assert problems == []
+    assert vb.report_gates(record, GATES, POLICY).filed[0]["item"] == 171
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_filed_gate_leaves_the_project_unsettled():
+    # The issue's own words: the gate is recorded unresolved pending that item.
+    # Filing sixteen items and delivering none is not a resolved project.
+    record, _ = resolve(vb.EMPTY_RECORD, {"gates": {
+        name: {"outcome": "declined", "reason": "no"} for name in GATES}})
+    assert vb.report_gates(record, GATES, POLICY).settled
+    record, _ = resolve(record, {"gates": {
+        "end_to_end_tests": {"outcome": "filed", "item": 171}}})
+    report = vb.report_gates(record, GATES, POLICY)
+    assert report.every_gate_answered
+    assert not report.settled
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_filed_gate_naming_no_item_is_refused():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "end_to_end_tests": {"outcome": "filed", "item": None}}})
+    assert problems
+    assert record["gates"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_recording_a_filing_clears_its_pending_entry():
+    # A gate both pending and recorded is two answers to one question.
+    record, _ = resolve(vb.EMPTY_RECORD, {"pending_filings": {
+        "performance_tests": {"title": "Add one", "body": FILING_BODY}}})
+    record, problems = resolve(record, {"gates": {
+        "performance_tests": {"outcome": "filed", "item": 200}}})
+    assert problems == []
+    assert record["pending_filings"] == {}
+    assert record["gates"]["performance_tests"]["item"] == 200
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_every_declared_gate_appears_in_the_report():
+    # Derived from quality-gates.yml, not listed here: a gate added to policy
+    # and forgotten by the report is the absence this record exists to end.
+    report = vb.report_gates(vb.EMPTY_RECORD, GATES, POLICY)
+    seen = {r["gate"] for bucket in ("resolved", "declined", "filed",
+                                     "unexamined")
+            for r in getattr(report, bucket)}
+    assert seen == set(GATES)
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_conditional_gates_outcome_carries_the_condition_it_applies_under():
+    report = vb.report_gates(vb.EMPTY_RECORD, GATES, POLICY)
+    rows = {r["gate"]: r for r in report.unexamined}
+    assert rows["end_to_end_tests"]["applies_when"] == [
+        "critical_user_journey_changed"]
+    assert "applies_when" not in rows["secret_detection"]
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_an_outcome_for_an_undeclared_gate_is_refused():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "gate_nobody_declared": {"outcome": "resolved", "command": "true"}}})
+    assert problems
+    assert record["gates"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_an_outcome_outside_the_three_words_is_refused():
+    record, problems = resolve(vb.EMPTY_RECORD, {"gates": {
+        "secret_detection": {"outcome": "skipped", "command": "true"}}})
+    assert problems
+    assert record["gates"] == {}
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_refused_entry_writes_no_part_of_the_record(tmp_path, monkeypatch):
+    # All or nothing. A half-applied merge leaves the record asserting
+    # something nobody decided, and the next run reads it as decided.
+    path = resolution(tmp_path, {"gates": {
+        "secret_detection": {"outcome": "resolved", "command": "gitleaks"},
+        "accessibility": {"outcome": "declined", "reason": ""}}})
+    run(monkeypatch, "--path", str(tmp_path), "--resolve", str(path), "--write")
+    assert not vb.record_path(tmp_path, POLICY).exists()
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_resolution_writes_nothing_without_write(tmp_path, monkeypatch):
+    path = resolution(tmp_path, {"gates": {
+        "secret_detection": {"outcome": "resolved", "command": "gitleaks"}}})
+    run(monkeypatch, "--path", str(tmp_path), "--resolve", str(path))
+    assert not vb.record_path(tmp_path, POLICY).exists()
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_the_record_survives_a_second_merge_and_keeps_earlier_outcomes(
+        tmp_path, monkeypatch):
+    # Resumability. A refused `capture` leaves the record on disk, and the next
+    # run has to keep every outcome already established.
+    first = resolution(tmp_path, {"gates": {
+        "secret_detection": {"outcome": "resolved", "command": "gitleaks"}}})
+    run(monkeypatch, "--path", str(tmp_path), "--resolve", str(first), "--write")
+    second = tmp_path / "second.yml"
+    second.write_text(vb.yaml.safe_dump({"gates": {
+        "accessibility": {"outcome": "declined", "reason": "no surface"}}}),
+        encoding="utf-8")
+    run(monkeypatch, "--path", str(tmp_path), "--resolve", str(second),
+        "--write")
+    record = vb.load_record(tmp_path, POLICY)
+    assert record["gates"]["secret_detection"]["command"] == "gitleaks"
+    assert record["gates"]["accessibility"]["reason"] == "no surface"
+
+
+@pytest.mark.req("REQ-CORE-GATERES-001")
+def test_a_gate_with_no_outcome_keeps_the_command_from_passing(
+        tmp_path, monkeypatch):
+    # Decision 5, enforced where it can be: a record with a gate missing is
+    # impossible to pass, rather than impossible to hold.
+    (tmp_path / "devbox.json").write_text(json.dumps({"shell": {"scripts": {
+        "verify": ["pytest"], "release-verify": ["pytest"]}}}),
+        encoding="utf-8")
+    settled = {name: {"outcome": "declined", "reason": "not for this project"}
+               for name in GATES}
+    one_short = dict(settled)
+    one_short.pop("secret_detection")
+
+    path = resolution(tmp_path, {"gates": one_short})
+    assert run(monkeypatch, "--path", str(tmp_path), "--resolve", str(path),
+               "--write") == 1
+
+    path = resolution(tmp_path, {"gates": settled})
+    assert run(monkeypatch, "--path", str(tmp_path), "--resolve", str(path),
+               "--write") == 0
+
+
 # --- policy is the source -----------------------------------------------------
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")

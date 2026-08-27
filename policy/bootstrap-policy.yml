@@ -118,6 +118,35 @@ verification_commands:
     file: devbox.json
     scripts_at: [shell, scripts]
 
+  # Where each declared gate's outcome is recorded on a project. One entry per
+  # gate quality-gates.yml declares. A gate with no entry is reported
+  # unexamined, which is a finding rather than a silence.
+  gate_resolution:
+    file: .specify/lifecycle/gate-resolution.yml
+    # Each outcome, the one field it must carry, and that field's type. An
+    # outcome word with no content is the failure this record exists to end:
+    # a `declined` carrying no reason is indistinguishable from a gate nobody
+    # looked at.
+    outcomes:
+      resolved:
+        field: command
+        type: str
+      declined:
+        field: reason
+        type: str
+      filed:
+        field: item
+        type: int
+    # `filed` names the backlog item created for a gate and leaves the gate
+    # unresolved until that item is delivered. Recording a filing is not
+    # resolving the gate, and a project whose gates are all filed has decided
+    # nothing yet.
+    leaves_unresolved: [filed]
+    # A gate the owner wants becomes a proposed item first, so a run collects
+    # every filing and puts them to a person as one batch. Filings stay data
+    # until that person acts, which is what lets a refused creation resume.
+    pending_filings_are: story
+
   resolution:
     - generate_minimal_script_when_stack_decided
     - overlay_to_an_allowed_command
