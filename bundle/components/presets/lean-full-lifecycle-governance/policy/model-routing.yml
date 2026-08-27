@@ -68,11 +68,10 @@ resolution:
   # chosen. Stated rather than silent, so a reader can tell that routing
   # governs OpenCode and not Claude Code.
   no_inventory_command: do_not_route
-  # Where a resolved mapping is written. `record_resolved_mapping: true` above
-  # described an intention with no destination.
+  # Where a resolved mapping is written. A destination, not an intention to
+  # write one somewhere.
   record_path: .specify/lifecycle/model-routing-resolved.yml
   # A resolution is only as current as its evaluation date. How long one stays
   # current is a decision somebody makes; recording refuses to invent it.
   expiry_required: true
   refresh_available_models: true
-  record_resolved_mapping: true

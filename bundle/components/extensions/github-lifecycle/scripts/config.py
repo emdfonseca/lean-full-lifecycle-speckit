@@ -145,7 +145,3 @@ def field_names(root: Path | None = None) -> dict:
     return dict(config.get("fields") or {})
 
 
-def safety(root: Path | None = None) -> dict:
-    """The safety switches the config claims to control."""
-    config, _ = load(root)
-    return dict(config.get("safety") or {})

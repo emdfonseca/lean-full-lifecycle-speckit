@@ -285,18 +285,19 @@ requirements:
 
   - id: REQ-SECURITY-EXTCONFIG-001
     statement: >-
-      The extension ships safe configuration defaults, and its config target
-      uses a name Spec Kit preserves across updates.
+      The extension's write path requires the state a transition was approved
+      against and reads every write back, and its config target uses a name Spec
+      Kit preserves across updates. Those guarantees hold in the transition
+      contract and the field backend rather than in config defaults a caller
+      could turn off: a switch that changes nothing is worse than no switch.
     priority: must
     owner: security reviewer
     release: "0.1.1"
     status: verified
     components:
       - extension:github-lifecycle
-      - check:SEC-EXTENSION-CONFIG-SAFETY
       - check:INV-EXTENSION-CONFIG-NAME
     verified_by:
-      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-EXTENSION-CONFIG-SAFETY]"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-EXTENSION-CONFIG-NAME]"
 
   # --- GitHub and state ------------------------------------------------------
@@ -469,7 +470,6 @@ requirements:
       - command:speckit.github-lifecycle.inspect
       - command:speckit.github-lifecycle.plan
       - command:speckit.github-lifecycle.transition
-      - check:SEC-COMMAND-SCRIPT-BACKED
     verified_by:
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation"
@@ -2297,10 +2297,10 @@ requirements:
       - "tests/test_inspect.py::test_a_role_no_workflow_writes_is_harmless_even_with_no_matrix"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-ROLE-REACHABLE]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-ROLE-REACHABLE]"
+      - "tests/test_check_negatives.py::test_a_role_the_code_resolves_and_no_backend_names_is_reported"
     evidence:
       - "Issue #118"
       - "Issue #103"
-
   - id: REQ-GITHUB-PROJECTSCOPE-001
     statement: >-
       A repository resolves only to a board it is linked to, never to one its
@@ -3026,9 +3026,9 @@ requirements:
       silently. A check that no-ops on a missing input reports a coverage it
       does not have, and the build says zero errors while the property it guards
       goes unchecked. This is distinct from a check with nothing to say about a
-      well-formed bundle: a bundle carrying no extension is a true no-op, and
-      INV-SINGLE-EXTENSION owns that failure, whereas an empty tier list because
-      someone renamed step_timeouts is a broken input.
+      well-formed bundle: a bundle carrying no extension is a true no-op,
+      whereas an empty tier list because someone renamed step_timeouts is a
+      broken input.
     priority: must
     owner: framework
     release: "0.3.0"
@@ -3365,7 +3365,6 @@ requirements:
       - "tests/test_config.py::test_an_unparseable_config_refuses_rather_than_falling_through"
       - "tests/test_config.py::test_a_missing_project_number_is_none_not_an_error"
       - "tests/test_config.py::test_declared_field_names_are_readable"
-      - "tests/test_config.py::test_declared_safety_switches_are_readable"
       - "tests/test_config.py::test_the_scripts_no_longer_require_the_flag"
     evidence:
       - "Issue #92"

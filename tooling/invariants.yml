@@ -75,14 +75,6 @@ script_backed_commands:
 # Safety keys the extension config template must declare, with required values.
 # These are the defaults a user inherits; relaxing one is a deliberate act, not
 # an accident of editing the template.
-extension_config_safety:
-  # No GitHub write without an approved plan, and every write is read back.
-  require_approved_plan_for_write: true
-  require_read_back: true
-  # Output Done is an explicit engineering verdict. Closing an issue by any
-  # other route must never be taken to mean the work is done.
-  infer_output_done_from_closed_issue: false
-
 # Spec Kit has no sub-workflow step, so a branch that mirrors a standalone
 # workflow must inline its steps and the sequence exists twice. The roadmap
 # offered two remedies for that under "Avoiding workflow drift": generate both

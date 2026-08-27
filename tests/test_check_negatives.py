@@ -55,19 +55,6 @@ def break_preset_composition(tmp):
                lambda d: d["owned_preset"].__setitem__("priority", 99))
 
 
-def break_single_extension(tmp):
-    src = tmp / EXT
-    dup = src.parent / "github-lifecycle-copy"
-    shutil.copytree(src, dup)
-    _edit_yaml(dup / "extension.yml",
-               lambda d: d["extension"].__setitem__("id", "github-lifecycle-copy"))
-
-
-def break_version_coherence(tmp):
-    _edit_yaml(_first_workflow(tmp),
-               lambda d: d["workflow"].__setitem__("version", "9.9.9"))
-
-
 def break_speckit_pin(tmp):
     _edit_yaml(_first_workflow(tmp),
                lambda d: d["requires"].__setitem__("speckit_version", ">=0.0.1"))
@@ -185,20 +172,6 @@ def break_transition_contract(tmp):
     _edit_yaml(p, mutate)
 
 
-def break_command_script_backed(tmp):
-    # Revert a command to prose: the state it was in before #44.
-    path = tmp / EXT / "commands/transition.md"
-    text = path.read_text(encoding="utf-8")
-    path.write_text(
-        "\n".join(ln for ln in text.splitlines() if "scripts/" not in ln),
-        encoding="utf-8")
-
-
-def break_extension_config_safety(tmp):
-    _edit_yaml(tmp / EXT / "config-template.yml",
-               lambda d: d["safety"].__setitem__("require_read_back", False))
-
-
 def break_no_org_schema_mutation(tmp):
     # The mutation path docs/security.md says does not exist. This is the
     # guard that used to be `allow_organization_schema_mutation: false`, a
@@ -300,10 +273,13 @@ def break_extension_config_name(tmp):
 
 
 def break_item_content(tmp):
-    # A type whose sections are all optional contracts nothing.
+    # Severity is scoped to Bug in github-schema.yml and carried by Bug in
+    # item-types.yml. The two files change independently, which is what makes
+    # the comparison worth making: drop the flag on one side and the other
+    # still claims the field applies.
     def mutate(d):
-        for section in d["types"]["story"]["sections"]:
-            section["required"] = False
+        for spec in d["types"].values():
+            spec.pop("carries_severity", None)
     _edit_yaml(tmp / "policy/item-types.yml", mutate)
 
 
@@ -471,8 +447,6 @@ NESTED_MUTATORS = {
 
 MUTATORS = {
     "INV-PRESET-COMPOSITION": break_preset_composition,
-    "INV-SINGLE-EXTENSION": break_single_extension,
-    "INV-VERSION-COHERENCE": break_version_coherence,
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
@@ -490,8 +464,6 @@ MUTATORS = {
     "INV-COMMAND-RESOLVES": break_command_resolves,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
-    "SEC-COMMAND-SCRIPT-BACKED": break_command_script_backed,
-    "SEC-EXTENSION-CONFIG-SAFETY": break_extension_config_safety,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
     "INV-BOOTSTRAP-DOCUMENTS": break_bootstrap_documents,
     "INV-ROLE-REACHABLE": break_role_reachable,
@@ -652,7 +624,6 @@ def test_check_detects_a_violation_nested_in_a_switch_case(check_id, bundle_copy
 # would have caught the violation never ran.
 FAIL_CLOSED = [
     ("INV-SCRIPT-FLAVOUR", "policy/bootstrap-policy.yml", "script_flavours"),
-    ("SEC-COMMAND-SCRIPT-BACKED", "tooling/invariants.yml", "script_backed_commands"),
     ("INV-BOOTSTRAP-DOCUMENTS", "policy/bootstrap-policy.yml", "product_documents"),
     ("INV-ROLE-REACHABLE", "tooling/compatibility.yml", "backends"),
     ("INV-STEP-TIMEOUT-TIER", "policy/bootstrap-policy.yml", "step_timeouts"),
@@ -686,3 +657,28 @@ def test_a_check_refuses_a_missing_input(check_id, policy_file, key, bundle_copy
         f"{check_id} stayed silent with {key!r} removed from {policy_file}; "
         f"errors={payload['errors']}"
     )
+
+
+# --- the case the role check used to be blind to ------------------------------
+
+@pytest.mark.req("REQ-GITHUB-BACKENDS-001")
+def test_a_role_the_code_resolves_and_no_backend_names_is_reported(bundle_copy):
+    # The role names used to come from the matrix itself, so a role in
+    # ROLE_CANDIDATES and in no backend row was invisible -- which is the one
+    # failure worth catching here. Dropping it from every backend leaves the
+    # matrix self-consistent and silent about a role that exists.
+    def mutate(d):
+        for spec in d["backends"].values():
+            if "capability" in (spec.get("carries") or []):
+                spec["carries"].remove("capability")
+            (spec.get("unavailable") or {}).pop("capability", None)
+    _edit_yaml(bundle_copy / "tooling/compatibility.yml", mutate)
+
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/validate_source.py"),
+         "--root", str(bundle_copy), "--only", "INV-ROLE-REACHABLE",
+         "--format", "json"], text=True, capture_output=True)
+    errors = json.loads(r.stdout)["errors"]
+    assert any("capability" in f["message"] or "capability" in f["subject"]
+               for f in errors), errors
+

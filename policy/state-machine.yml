@@ -115,10 +115,6 @@ outcome_status:
       authority: product_or_analytics_owner
       evidence: [outcome_record, result_and_decision]
 
-blocked:
-  representation: native_issue_dependency
-  add_delivery_status: false
-
 closure:
   # Two questions per route: what delivery state closure requires, and what
   # GitHub records as the reason. The audit reads this rather than carrying

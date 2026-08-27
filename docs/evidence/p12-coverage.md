@@ -74,7 +74,7 @@ fail if the behaviour regressed. Statuses below are post-refutation. -->
 | Unapproved provider | covered | `tests/test_opencode_models.py::test_a_model_from_an_unapproved_provider_is_refused`, `::test_a_real_model_from_an_unapproved_provider_still_fails`, `::test_a_bad_fallback_is_refused_and_identified_as_a_fallback` |
 | Unapproved MCP/plugin/skill | partial | `tests/test_claude_config.py::test_mcp_servers_are_not_enabled_wholesale` (value); `::test_a_rule_opencode_could_not_express_is_generated_here[plugin_default]`, `tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named[mcp_default|plugin_default]` (presence only); skills have no rule |
 | Organization schema mutation without authority | absent | — |
-| GitHub read-back mismatch | covered | `tests/test_field_backend.py::test_a_write_that_does_not_stick_raises_conflict`, `::test_org_backend_reads_back_and_conflicts_on_mismatch`, `::test_placement_refuses_when_the_item_reads_back_as_another_issue`, `::test_replaying_an_id_after_the_value_moved_on_is_a_conflict`, `tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-EXTENSION-CONFIG-SAFETY]` |
+| GitHub read-back mismatch | covered | `tests/test_field_backend.py::test_a_write_that_does_not_stick_raises_conflict`, `::test_org_backend_reads_back_and_conflicts_on_mismatch`, `::test_placement_refuses_when_the_item_reads_back_as_another_issue`, `::test_replaying_an_id_after_the_value_moved_on_is_a_conflict` |
 | GitHub rate-limit handling | partial | `tests/test_github_api.py::test_failures_are_classified_not_stringly_typed[...RateLimited]` (×2), `::test_rate_limit_carries_a_retry_delay` — classification only, `max_attempts=1` |
 
 ## outcome (4 covered / 1 partial / 1 absent)

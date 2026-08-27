@@ -33,13 +33,6 @@ outcome_values:
   validated: "Outcome Validated"
   missed_or_inconclusive: "Outcome Missed / Inconclusive"
 
-safety:
-  require_approved_plan_for_write: true
-  require_read_back: true
-  allow_status_labels: false
-  close_completed_after_output_done: true
-  infer_output_done_from_closed_issue: false
-
 capture:
   default_status: "Inbox"
   search_open_and_recently_closed: true

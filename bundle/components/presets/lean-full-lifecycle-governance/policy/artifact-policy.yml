@@ -19,10 +19,9 @@ artifacts:
   prototype:
     authority: ephemeral
     retention: delete_or_archive_after_decision
-    promote_only_by_explicit_decision: true
 
-    # promote_only_by_explicit_decision was a stated intention with nothing
-    # enforcing it. This is the record that makes it real: work informed by a
+    # Promotion is an explicit decision, and this record is what makes that
+    # real rather than stated: work informed by a
     # prototype or spike cannot reach Output Done until the disposal is
     # decided.
     #

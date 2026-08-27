@@ -1,8 +1,7 @@
 """Reading what the project declared, rather than being told it again.
 
 `config-template.yml` has declared the organization, repository, project
-number, field names, and a safety block since 0.1.0, and only `doctor.py` read
-it. Every other script took `--repo` and `--project` as required flags, so the
+number and field names since 0.1.0, and only `doctor.py` read it. Every other script took `--repo` and `--project` as required flags, so the
 target arrived as an argument an agent composed — which makes a wrong project
 number a typo rather than a misconfiguration.
 """
@@ -151,13 +150,6 @@ def test_declared_field_names_are_readable(tmp_path):
     root = project(tmp_path, organization="a", repository="b",
                    fields={"delivery_status": "Lifecycle State"})
     assert cfg.field_names(root)["delivery_status"] == "Lifecycle State"
-
-
-@pytest.mark.req("REQ-GITHUB-CONFIG-001")
-def test_declared_safety_switches_are_readable(tmp_path):
-    root = project(tmp_path, organization="a", repository="b",
-                   safety={"infer_output_done_from_closed_issue": False})
-    assert cfg.safety(root)["infer_output_done_from_closed_issue"] is False
 
 
 @pytest.mark.req("REQ-GITHUB-CONFIG-001")

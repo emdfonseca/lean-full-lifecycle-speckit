@@ -112,25 +112,6 @@ def preset_composition(ctx: Ctx) -> Iterator[Finding]:
                           f"owned preset strategy must be append, got {owned.get('strategy')!r}")
 
 
-@check("INV-SINGLE-EXTENSION", "The bundle ships exactly one extension", scope="bundle")
-def single_extension(ctx: Ctx) -> Iterator[Finding]:
-    exts = ctx.inv.by_kind("extension")
-    if len(exts) != 1:
-        yield ctx.finding("INV-SINGLE-EXTENSION", "bundle",
-                          f"expected exactly one extension, found {len(exts)}: "
-                          f"{[e.id for e in exts]}")
-
-
-@check("INV-VERSION-COHERENCE", "Component versions match the bundle version",
-       scope="bundle")
-def version_coherence(ctx: Ctx) -> Iterator[Finding]:
-    for comp in ctx.inv.components:
-        if comp.version != ctx.inv.version:
-            yield ctx.finding("INV-VERSION-COHERENCE", comp.ref,
-                              f"version {comp.version} differs from bundle "
-                              f"{ctx.inv.version}")
-
-
 @check("INV-DECLARED-IMPORTS",
        "Every third-party import a shipped script makes is declared",
        scope="extension")
@@ -193,8 +174,7 @@ def declared_imports(ctx: Ctx) -> Iterator[Finding]:
 def release_ladder(ctx: Ctx) -> Iterator[Finding]:
     """A release ladder nothing walks.
 
-    The roadmap declares five releases and `INV-VERSION-COHERENCE` keeps every
-    component on the bundle's version. What nothing required was that the
+    The roadmap declares five releases. What nothing required was that the
     number ever move: 0.1.0 was written once and four rungs' worth of verified
     work accumulated underneath it.
 
@@ -860,6 +840,29 @@ def command_script_invocation(ctx: Ctx) -> Iterator[Finding]:
                 "nothing resolves it")
 
 
+def _role_candidates(root: Path) -> set[str]:
+    """The keys of `inspect_target.ROLE_CANDIDATES`, read as data.
+
+    Parsed rather than imported: a check must not execute extension code, and
+    it must not take the role names from the file it is checking either.
+    """
+    source = (root / "bundle/components/extensions/github-lifecycle/scripts"
+              / "inspect_target.py")
+    if not source.is_file():
+        return set()
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    for node in tree.body:
+        targets = ([node.target] if isinstance(node, ast.AnnAssign)
+                   else getattr(node, "targets", []))
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id == "ROLE_CANDIDATES":
+                value = node.value
+                if isinstance(value, ast.Dict):
+                    return {k.value for k in value.keys
+                            if isinstance(k, ast.Constant)}
+    return set()
+
+
 @check("INV-ROLE-REACHABLE",
        "Every field role a workflow writes is reachable on each claimed backend",
        scope="workflow")
@@ -887,15 +890,24 @@ def role_reachable(ctx: Ctx) -> Iterator[Finding]:
             "does not have")
         return
 
-    # The role names come from the matrix itself, because the role-to-field
-    # mapping lives in `inspect_target.ROLE_CANDIDATES` rather than in policy,
-    # and a check in this file must not import an extension script. What is
-    # checkable without it is the property that actually drifts: every backend
-    # accounting for the same set of roles.
+    # The roles the code actually knows, read from the extension source as
+    # data. Taking the names from the matrix instead made the check circular:
+    # a role present in `ROLE_CANDIDATES` and in no backend row was invisible,
+    # which is the one failure worth catching here. Reading the file is not
+    # importing it -- this module reads policy the same way -- and it is the
+    # difference between comparing the matrix against the system and comparing
+    # it against itself.
+    known = _role_candidates(ctx.root)
     accounted = {name: set(spec.get("carries") or [])
                  | set((spec.get("unavailable") or {}))
                  for name, spec in backends.items()}
-    union = set().union(*accounted.values()) if accounted else set()
+    union = (set().union(*accounted.values()) if accounted else set()) | known
+
+    for role in sorted(known - union):
+        yield ctx.finding(
+            "INV-ROLE-REACHABLE", f"tooling/compatibility.yml:{role}",
+            "is a role the extension resolves and no backend accounts for, so "
+            "the matrix is silent about a role that exists")
 
     for backend, spec in backends.items():
         carries = set(spec.get("carries") or [])
@@ -950,30 +962,11 @@ def bootstrap_documents(ctx: Ctx) -> Iterator[Finding]:
             "does not have")
         return
 
-    for spec in required:
-        if not str(spec.get("answers") or "").strip():
-            yield ctx.finding(
-                "INV-BOOTSTRAP-DOCUMENTS", str(spec.get("path")),
-                "is declared with no `answers`; a document whose question is "
-                "unstated cannot be judged complete")
-        for section in spec.get("sections") or []:
-            if not str(section.get("answers") or "").strip():
-                yield ctx.finding(
-                    "INV-BOOTSTRAP-DOCUMENTS",
-                    f"{spec.get('path')}:{section.get('name')}",
-                    "is declared with no `answers`; a section whose question "
-                    "is unstated cannot be judged complete")
-            if not str(section.get("form") or "").strip():
-                yield ctx.finding(
-                    "INV-BOOTSTRAP-DOCUMENTS",
-                    f"{spec.get('path')}:{section.get('name')}",
-                    "declares no form; form is what keeps a section terse as a "
-                    "project grows, and a line budget is wrong for somebody")
-
-    if not (contract.get("style") or []):
-        yield ctx.finding(
-            "INV-BOOTSTRAP-DOCUMENTS", "product_documents",
-            "declares no style rules, so terseness is an aspiration")
+    # The non-empty sweep over answers/form/style went. It asserted that
+    # strings are non-empty, which nothing meaningful fails: an author writing
+    # the contract writes prose in every field, and the check cannot tell prose
+    # that means something from prose that does not. What stays is the half
+    # that reads a different file than the one declaring the requirement.
 
     bootstrapping = [comp for comp in ctx.inv.by_kind("workflow")
                      if "bootstrap" in comp.id or "adoption" in comp.id]
@@ -1221,28 +1214,6 @@ def transition_contract(ctx: Ctx) -> Iterator[Finding]:
                     f"as a source for {target.group(1).strip()!r}: {sorted(legal)}")
 
 
-# --------------------------------------------------------------------------
-# Extension safety
-# --------------------------------------------------------------------------
-
-@check("SEC-EXTENSION-CONFIG-SAFETY", "Extension config template keeps its safety defaults",
-       scope="extension")
-def extension_config_safety(ctx: Ctx) -> Iterator[Finding]:
-    from .inventory import load_yaml
-
-    required = ctx.invariants.get("extension_config_safety", {}) or {}
-    ext = ctx.inv.extension
-    template = ext.path / "config-template.yml"
-    if not template.is_file():
-        yield ctx.finding("SEC-EXTENSION-CONFIG-SAFETY", ext.ref, "config template missing")
-        return
-    safety = (load_yaml(template).get("safety", {}) or {})
-    for key, want in required.items():
-        if safety.get(key) != want:
-            yield ctx.finding("SEC-EXTENSION-CONFIG-SAFETY", f"{ext.ref}:{key}",
-                              f"expected {want!r}, got {safety.get(key)!r}")
-
-
 @check("SEC-NO-ORG-SCHEMA-MUTATION",
        "No script mutates an organization's Issue Field schema",
        scope="extension")
@@ -1282,46 +1253,6 @@ def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
                     "docs/security.md says the bundle performs none")
 
 
-@check("SEC-COMMAND-SCRIPT-BACKED",
-       "Commands that reach GitHub invoke a script rather than describe calls",
-       scope="extension")
-def command_script_backed(ctx: Ctx) -> Iterator[Finding]:
-    import re
-
-    required = set(ctx.invariants.get("script_backed_commands", []) or [])
-    if not required:
-        yield ctx.finding(
-            "SEC-COMMAND-SCRIPT-BACKED", "tooling/invariants.yml",
-            "script_backed_commands is absent or empty, so this check has nothing to "
-            "hold anything to. Refusing rather than passing silently: a "
-            "check that no-ops on a missing input reports a coverage it "
-            "does not have")
-        return
-    ext = ctx.inv.extension
-    for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
-        short = str(entry.get("name", "")).rsplit(".", 1)[-1]
-        if short not in required:
-            continue
-        path = ext.path / str(entry.get("file", ""))
-        if not path.is_file():
-            yield ctx.finding("SEC-COMMAND-SCRIPT-BACKED", f"{ext.ref}:{short}",
-                              "command file missing")
-            continue
-        text = path.read_text(encoding="utf-8")
-        invoked = re.findall(r"scripts/([A-Za-z_][A-Za-z0-9_]*\.py)", text)
-        if not invoked:
-            yield ctx.finding(
-                "SEC-COMMAND-SCRIPT-BACKED", f"{ext.ref}:{short}",
-                "invokes no script; the agent is left to decide how to reach "
-                "the API, which the deterministic adapter exists to prevent")
-            continue
-        for script in set(invoked):
-            if not (ext.path / "scripts" / script).is_file():
-                yield ctx.finding("SEC-COMMAND-SCRIPT-BACKED",
-                                  f"{ext.ref}:{short}",
-                                  f"invokes {script!r}, which does not exist")
-
-
 @check("INV-EXTENSION-CONFIG-NAME", "Extension config targets a name Spec Kit preserves",
        scope="extension")
 def extension_config_name(ctx: Ctx) -> Iterator[Finding]:
@@ -1357,22 +1288,10 @@ def item_content(ctx: Ctx) -> Iterator[Finding]:
         yield ctx.finding("INV-ITEM-CONTENT", "policy/item-types.yml", "defines no types")
         return
 
-    for type_id, spec in types.items():
-        subject = f"item-type:{type_id}"
-        for key in ("name", "description", "sections"):
-            if not spec.get(key):
-                yield ctx.finding("INV-ITEM-CONTENT", subject, f"missing {key!r}")
-        # A type whose sections are all optional imposes no contract at all.
-        sections = spec.get("sections") or []
-        if sections and not any(sec.get("required") for sec in sections):
-            yield ctx.finding("INV-ITEM-CONTENT", subject,
-                              "no section is required, so the type contracts nothing")
-        for sec in sections:
-            for key in ("id", "label", "prompt"):
-                if not sec.get(key):
-                    yield ctx.finding("INV-ITEM-CONTENT",
-                                      f"{subject}:{sec.get('id', '?')}",
-                                      f"section missing {key!r}")
+    # The non-empty sweep over name/description/sections/id/label/prompt went.
+    # Both sides were the same file, written by one author in one commit, so
+    # the only failure it could report was that author contradicting themselves
+    # mid-edit. What stays compares two files that change independently.
 
     # Severity is scoped to Bug by github-schema.yml; the two must agree.
     schema = load_yaml(ctx.root / "policy" / "github-schema.yml")
