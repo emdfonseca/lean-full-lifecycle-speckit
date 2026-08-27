@@ -79,17 +79,6 @@ def test_every_branch_says_delivery_is_untouched(case):
 
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")
-def test_the_report_gives_the_delivery_state_rather_than_asserting_it_is_unchanged():
-    report = [s for s in ALL if s["id"] == "report"][0]
-    body = text(report)
-    assert "unchanged" in body
-    # Naming the value is what lets a reader check rather than trust.
-    assert "give its value" in body or "give the value" in body
-
-
-# --- AC2: only an authority validates -----------------------------------------
-
-@pytest.mark.req("REQ-STATE-OUTCOME-003")
 def test_the_validated_gate_names_the_two_authorities():
     steps = branch("validated")
     gate = [s for s in steps if s.get("type") == "gate"][0]
@@ -132,10 +121,18 @@ def test_the_missed_branch_searches_before_it_creates():
 
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")
-def test_the_search_step_writes_nothing():
+def test_the_search_step_creates_nothing_on_github():
+    # tooling/invariants.yml exempts this step from the write-behind-gate rule,
+    # and SEC-EXEMPTION-TRUTHFUL honours that only while the step's own
+    # instruction declares it read-only. Both halves are asserted here: the
+    # declaration the exemption reads back, and the flag that would make it
+    # false. It writes a local candidates file, which is what the gate shows.
     search = [s for s in branch("missed")
               if s["id"] == "search-for-an-existing-finding"][0]
-    assert "Write nothing" in text(search)
+    args = text(search).lower()
+    assert any(p in args for p in ("read-only", "read only", "writes nothing",
+                                   "write nothing"))
+    assert "--create" not in args, "a searching step that creates is not a search"
 
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")
@@ -185,11 +182,6 @@ def test_the_assessment_is_reported_as_a_recommendation():
 @pytest.mark.req("REQ-STATE-OUTCOME-003")
 def test_the_status_is_set_from_the_assessment_not_from_hope():
     assert "not set it from what" in text(ALL[0]).replace("\n", " ")
-
-
-def test_the_run_states_which_question_it_is_answering():
-    step = [s for s in ALL if s["id"] == "state-what-is-not-changing"][0]
-    assert "measures less" in text(step)
 
 
 @pytest.mark.req("REQ-STATE-OUTCOME-003")

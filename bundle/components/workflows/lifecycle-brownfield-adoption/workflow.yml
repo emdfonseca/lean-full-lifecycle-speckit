@@ -104,17 +104,6 @@ Begin the file with a "What you are approving" block: one line per decision that
   expression: '{{ inputs.scope_mode }}'
   cases:
     scan:
-    - id: scan-state-the-restraint
-      timeout: 600
-      type: prompt
-      integration: '{{ inputs.integration }}'
-      prompt: 'This is a readiness scan of somebody else''s codebase. It reads.
-
-
-        Say so before you start, and name the one thing that would make it not a scan:
-        modifying any file outside .specify/. That includes formatting, a lint fix that
-        looked free, and a dependency bump. Each is small, and each turns a scan somebody
-        agreed to into a change they did not.'
     - id: scan-read-only-discovery
       timeout: 600
       type: prompt

@@ -99,19 +99,3 @@ steps:
       Approve this disposal. Promotion carries the artifacts into production
       and is the decision the ephemeral classification exists to make
       deliberate.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report what was asked, what was learned, and what becomes of the
-      artifacts.
-
-
-      Name every artifact affected. If the decision was delete or archive, say
-      plainly that none of them may be promoted later without a new decision.
-
-
-      Reconcile the findings with the spec before anything asserts them. What
-      was learned here is evidence, and evidence is not intent.

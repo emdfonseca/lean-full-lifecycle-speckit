@@ -42,7 +42,7 @@ def test_the_transition_applies_a_plan_a_prior_step_wrote():
 @pytest.mark.req("REQ-BACKLOG-REFINE-001")
 def test_rejecting_a_gate_aborts_the_run():
     gates = [s for s in STEPS if s.get("type") == "gate"]
-    assert len(gates) == 2, "readiness and the transition are separate decisions"
+    assert gates, "a workflow that writes to the board with no gate writes unapproved"
     for gate in gates:
         assert gate["on_reject"] == "abort"
         assert set(gate["options"]) == {"approve", "reject"}

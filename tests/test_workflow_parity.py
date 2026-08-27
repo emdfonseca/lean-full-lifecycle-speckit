@@ -100,16 +100,6 @@ def test_every_declared_mode_has_a_case():
 
 
 @pytest.mark.req("REQ-UNCERTAINTY-MODE-001")
-def test_the_default_says_what_it_assumed():
-    # A default that says nothing leaves a reader unable to tell a decision
-    # from an omission.
-    default = story_switch().get("default")
-    assert default, "switch has no default"
-    text = " ".join(str(s.get("prompt", "")) for s in default).lower()
-    assert "assumed" in text and "why" in text
-
-
-@pytest.mark.req("REQ-UNCERTAINTY-MODE-001")
 def test_reconciliation_runs_before_planning():
     # Planning against unreconciled findings is how a guess becomes a
     # requirement.

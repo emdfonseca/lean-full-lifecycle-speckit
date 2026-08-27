@@ -102,17 +102,3 @@ steps:
     message: >-
       Accept this record as evidence. It is not a specification: nothing here
       becomes intended behaviour until it is reconciled with one.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report what was found for {{ inputs.target }}: the boundary examined,
-      what was left out, and the open uncertainty.
-
-
-      List every inferred observation separately and say plainly that these are
-      evidence rather than intent. Anything acting on this record — a
-      prototype, a spike, or a story — must reconcile them with a spec before
-      asserting them.

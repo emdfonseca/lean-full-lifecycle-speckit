@@ -53,7 +53,12 @@ steps:
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
-    args: Analyze hidden dependencies, compatibility, retention/legal obligations, and rollback.
+    args: 'Analyze hidden dependencies, compatibility, retention/legal obligations,
+      and rollback. Write the findings to exactly .specify/lifecycle/retirement-analysis-{{
+      context.run_id }}.md, opening with a "What you are approving" block: one line per
+      irreversible action this retirement performs and per dependency that would break,
+      each naming the section holding its evidence. This is the file the approver is
+      shown, so a consequence that is not in it is one nobody sees before it happens.'
 - id: plan-in-progress-transition
   command: speckit.github-lifecycle.plan
   integration: '{{ inputs.integration }}'
@@ -63,6 +68,7 @@ steps:
 - id: approve-retirement-plan
   type: gate
   message: Review retirement specification, dependencies, and irreversible actions.
+  show_file: .specify/lifecycle/retirement-analysis-{{ context.run_id }}.md
   options:
   - approve
   - reject

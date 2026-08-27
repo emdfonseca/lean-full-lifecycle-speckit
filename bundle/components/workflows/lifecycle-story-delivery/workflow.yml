@@ -68,11 +68,6 @@ inputs:
     - approve
     - reject
 steps:
-- id: inspect-item
-  command: speckit.github-lifecycle.inspect
-  integration: '{{ inputs.integration }}'
-  input:
-    args: Inspect issue {{ inputs.issue_ref }} and lifecycle metadata. Read-only.
 - id: assess-readiness
   timeout: 600
   type: prompt
@@ -126,17 +121,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   type: switch
   expression: '{{ inputs.uncertainty_mode }}'
   cases:
-    none:
-    - id: uncertainty-none
-      timeout: 300
-      type: prompt
-      integration: '{{ inputs.integration }}'
-      prompt: 'No material uncertainty was declared for {{ inputs.issue_ref }}.
-
-
-
-        Say so explicitly in the run record. Proceeding silently makes an unexamined assumption indistinguishable
-        from an examined one.'
+    none: []
     discovery:
     - id: uncertainty-discovery-scope
       timeout: 600
@@ -303,17 +288,7 @@ Begin the file with a "What you are approving" block: one line per decision that
       - reject
       message: Accept this threat analysis. Rejecting stops the run rather than proceeding with the risk
         unexamined.
-  default:
-  - id: uncertainty-unrecognised
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: 'The uncertainty mode was unset or unrecognised, so none was assumed.
-
-
-
-      State which mode was assumed and why. A default that says nothing leaves a reader unable to tell
-      a decision from an omission.'
+  default: []
 - id: reconcile-spec
   timeout: 600
   type: prompt
@@ -401,7 +376,13 @@ Begin the file with a "What you are approving" block: one line per decision that
           defect the change revealed, a constraint the plan assumed and the code
           contradicted, a dependency that cannot hold. Search the backlog for anything
           already covering what this delivery exposed, closed items included, and
-          report every candidate with its score. Write nothing.'
+          report every candidate with its score.
+
+          Read-only: create nothing on GitHub. Write the report to exactly
+          .specify/lifecycle/finding-candidates-{{ context.run_id }}.md, opening with
+          a "What you are approving" line: whether to file this as new work, given the
+          candidates below. Then every candidate with its score, title and state, and
+          the one sentence saying why it does or does not already cover this.'
     - id: approve-the-technical-finding
       type: gate
       integration: '{{ inputs.integration }}'
@@ -410,6 +391,7 @@ Begin the file with a "What you are approving" block: one line per decision that
       options:
       - approve
       - reject
+      show_file: .specify/lifecycle/finding-candidates-{{ context.run_id }}.md
       message: 'Create this finding? The candidate duplicates reported above are what
         you are deciding against, closed ones included. Reject if one already covers
         it: a second issue for a known problem makes the backlog less trustworthy,
@@ -424,27 +406,8 @@ Begin the file with a "What you are approving" block: one line per decision that
           --considered so the duplicate decision is recorded rather than bypassed.
           State what was observed and where; a finding from delivery is evidence,
           not a diagnosis, so do not write a cause the work did not establish.'
-    none:
-    - id: no-technical-finding
-      timeout: 300
-      type: prompt
-      integration: '{{ inputs.integration }}'
-      prompt: 'This delivery captured no technical finding.
-
-
-        Say so in the run record. An absent finding and an unexamined one read the
-        same afterwards, and only one of them is a fact about the delivery.'
-  default:
-  - id: technical-finding-unrecognised
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: 'The technical_finding input was unset or unrecognised, so none was
-      assumed.
-
-
-      State which was assumed and why. A default that says nothing leaves a reader
-      unable to tell a decision from an omission.'
+    none: []
+  default: []
 - id: converge
   timeout: 1800
   command: speckit.converge

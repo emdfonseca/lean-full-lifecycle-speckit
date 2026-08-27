@@ -51,21 +51,6 @@ steps:
         Set assessed_status from the recommendation. Do not set it from what
         the team hoped the result would be.
 
-  - id: state-what-is-not-changing
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Before any status is written, state plainly that this review cannot
-      change the delivery state of {{ inputs.issue_ref }}.
-
-      Work that reached Output Done stays there whatever the measurement says.
-      Delivery answers "was it finished to the standard"; outcome answers "did
-      it do what it was for". Conflating them punishes teams for measuring
-      honestly, and a team punished for that measures less.
-
-      Say which of the two this run is about.
-
   - id: route-on-assessment
     type: switch
     expression: '{{ inputs.assessed_status }}'
@@ -276,13 +261,21 @@ steps:
               Search the backlog for a finding that already covers what this
               outcome revealed. Report every candidate with its score, closed
               ones included: something already decided is exactly what this
-              search is for. Write nothing.
+              search is for.
+
+              Read-only: create nothing on GitHub. Write the report to exactly
+              .specify/lifecycle/finding-candidates-{{ context.run_id }}.md,
+              opening with a "What you are approving" line: whether to file this
+              as new work, given the candidates below. Then every candidate with
+              its score, title and state, and one sentence on why it does or does
+              not already cover what this outcome revealed.
 
         - id: approve-the-finding
           type: gate
           integration: '{{ inputs.integration }}'
           verdict_input: finding_verdict
           on_reject: abort
+          show_file: .specify/lifecycle/finding-candidates-{{ context.run_id }}.md
           options:
             - approve
             - reject
@@ -302,18 +295,3 @@ steps:
               State what was expected, what was measured, and what is now
               unknown. A missed outcome is evidence, not a diagnosis, so do not
               write a cause the measurement does not support.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report the outcome status recorded for {{ inputs.issue_ref }}, who
-      approved it, and on what evidence.
-
-      State again that the delivery state is unchanged, and give its value so
-      the reader can see it is unchanged rather than take your word for it.
-
-      If the result was held at Measuring, name the date or the number that
-      would settle it. An outcome left open without a condition for closing it
-      is one nobody returns to.

@@ -96,16 +96,3 @@ steps:
         Apply approved transition for {{ inputs.issue_ref }}: Delivery Status →
         Refining; read back. Approved plan:
         .specify/github-lifecycle/plans/{{ context.run_id }}-refining.md.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report the outcome for {{ inputs.issue_ref }}: its type, whether a
-      duplicate was found, what evidence is missing, and the state read back.
-
-
-      State plainly that no priority has been committed and that the item is
-      not Ready. Refining means somebody may now work out whether it can be
-      started, which is not the same as it being startable.

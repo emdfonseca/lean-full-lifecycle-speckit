@@ -509,21 +509,14 @@ def test_the_delivery_capture_searches_before_it_creates_and_links_its_source():
     switch = next(s for s in delivery["steps"]
                   if s["id"] == "capture-a-technical-finding")
     steps = {step["id"]: step for step in switch["cases"]["capture"]}
-    assert "Write nothing" in steps["search-for-a-technical-finding"]["input"]["args"]
+    search = steps["search-for-a-technical-finding"]["input"]["args"].lower()
+    assert any(p in search for p in ("read-only", "read only", "writes nothing",
+                                     "write nothing")), \
+        "the read-only exemption is honoured only while the step declares it"
+    assert "--create" not in search, "a searching step that creates is not a search"
     create = steps["capture-the-technical-finding"]["input"]["args"]
     assert "--found-in" in create
     assert "--considered" in create, \
         "the delivery route bypasses the duplicate decision #98 added"
 
 
-@pytest.mark.req("REQ-BACKLOG-CAPTURE-002")
-def test_declining_a_finding_is_recorded_rather_than_silent():
-    # An absent finding and an unexamined one read the same afterwards, and
-    # only one of them is a fact about the delivery.
-    delivery = load_yaml(
-        ROOT / "bundle/components/workflows/lifecycle-story-delivery/workflow.yml")
-    switch = next(s for s in delivery["steps"]
-                  if s["id"] == "capture-a-technical-finding")
-    assert "none" in switch["cases"], "the harness never reaches a default branch"
-    prompt = switch["cases"]["none"][0]["prompt"]
-    assert "no technical finding" in prompt

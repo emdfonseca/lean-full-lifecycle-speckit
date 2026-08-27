@@ -219,14 +219,6 @@ def test_the_scan_branch_writes_only_under_specify():
 
 @pytest.mark.req("REQ-CORE-BROWNFIELD-001")
 @pytest.mark.wording
-def test_the_scan_branch_names_the_small_changes_that_are_still_changes():
-    joined = " ".join(s.get("prompt", "") for s in scan_branch())
-    for temptation in ("formatting", "lint fix", "dependency bump"):
-        assert temptation in joined, temptation
-
-
-@pytest.mark.req("REQ-CORE-BROWNFIELD-001")
-@pytest.mark.wording
 def test_the_scan_reports_what_it_wrote_and_stops_on_a_stray_file():
     joined = " ".join(s.get("prompt", "") for s in scan_branch())
     assert "read-only" in joined

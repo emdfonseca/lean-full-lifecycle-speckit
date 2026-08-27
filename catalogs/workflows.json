@@ -54,7 +54,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 6
+        "steps": 5
       }
     },
     "lifecycle-discover": {
@@ -72,7 +72,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 5
+        "steps": 4
       }
     },
     "lifecycle-greenfield-bootstrap": {
@@ -126,7 +126,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 4
+        "steps": 2
       }
     },
     "lifecycle-prototype": {
@@ -144,7 +144,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 6
+        "steps": 5
       }
     },
     "lifecycle-refine": {
@@ -162,7 +162,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 8
+        "steps": 6
       }
     },
     "lifecycle-release-outcome": {
@@ -216,7 +216,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 6
+        "steps": 5
       }
     },
     "lifecycle-story-delivery": {
@@ -234,7 +234,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 22
+        "steps": 21
       }
     },
     "lifecycle-triage": {
@@ -252,7 +252,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 6
+        "steps": 5
       }
     }
   }

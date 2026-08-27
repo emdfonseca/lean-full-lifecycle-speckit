@@ -98,17 +98,15 @@ parity:
   - standalone: lifecycle-discover
     embedded_in: lifecycle-story-delivery
     case: discovery
-    # The standalone workflow reports at its end; the embedded branch defers
-    # to story delivery's own report step.
-    standalone_trailing_steps: 1
+    standalone_trailing_steps: 0
   - standalone: lifecycle-prototype
     embedded_in: lifecycle-story-delivery
     case: prototype
-    standalone_trailing_steps: 1
+    standalone_trailing_steps: 0
   - standalone: lifecycle-spike
     embedded_in: lifecycle-story-delivery
     case: spike
-    standalone_trailing_steps: 1
+    standalone_trailing_steps: 0
 
 # A workflow must not name an agent. Spec Kit resolves `auto` to the project's
 # configured integration at run time; a specific default means a project

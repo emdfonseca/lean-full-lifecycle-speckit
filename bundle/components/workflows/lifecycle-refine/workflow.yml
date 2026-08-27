@@ -100,19 +100,6 @@ steps:
         Plan issue {{ inputs.issue_ref }} Delivery Status → Ready. Write exactly
         .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Do not mutate.
 
-  - id: approve-transition
-    type: gate
-    integration: '{{ inputs.integration }}'
-    verdict_input: transition_verdict
-    show_file: .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md
-    on_reject: abort
-    options:
-      - approve
-      - reject
-    message: >-
-      Approve applying this plan. It names one field and one value, and records
-      the value it observed; applying refuses if that has changed since.
-
   - id: transition-ready
     command: speckit.github-lifecycle.transition
     integration: '{{ inputs.integration }}'
@@ -122,16 +109,3 @@ steps:
         Ready; read back. Approved plan:
         .specify/github-lifecycle/plans/{{ context.run_id }}-ready.md. Assert the
         evidence the plan requires. Report the value before and after.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report the outcome for {{ inputs.issue_ref }}: the readiness verdict, any
-      advisory findings on its acceptance criteria, and the delivery state read
-      back after the transition.
-
-
-      If the run stopped before the transition, say which step stopped it and
-      why. A run that ends in Refining is a result, not a failure.

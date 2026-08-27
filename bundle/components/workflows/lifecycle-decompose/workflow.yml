@@ -105,15 +105,3 @@ steps:
         {{ inputs.target_ready_count }} Ready children. Each is searched for
         duplicates and checked against its content contract, then linked and
         read back.
-
-  - id: report
-    timeout: 300
-    type: prompt
-    integration: '{{ inputs.integration }}'
-    prompt: >-
-      Report what was created, what was skipped and why, and what was left
-      undecomposed.
-
-
-      New children are Inbox. They are candidates for refinement, not work that
-      is ready to start, and nothing here has moved the Ready count.

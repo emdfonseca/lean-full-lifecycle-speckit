@@ -833,7 +833,6 @@ requirements:
       - "tests/test_capture.py::test_no_source_leaves_the_body_alone"
       - "tests/test_capture.py::test_delivery_can_capture_a_finding_without_leaving_the_run"
       - "tests/test_capture.py::test_the_delivery_capture_searches_before_it_creates_and_links_its_source"
-      - "tests/test_capture.py::test_declining_a_finding_is_recorded_rather_than_silent"
     evidence:
       - "Issue #90"
 
@@ -1145,13 +1144,12 @@ requirements:
       - "tests/test_outcome_review.py::test_the_inconclusive_branch_reaches_the_same_status_by_its_own_route"
       - "tests/test_outcome_review.py::test_the_inconclusive_branch_creates_no_follow_up_finding"
       - tests/test_outcome_review.py::test_no_step_plans_or_applies_a_delivery_status_change
-      - tests/test_outcome_review.py::test_the_report_gives_the_delivery_state_rather_than_asserting_it_is_unchanged
       - tests/test_outcome_review.py::test_the_validated_gate_names_the_two_authorities
       - tests/test_outcome_review.py::test_the_agent_is_told_it_is_not_an_authority
       - tests/test_outcome_review.py::test_the_measuring_branch_transitions_to_measuring_not_missed
       - tests/test_outcome_review.py::test_the_measuring_branch_demands_a_date_or_a_number
       - tests/test_outcome_review.py::test_the_missed_branch_searches_before_it_creates
-      - tests/test_outcome_review.py::test_the_search_step_writes_nothing
+      - tests/test_outcome_review.py::test_the_search_step_creates_nothing_on_github
       - tests/test_outcome_review.py::test_a_regressed_guardrail_may_not_be_softened
       - tests/test_outcome_review.py::test_the_assessment_is_reported_as_a_recommendation
       - tests/test_outcome_review.py::test_the_status_is_set_from_the_assessment_not_from_hope
@@ -1394,7 +1392,6 @@ requirements:
     verified_by:
       - "tests/test_exception.py::test_the_scan_mode_is_declared_rather_than_implied"
       - "tests/test_exception.py::test_the_scan_branch_writes_only_under_specify"
-      - "tests/test_exception.py::test_the_scan_branch_names_the_small_changes_that_are_still_changes"
       - "tests/test_exception.py::test_the_scan_reports_what_it_wrote_and_stops_on_a_stray_file"
       - "tests/test_exception.py::test_the_scan_recommends_one_target_not_a_backlog"
       - "tests/test_exception.py::test_only_the_targeted_branch_validates_exceptions"
@@ -3190,7 +3187,6 @@ requirements:
       - workflow:lifecycle-story-delivery
     verified_by:
       - "tests/test_workflow_parity.py::test_every_declared_mode_has_a_case"
-      - "tests/test_workflow_parity.py::test_the_default_says_what_it_assumed"
       - "tests/test_workflow_parity.py::test_reconciliation_runs_before_planning"
       - "tests/test_workflow_parity.py::test_reconciliation_forbids_promoting_unconfirmed_observations"
 

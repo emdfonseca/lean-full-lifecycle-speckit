@@ -157,10 +157,19 @@ Begin the file with a "What you are approving" block: one line per decision that
 
     Do not implement the first Story.
 
+
+    Write what you did to exactly .specify/lifecycle/product-bootstrap-{{ context.run_id
+    }}.md, opening with a "What you are approving" block: one line per consequential
+    choice made here that a person could disagree with -- a stack selection, an Epic
+    that shapes the backlog, a product boundary drawn -- each naming where its
+    reasoning is. Then list every file created or changed. A choice absent from that
+    block is one the approver never sees.
+
     '
 - id: review-product-bootstrap
   type: gate
   message: Review bootstrap outputs and proposed product/architecture decisions.
+  show_file: .specify/lifecycle/product-bootstrap-{{ context.run_id }}.md
   options:
   - approve
   - reject
