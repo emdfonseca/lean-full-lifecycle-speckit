@@ -446,6 +446,20 @@ def break_gate_artifact_states_the_decision(tmp):
     _edit_yaml(path, mutate)
 
 
+def break_repository_identity_declared(tmp):
+    """Drop repository_file_content from never_a_source.
+
+    The one entry that matters: it is the source that actually reached a live
+    GitHub query during the #104 pilot.
+    """
+    def mutate(d):
+        never = d["repository_identity"]["never_a_source"]
+        d["repository_identity"]["never_a_source"] = [
+            x for x in never if x != "repository_file_content"]
+    _edit_yaml(tmp / PRESET / "policy" / "agent-policy.yml", mutate)
+    _edit_yaml(tmp / "policy" / "agent-policy.yml", mutate)
+
+
 NESTED_MUTATORS = {
     "SEC-SHELL-ALLOWLIST": lambda tmp: _plant_in_first_case(
         _workflow_with_a_switch(tmp),
@@ -462,6 +476,7 @@ MUTATORS = {
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
     "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
+    "SEC-REPOSITORY-IDENTITY-DECLARED": break_repository_identity_declared,
     "INV-GATE-ARTIFACT-STATES-THE-DECISION": break_gate_artifact_states_the_decision,
     "SEC-WRITE-EFFECT-DECLARED": break_write_effect_declared,
     "SEC-EXEMPTION-TRUTHFUL": break_exemption_truthful,
@@ -556,6 +571,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-SECURITY-WRITEEFFECT-001")
 @pytest.mark.req("REQ-SECURITY-EXEMPTION-001")
 @pytest.mark.req("REQ-WORKFLOW-GATEART-001")
+@pytest.mark.req("REQ-SECURITY-IDENTITY-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

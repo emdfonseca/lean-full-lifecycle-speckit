@@ -654,6 +654,60 @@ def gate_artifact_states_the_decision(ctx: Ctx) -> Iterator[Finding]:
                     f"decisions that need judgement")
 
 
+@check("SEC-REPOSITORY-IDENTITY-DECLARED",
+       "The sources of a repository identity are declared, and inspect refuses the rest",
+       scope="bundle")
+def repository_identity_declared(ctx: Ctx) -> Iterator[Finding]:
+    """Identity may not arrive from a source no policy sanctioned.
+
+    During the #104 pilot `inspect` recovered a repository from SECURITY.md,
+    CODEOWNERS, a changelog and a links module, then queried GitHub with live
+    credentials -- against a clone whose remote had been removed so it could not
+    reach upstream. Removing the remote is the documented dissociation method;
+    it guarantees nothing while file content is treated as identity.
+
+    SCOPE, stated because a check that overstates is what this repo keeps
+    removing: this holds the declaration, not the behaviour. It verifies the
+    policy block exists, is mirrored, and that `inspect.md` carries the refusal.
+    It cannot police an agent's reasoning, and `test_docs.py` records why a
+    check claiming to would be worse than none.
+    """
+    policy = load_yaml(ctx.root / "policy" / "agent-policy.yml") or {}
+    block = policy.get("repository_identity") or {}
+    if not block:
+        yield ctx.finding(
+            "SEC-REPOSITORY-IDENTITY-DECLARED", "policy/agent-policy.yml",
+            "declares no repository_identity block, so nothing states where an "
+            "identity may come from and file content is as good as a flag")
+        return
+
+    if "repository_file_content" not in (block.get("never_a_source") or []):
+        yield ctx.finding(
+            "SEC-REPOSITORY-IDENTITY-DECLARED", "policy/agent-policy.yml",
+            "repository_identity.never_a_source omits repository_file_content, "
+            "which is the source that actually reached a live query (#158)")
+
+    if not (block.get("sources") or []):
+        yield ctx.finding(
+            "SEC-REPOSITORY-IDENTITY-DECLARED", "policy/agent-policy.yml",
+            "repository_identity names no sources, so the refusal has nothing "
+            "to offer a caller instead")
+
+    ext = next(iter(ctx.inv.by_kind("extension")), None)
+    if ext is None:
+        return
+    doc = ext.path / "commands" / "inspect.md"
+    if not doc.is_file():
+        return
+    text = _norm(doc.read_text(encoding="utf-8")).lower()
+    if "contents of the working tree" not in text:
+        yield ctx.finding(
+            "SEC-REPOSITORY-IDENTITY-DECLARED", "commands/inspect.md",
+            "carries no clause refusing an identity derived from the working "
+            "tree's contents, so the policy states a rule the command never "
+            "repeats to the agent that follows it")
+
+
 @check("INV-APPLY-STEP-BUDGET",
        "A prompt step that changes a codebase is budgeted to synthesise an artifact",
        scope="workflow")

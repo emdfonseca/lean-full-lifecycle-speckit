@@ -37,5 +37,14 @@ mutation lands on the wrong field.
 
 ## Never
 
+- Derive `--repo` from the contents of the working tree. `agent-policy.yml`
+  names the three sources of a repository identity — the flag,
+  `GITHUB_LIFECYCLE_REPO`, and the scaffolded config — and states that file
+  content is never among them. SECURITY.md, CODEOWNERS, a changelog or a links
+  module may name a repository; none of them makes it this project's. If no
+  declared source gives one, report the refusal and stop: a pilot clone with its
+  remote removed was queried against the upstream it was cloned from because
+  identity was read out of its files (#158).
+
 - Mutate anything. This command is read-only, including on retry.
 - Report a field or option by name alone. Names do not identify.

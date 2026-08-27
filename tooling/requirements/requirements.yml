@@ -1923,6 +1923,27 @@ requirements:
     evidence:
       - "Issue #88"
 
+  - id: REQ-SECURITY-IDENTITY-001
+    statement: >-
+      Where a repository identity may come from is declared in agent-policy.yml
+      and is exactly three sources: an explicit flag, the environment variable,
+      and the scaffolded extension config. Repository file content is named as
+      never a source, and so is a git remote, which no script reads and which an
+      optional tool could not be depended on for. When no declared source gives
+      one, the command refuses and names them rather than guessing. The check
+      holds the declaration and the command's refusal clause; it cannot police
+      an agent's reasoning, and a check claiming to would report a coverage it
+      does not have.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:agent-policy.yml
+      - command:speckit.github-lifecycle.inspect
+    verified_by:
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-REPOSITORY-IDENTITY-DECLARED]"
+
   - id: REQ-SECURITY-UNTRUSTED-001
     statement: >-
       agent-policy.yml's untrusted input lists are read rather than shipped as

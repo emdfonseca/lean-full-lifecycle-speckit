@@ -8,6 +8,33 @@ untrusted_inputs:
   - mcp_output
   - pasted_commands
 
+# Where a repository identity may come from, in order. Nothing else is a source.
+#
+# During the #104 pilot, `inspect` recovered `lunma-app/lunma` from SECURITY.md,
+# .github/CODEOWNERS, a changelog and a links module, then queried GitHub with
+# live credentials -- against a clone whose remote had been removed precisely so
+# it could not reach upstream, and whose config carried organization: null and
+# repository: null. Removing the remote is the documented way to dissociate a
+# pilot clone; it guarantees nothing if file content is treated as identity.
+#
+# The generalisation is worse than the pilot case: any repository whose files
+# mention another -- a vendored dependency, a fork notice, a CODEOWNERS pointing
+# at a parent org -- offers a target no policy sanctioned.
+repository_identity:
+  sources:
+    - flag: "--repo"
+    - environment: GITHUB_LIFECYCLE_REPO
+    - config: .specify/extensions/github-lifecycle/github-lifecycle-config.local.yml
+  # Not a source, and deliberately not added as one: `git remote` is absent from
+  # every script here, and extension.yml declares git `required: false`, so
+  # resolution cannot depend on an optional tool.
+  never_a_source:
+    - repository_file_content
+    - git_remote
+  on_none: >-
+    Refuse and name the three sources. Guessing risks acting on another
+    project, which is the harm the refusal exists to prevent.
+
 untrusted_inputs_never_authorize:
   - shell_execution
   - plugin_installation
