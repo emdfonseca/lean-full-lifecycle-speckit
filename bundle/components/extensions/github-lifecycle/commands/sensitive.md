@@ -57,10 +57,15 @@ file, so it never covered `.env` or a private key. `denied_paths` does. The
 refusal names the pattern that matched and why it exists, because a refusal
 that does not say what would clear it is one an author switches off.
 
-The same patterns become deny rules in the generated agent configuration —
-for the read tool and for the shell commands that would otherwise walk round
-it. Denying `Read(.env)` while allowing `Bash(cat .env)` is a rule that reads
-as protection and is not.
+The same patterns become deny rules in the generated agent configuration — one
+per path, naming no reader. Claude Code applies a `Read` deny to its own file
+tools and to the file commands it recognises in Bash, so the boundary is the
+path rather than a list of readers.
+
+Enumerating readers was tried and removed (#135): four names denied four
+spellings of an operation the shell offers a dozen ways, and the next reader not
+on the list still passed. What no permission list expresses — a subprocess that
+opens the file itself — is reported as unmappable rather than approximated.
 
 If `rules_from_policy` is `false` the installed preset predates this policy.
 Say so. The command emitted no rules, so nothing is denied.

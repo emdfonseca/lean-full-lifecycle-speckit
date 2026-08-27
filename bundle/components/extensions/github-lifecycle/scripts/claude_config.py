@@ -139,18 +139,30 @@ def secret_path_rules(sensitive: dict | None) -> list[str]:
     are the missing half: the deny is at the path, before the read, because a
     secret already read has entered a context redaction cannot reach.
 
-    Emitted for both Read and the shell tools that would otherwise walk
-    straight round a Read rule -- denying `Read(.env)` while allowing
-    `Bash(cat .env)` is a rule that reads as protection and is not.
+    One rule per path, and no reader named. This emitted four extra
+    `Bash(<reader> <glob>)` rules for `cat`, `less`, `head` and `tail`, which
+    was wrong twice over (#135).
+
+    Wrong in principle: a shell reads a file a dozen ways -- stream editors,
+    dump and encoding utilities, archive tools, any interpreter with a one-line
+    read, and plain redirection, which needs no command at all. Four names is an
+    enumeration, not a boundary, and the next reader not on the list still
+    passes.
+
+    Wrong in fact: a Bash rule matches the whole command text with `*` standing
+    for any text, so `Bash(cat **/.env)` requires a literal `/` before `.env`
+    and never matches `cat .env`. All 52 of them were inert.
+
+    What does the work is the path rule. Claude Code applies a `Read` deny to
+    its own file tools and to the file commands it recognises in Bash, so
+    `Read(**/.env)` covers the readers those four spelled out and does not stop
+    at four. The residue -- a subprocess that opens the file itself, such as
+    `python -c "print(open('.env').read())"` -- no permission list expresses,
+    and `build()` records it as unmappable rather than pretending otherwise.
     """
     patterns = (sensitive or {}).get("denied_paths") or {}
-    rules: list[str] = []
-    for entry in patterns.get("patterns") or []:
-        glob = entry["glob"]
-        rules.append(f"Read({glob})")
-        for command in ("cat", "less", "head", "tail"):
-            rules.append(f"Bash({command} {glob})")
-    return rules
+    return [f"Read({entry['glob']})"
+            for entry in patterns.get("patterns") or []]
 
 
 # What each forbidden authorization looks like as a rule the agent enforces.

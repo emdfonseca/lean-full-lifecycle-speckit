@@ -293,6 +293,20 @@ integrations:
         compensated_by: >-
           Nothing in the configuration. This one is a genuine gap and is
           reported as such rather than compensated.
+      secret_file_read_via_subprocess:
+        why: >-
+          A `Read` deny covers Claude Code's own file tools and the file
+          commands it recognises in Bash, which is the boundary that does the
+          work. It does not cover a subprocess that opens the file itself --
+          `python -c "print(open('.env').read())"` reads a denied path through
+          an interpreter no permission list enumerates. Naming readers was
+          tried and removed (#135): four names denied four spellings of an
+          operation the shell offers a dozen ways, and the next reader not on
+          the list still passed.
+        compensated_by: >-
+          Nothing in the configuration. Closing it needs an OS-level sandbox
+          confining the process rather than the command, which this bundle does
+          not configure. Reported as an open gap rather than approximated.
       edit_permission:
         why: >-
           Claude Code has no per-agent edit permission. Permissions are the

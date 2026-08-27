@@ -1886,17 +1886,10 @@ requirements:
       A secret is refused at its path, before the read, because a secret
       already read has entered a context redaction cannot reach. The denied
       paths live in the same policy as the denied sources and become generated
-      permission deny rules for both the read tool and the shell commands that
-      would otherwise walk round them. The globs are translated explicitly
-      rather than through a standard-library matcher, so a pattern the
-      translator cannot express fails a test instead of sitting in the policy
-      matching nothing, and a star does not cross a directory separator. A
-      preset without the policy emits no rules and reports that rather than
-      producing a configuration that looks stricter than it is. Redaction is
-      reachable as a command and from the workflow that writes production
-      evidence, runs after the scan and before review, leaves a visible
-      marker, and is not authorization: a finding it cannot clear still stops
-      the record reaching review.
+      permission deny rules at the path, naming no reader: a shell reads a file more
+      ways than a list can enumerate, so the control is the path and the readers
+      a permission model does not cover are reported as unmappable rather than
+      approximated by naming four of them.
     priority: must
     owner: framework
     release: "0.3.0"
@@ -1932,7 +1925,9 @@ requirements:
       - "tests/test_sensitive.py::test_the_workflow_redacts_after_scanning_and_before_review"
       - "tests/test_sensitive.py::test_the_redact_step_does_not_treat_redaction_as_authorization"
       - "tests/test_claude_config.py::test_secret_paths_reach_the_generated_deny_list"
-      - "tests/test_claude_config.py::test_the_shell_route_round_a_read_rule_is_denied_too"
+      - "tests/test_claude_config.py::test_no_generated_rule_names_a_reader"
+      - "tests/test_claude_config.py::test_each_denied_path_gets_exactly_one_rule"
+      - "tests/test_claude_config.py::test_what_no_permission_list_covers_is_reported_not_approximated"
       - "tests/test_claude_config.py::test_every_policy_pattern_becomes_a_rule"
       - "tests/test_claude_config.py::test_a_preset_without_the_policy_emits_no_secret_rules"
       - "tests/test_claude_config.py::test_the_secret_rules_are_attributed_to_a_rule_name"

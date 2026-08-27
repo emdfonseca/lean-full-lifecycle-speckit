@@ -216,7 +216,8 @@ def test_the_genuine_gaps_are_marked_uncompensated(proposal):
     # Two, since edit_permission stopped being approximated by a tool list and
     # started being reported as the gap it always was.
     uncompensated = {u.rule for u in proposal.unmappable if u.uncompensated}
-    assert uncompensated == {"cost_and_runtime_limits", "edit_permission"}
+    assert uncompensated == {"cost_and_runtime_limits", "edit_permission",
+                             "secret_file_read_via_subprocess"}
 
 
 @pytest.mark.req("REQ-SECURITY-CLAUDE-001")
@@ -280,13 +281,46 @@ def test_secret_paths_reach_the_generated_deny_list():
 
 
 @pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
-def test_the_shell_route_round_a_read_rule_is_denied_too():
-    # Denying Read(.env) while allowing Bash(cat .env) is a rule that reads
-    # as protection and is not.
+def test_no_generated_rule_names_a_reader():
+    """The control is the path, not a list of commands that read it.
+
+    This asserted `Bash(cat **/.env)` and three more like it. Enumerating
+    readers denies four spellings of an operation the shell offers a dozen ways,
+    and the next reader not on the list still passes -- the rule the docstring
+    itself calls "protection that is not" (#135).
+
+    Those rules were inert besides: a Bash rule matches the whole command text
+    with `*` standing for any text, so `Bash(cat **/.env)` requires a literal
+    `/` before `.env` and never matched `cat .env`.
+    """
     deny = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE) \
              .settings["permissions"]["deny"]
-    for command in ("cat", "less", "head", "tail"):
-        assert f"Bash({command} **/.env)" in deny
+    named = [r for r in deny if r.startswith("Bash(")
+             and any(f"({reader} " in r
+                     for reader in ("cat", "less", "head", "tail", "sed",
+                                    "awk", "xxd", "base64", "strings"))]
+    assert not named, f"rules naming a reader rather than a path: {named}"
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_each_denied_path_gets_exactly_one_rule():
+    # One path, one rule. Four extra per path was the enumeration this removed.
+    import sensitive as sd
+    rules = cc.secret_path_rules(SENSITIVE)
+    assert len(rules) == len(sd.denied_path_patterns(SENSITIVE))
+    assert all(r.startswith("Read(") for r in rules)
+
+
+@pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
+def test_what_no_permission_list_covers_is_reported_not_approximated():
+    # A subprocess opening the file itself reads a denied path through an
+    # interpreter no list enumerates. Reported as a gap rather than answered
+    # with more command names.
+    built = cc.build(BOOTSTRAP, AGENT, ROUTING, SENSITIVE)
+    gap = [u for u in built.unmappable
+           if u.rule == "secret_file_read_via_subprocess"]
+    assert gap, "the residue is not recorded"
+    assert gap[0].uncompensated, "an open gap must not read as compensated"
 
 
 @pytest.mark.req("REQ-SECURITY-SENSITIVE-002")
