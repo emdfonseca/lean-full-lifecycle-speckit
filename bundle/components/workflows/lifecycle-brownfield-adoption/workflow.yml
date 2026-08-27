@@ -43,6 +43,10 @@ inputs:
     type: string
     default: ''
     enum: *id001
+  report_verdict:
+    type: string
+    default: ''
+    enum: *id001
 steps:
 - id: inspect-github
   command: speckit.github-lifecycle.inspect
@@ -214,10 +218,14 @@ Begin the file with a "What you are approving" block: one line per decision that
       or an overlay, and stop at the gate before writing either.'
 - id: approve-verification-resolution
   type: gate
-  message: 'Approve how the missing verification commands are resolved. A generated script
+  message: 'Record which resolution the missing verification commands should get. Approving
+    records that choice and applies nothing: no step in this run writes an overlay or
+    generates a script, and every workflow still shells out to the literal command. So
+    the commands stay missing whichever option you pick, and the first delivery will fail
+    at a shell step until somebody adds them to this project by hand. A generated script
     requires a recorded stack decision; an overlay may satisfy only a command the workflows
     actually run, and its project side is whatever this project already runs. Rejecting
-    leaves the commands missing, and the first delivery will fail at a shell step.'
+    stops the run here instead of carrying the choice forward.'
   options:
   - approve
   - reject
@@ -261,4 +269,31 @@ Begin the file with a "What you are approving" block: one line per decision that
 
     next action.
 
-    '
+
+    End the report with a line reading exactly "Unresolved blockers: none", or,
+
+    if anything is unresolved, "Unresolved blockers:" followed by one line per
+
+    blocker. A verification command this project still does not define is such a
+
+    blocker: the gate above records which resolution it should get and no step
+
+    applies it, so approving there did not clear it.
+
+    
+
+
+Begin the file with a "What you are approving" block: one line per decision that needs a person''s judgement, each naming the section holding its evidence. Only decisions -- a baseline, a file inventory or a rollback procedure is a fact and does not belong there; a block naming everything names nothing.'
+- id: accept-the-adoption-report
+  type: gate
+  message: 'This is the last step, so approving is what makes the run report completed.
+    Read the report''s Unresolved blockers line first. Approve only if it reads none:
+    a run that reports completed while its own report names a blocker states two
+    different things, and this gate is where they are reconciled. Rejecting aborts the
+    run, which is the honest status while a blocker stands.'
+  options:
+  - approve
+  - reject
+  on_reject: abort
+  verdict_input: report_verdict
+  show_file: .specify/lifecycle/brownfield-adoption-report.md

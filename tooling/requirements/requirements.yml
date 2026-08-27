@@ -1471,6 +1471,47 @@ requirements:
       - "Issue #117"
       - "Issue #103"
 
+  - id: REQ-WORKFLOW-VERDICT-001
+    statement: >-
+      A bootstrap run must not claim more than it did. A gate message that says
+      approving *applies* a resolution requires a step reading that verdict;
+      where nothing reads it, the message says so instead. Approving
+      `approve-verification-resolution` promised the missing verification
+      commands were resolved, and no step in either bootstrap workflow reads
+      `verification_verdict` -- the one step that ever wrote an overlay sits in
+      the scope switch, ahead of the gate -- so the message now states that
+      approving records the choice and applies nothing. The blanket rule, that
+      every gate's verdict is read by a later step, is deliberately not the
+      requirement: for `adoption_verdict` and `discovery_verdict` approve means
+      proceed and `on_reject: abort` is the whole consumption. Ending the run
+      is the second claim. The engine marks a run `completed` whenever no step
+      raised, so a validation prompt writing a blocker into its report cannot
+      stop it, and a run reported `completed` while its own report named the
+      verification commands as outstanding. The validation report now records
+      an Unresolved blockers line and a final gate shows it, so the run reaches
+      its end only through a verdict given against that line.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - workflow:lifecycle-brownfield-adoption
+      - workflow:lifecycle-greenfield-bootstrap
+    verified_by:
+      - "tests/test_verify_bootstrap.py::test_a_gate_promising_application_has_a_step_reading_its_verdict[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_a_gate_promising_application_has_a_step_reading_its_verdict[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_applies_nothing[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_applies_nothing[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_run_cannot_reach_its_end_without_a_verdict_on_the_report[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_run_cannot_reach_its_end_without_a_verdict_on_the_report[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_final_gate_shows_the_report_the_step_before_it_writes[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_final_gate_shows_the_report_the_step_before_it_writes[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_final_gates_verdict_is_a_declared_input_that_starts_unanswered[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_final_gates_verdict_is_a_declared_input_that_starts_unanswered[lifecycle-greenfield-bootstrap]"
+    evidence:
+      - "Issue #144"
+      - "Issue #104"
+
   - id: REQ-GITHUB-INVOCATION-001
     statement: >-
       A command declares its script in front matter and writes the substitution

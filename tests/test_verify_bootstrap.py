@@ -273,3 +273,103 @@ def test_every_source_declares_where_its_decision_is_recorded():
     for source in POLICY["generation"]["stack_decision_sources"]:
         assert source["records_decision_in"], (
             f"{source['path']} names no section, so any content would count")
+
+
+# --- an approval that performs nothing, and a report nobody has to read -------
+#
+# `approve-verification-resolution` promised that approving decided how the
+# missing commands "are resolved", and no step consumes its verdict: not a scan
+# run, not a targeted one. The run then reached `completed` while its own
+# validation report named the commands as an outstanding blocker.
+#
+# Two properties follow, and neither is the blanket "every gate's verdict is
+# consumed by a later step" the issue first proposed. That one fires on
+# `adoption_verdict` and `discovery_verdict`, where approve legitimately means
+# proceed and `on_reject: abort` is the whole consumption.
+
+#: Phrases by which a gate message tells the reader that approving *applies*
+#: something, rather than that it lets the run proceed. A message using one of
+#: these is making a promise a later step has to keep.
+APPLICATION_PHRASES = (
+    "are resolved", "is resolved", "are applied", "is applied",
+    "applies the", "will be applied", "will apply",
+)
+
+#: The last step of each bootstrap workflow, and the report it shows.
+FINAL_GATE = {
+    "lifecycle-brownfield-adoption":
+        ("accept-the-adoption-report", "brownfield-adoption-report.md"),
+    "lifecycle-greenfield-bootstrap":
+        ("accept-the-bootstrap-report", "greenfield-bootstrap-report.md"),
+}
+
+
+def all_gates(steps):
+    for step in steps:
+        if step.get("type") == "gate":
+            yield step
+        for case in (step.get("cases") or {}).values():
+            yield from all_gates(case)
+
+
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_a_gate_promising_application_has_a_step_reading_its_verdict(name):
+    source = (ROOT / f"bundle/components/workflows/{name}/workflow.yml").read_text(
+        encoding="utf-8")
+    for gate in all_gates(WORKFLOWS[name]["steps"]):
+        message = str(gate.get("message", "")).lower()
+        promised = [p for p in APPLICATION_PHRASES if p in message]
+        if not promised:
+            continue
+        verdict = gate.get("verdict_input")
+        assert f"inputs.{verdict}" in source, (
+            f"{name}:{gate['id']} says approving {promised[0]!r}, but no step "
+            f"reads inputs.{verdict}, so approving performs nothing")
+
+
+@pytest.mark.wording
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_the_resolution_gate_says_approving_applies_nothing(name):
+    gate = [s for s in WORKFLOWS[name]["steps"]
+            if s["id"] == "approve-verification-resolution"][0]
+    assert "applies nothing" in gate["message"]
+
+
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_the_run_cannot_reach_its_end_without_a_verdict_on_the_report(name):
+    # The engine marks a run `completed` whenever no step raised, so a prompt
+    # step writing a blocker into its report cannot stop it. A gate can: it is
+    # the last step, so the run reaches its end only through an approve.
+    gate_id, report = FINAL_GATE[name]
+    steps = WORKFLOWS[name]["steps"]
+    assert [s["id"] for s in steps][-1] == gate_id, "the gate is not the last step"
+    gate = steps[-1]
+    assert gate["type"] == "gate"
+    assert gate["on_reject"] == "abort"
+    assert gate["show_file"].endswith(report), gate["show_file"]
+
+
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_the_final_gate_shows_the_report_the_step_before_it_writes(name):
+    # A gate over a stale or absent file would be a rubber stamp.
+    gate_id, report = FINAL_GATE[name]
+    steps = WORKFLOWS[name]["steps"]
+    writer = steps[-2]
+    assert writer["type"] == "prompt"
+    assert report in writer["prompt"], f"{writer['id']} does not write {report}"
+    assert "Unresolved blockers" in writer["prompt"], (
+        f"{writer['id']} does not tell the report to record its blockers, so "
+        f"the gate has nothing to read")
+
+
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_the_final_gates_verdict_is_a_declared_input_that_starts_unanswered(name):
+    gate = WORKFLOWS[name]["steps"][-1]
+    spec = WORKFLOWS[name]["inputs"][gate["verdict_input"]]
+    assert spec["default"] == ""
+    assert "" in spec["enum"], "the gate would default to a verdict nobody gave"
