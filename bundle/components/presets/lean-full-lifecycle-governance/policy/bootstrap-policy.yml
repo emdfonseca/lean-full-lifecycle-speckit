@@ -414,6 +414,27 @@ product_documents:
     # A stamp nobody can contradict is worse than no stamp.
     refuse_future_dates: true
 
+  # Where the project already keeps its decision records.
+  #
+  # This was named in prose as docs/decisions/, which is this repository's own
+  # directory. A target keeping five Nygard ADRs in docs/adr/ was invisible to
+  # the contract, so the architecture document would have delegated arc42
+  # section 9 to a directory the project does not have while the records it
+  # does have sat unread beside it (#141).
+  #
+  # Candidates are in preference order, and the order only answers the empty
+  # case: a project with no records is told where new ones will go. Where
+  # records exist the tree decides, and two directories holding records are
+  # reported rather than ranked, because which set of decisions is
+  # authoritative is a person's call and not a default's.
+  decision_records:
+    candidates:
+      - docs/decisions/
+      - docs/adr/
+      - docs/adrs/
+      - docs/architecture/decisions/
+      - doc/adr/
+
   required:
     - path: PRODUCT.md
       answers: What this is for, and how anyone tells it is done.
@@ -498,9 +519,11 @@ product_documents:
             Seam, location, what it enables.
       delegates:
         - >-
-          arc42 section 9, Architectural Decisions, to docs/decisions/. arc42
-          permits this explicitly, and a second decision format in one project
-          is the drift the style rules forbid.
+          arc42 section 9, Architectural Decisions, to the decision-record
+          directory this project keeps, which `decision_records.candidates`
+          resolves against the tree rather than fixing to one path. arc42
+          permits the delegation explicitly, and a second decision format in
+          one project is the drift the style rules forbid.
 
     - path: .specify/lifecycle/stack-decision.md
       answers: What it is built with, and what that commits the project to.
@@ -539,7 +562,8 @@ product_documents:
           Heading is the date and the decision. Body carries Status, Context,
           Decision and Consequences, the same four an ADR carries, at one or
           two lines each. An entry needing more than that is an ADR, and
-          belongs in docs/decisions/ with this log referencing it.
+          belongs in the decision-record directory `decision_records` resolves,
+          with this log referencing it.
 
     # Declared because the framework already requires one and never asked for
     # it: artifact-policy.yml gives a runbook `authority:

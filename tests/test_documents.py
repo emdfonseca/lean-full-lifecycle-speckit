@@ -256,9 +256,84 @@ def test_architecture_delegates_decisions_rather_than_duplicating_them():
     spec = next(s for s in CONTRACT["required"]
                 if s["path"].endswith("architecture.md"))
     delegated = " ".join(spec.get("delegates") or [])
-    assert "docs/decisions/" in delegated
+    assert "decision_records" in delegated
     assert "9" in delegated
     assert "Architectural Decisions" not in [s["name"] for s in spec["sections"]]
+
+
+# --- the decision-record directory -------------------------------------------
+#
+# It was named in prose as docs/decisions/, this repository's own directory,
+# so a target keeping five Nygard ADRs in docs/adr/ was invisible (#141).
+
+RECORD = "# 0001. A decision\n\n## Status\n\nAccepted\n"
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_the_decision_record_directory_is_declared_as_ordered_candidates():
+    declared = CONTRACT["decision_records"]["candidates"]
+    assert isinstance(declared, list) and len(declared) > 1
+    assert declared[0] == "docs/decisions/"
+    assert "docs/adr/" in declared
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_no_writer_instruction_names_a_fixed_decision_directory():
+    # The two places the contract instructs a writer. The rationale comment
+    # above them keeps naming this repository's own directory: that is history.
+    arch = next(s for s in CONTRACT["required"]
+                if s["path"].endswith("architecture.md"))
+    log = next(s for s in CONTRACT["required"]
+               if s["path"].endswith("product-decisions.md"))
+    instructions = " ".join(arch.get("delegates") or []) + " " + \
+        " ".join((log.get("per_entry") or {}).values())
+    assert "docs/decisions/" not in instructions
+    assert "docs/adr/" not in instructions
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_records_kept_in_docs_adr_are_found_there(tmp_path):
+    root = project(tmp_path, {"docs/adr/0001-a.md": RECORD})
+    assert docs.decision_records(root, CONTRACT)["resolved"] == "docs/adr/"
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_records_kept_in_docs_decisions_are_still_found_there(tmp_path):
+    # Discovery must not break the convention this repository itself uses.
+    root = project(tmp_path, {"docs/decisions/0001-a.md": RECORD})
+    assert docs.decision_records(root, CONTRACT)["resolved"] == "docs/decisions/"
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_two_candidate_directories_are_reported_not_ranked(tmp_path):
+    # Guessing which set of decisions is authoritative belongs to a person.
+    root = project(tmp_path, {"docs/decisions/0001-a.md": RECORD,
+                              "docs/adr/0001-b.md": RECORD})
+    result = docs.decision_records(root, CONTRACT)
+    assert result["resolved"] is None
+    assert "docs/decisions/" in result["problem"]
+    assert "docs/adr/" in result["problem"]
+    assert result["problem"] in docs.check(root, CONTRACT)
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_a_project_with_no_records_is_told_where_they_will_go(tmp_path):
+    # A greenfield project has none by definition, so this is not a failure.
+    root = project(tmp_path, complete())
+    result = docs.decision_records(root, CONTRACT)
+    assert result["problem"] is None
+    assert result["resolved"] == CONTRACT["decision_records"]["candidates"][0]
+    assert result["resolved"] in result["note"]
+    assert docs.check(root, CONTRACT) == []
+
+
+@pytest.mark.req("REQ-PRODUCT-DOCUMENTS-005")
+def test_an_empty_candidate_directory_holds_no_records(tmp_path):
+    # A directory somebody made is not a set of decisions the project keeps.
+    (tmp_path / "docs" / "adr").mkdir(parents=True)
+    result = docs.decision_records(tmp_path, CONTRACT)
+    assert result["found"] == []
+    assert result["resolved"] == "docs/decisions/"
 
 
 @pytest.mark.req("REQ-PRODUCT-DOCUMENTS-001")

@@ -1667,6 +1667,44 @@ requirements:
       - "tests/test_git_dependency.py::test_git_is_declared_optional_and_says_what_its_absence_costs"
     evidence:
       - "Issue #157"
+  - id: REQ-PRODUCT-DOCUMENTS-005
+    statement: >-
+      The decision-record directory is declared as an ordered candidate list in
+      bootstrap-policy.yml and resolved against the project tree, rather than
+      named as a literal in the prose that instructs a writer. It was
+      docs/decisions/, which is this repository's own directory, so a target
+      keeping five Nygard ADRs in docs/adr/ was invisible and the architecture
+      document would have delegated arc42 section 9 to a directory the project
+      does not have. A candidate directory holds records when it contains a
+      Markdown file, since an empty directory is one somebody made rather than
+      a set of decisions the project keeps. Exactly one such directory
+      resolves to it. Two are reported and not ranked, because which set of
+      decisions is authoritative is a person's call; that report is a problem
+      the check returns. None resolves to the first declared candidate and
+      says so, since a project with no records has made no choice to discover.
+      Preference order therefore decides only the empty case. What is refused
+      is the fixed path in the two instructions to a writer, the architecture
+      delegation and the decision-log per_entry rule; the rationale comment
+      above them still names this repository's own directory, which is history
+      and not an instruction.
+    priority: must
+    owner: product/process owner
+    release: "0.3.0"
+    status: verified
+    components:
+      - policy:bootstrap-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
+    verified_by:
+      - "tests/test_documents.py::test_the_decision_record_directory_is_declared_as_ordered_candidates"
+      - "tests/test_documents.py::test_no_writer_instruction_names_a_fixed_decision_directory"
+      - "tests/test_documents.py::test_records_kept_in_docs_adr_are_found_there"
+      - "tests/test_documents.py::test_records_kept_in_docs_decisions_are_still_found_there"
+      - "tests/test_documents.py::test_two_candidate_directories_are_reported_not_ranked"
+      - "tests/test_documents.py::test_a_project_with_no_records_is_told_where_they_will_go"
+      - "tests/test_documents.py::test_an_empty_candidate_directory_holds_no_records"
+    evidence:
+      - "Issue #141"
+      - "Issue #104"
 
   - id: REQ-PRODUCT-DOCUMENTS-004
     statement: >-

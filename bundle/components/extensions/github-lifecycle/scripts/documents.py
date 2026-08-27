@@ -249,8 +249,56 @@ def freshness_problems(path_name: str, text: str, rule: dict,
     return []
 
 
+def decision_records(root: Path, contract: dict) -> dict:
+    """Which directory this project keeps its decision records in.
+
+    The contract named docs/decisions/ in prose, which is this repository's own
+    directory. A target keeping five Nygard ADRs in docs/adr/ was invisible to
+    it, so the architecture document would have delegated arc42 section 9 to a
+    directory the project does not have while the records it does have sat
+    unread beside it (#141).
+
+    Shaped like `inspect_target`: candidates declared in preference order, and
+    ambiguity refused rather than resolved. Two directories holding records is
+    reported, because which set of decisions is authoritative is a person's
+    call. The order only answers the empty case -- a project with no records
+    is told where new ones go, which a greenfield project needs by definition.
+    """
+    candidates = [str(c) for c in
+                  ((contract.get("decision_records") or {}).get("candidates") or [])]
+    holding = [c for c in candidates if _holds_records(root / c)]
+    result = {"candidates": candidates, "found": holding,
+              "resolved": None, "problem": None, "note": ""}
+    if len(holding) == 1:
+        result["resolved"] = holding[0]
+    elif len(holding) > 1:
+        result["problem"] = (
+            "decision records are in more than one place: "
+            + ", ".join(holding)
+            + ". Which set is authoritative is a decision for a person, so "
+              "this is reported rather than resolved by preference order.")
+    elif candidates:
+        result["resolved"] = candidates[0]
+        result["note"] = (
+            f"No decision records found. New ones go in {candidates[0]}, the "
+            f"first declared candidate.")
+    return result
+
+
+def _holds_records(path: Path) -> bool:
+    """A candidate directory holds records when it has a Markdown file in it.
+
+    Existence alone is not enough: an empty docs/adr/ is a directory somebody
+    made, not a set of decisions the project keeps.
+    """
+    return path.is_dir() and any(path.glob("*.md"))
+
+
 def check(root: Path, contract: dict, today: date | None = None) -> list[str]:
     problems: list[str] = []
+    ambiguity = decision_records(root, contract)["problem"]
+    if ambiguity:
+        problems.append(ambiguity)
     for spec in contract.get("required") or []:
         path = root / spec["path"]
         name = spec["path"]
@@ -296,15 +344,20 @@ def main() -> int:
         return 2
 
     problems = check(root, contract)
+    records = decision_records(root, contract)
     if args.format == "json":
         print(json.dumps({"problems": problems, "complete": not problems,
-                          "style": contract.get("style", [])}, indent=2))
+                          "style": contract.get("style", []),
+                          "decision_records": records}, indent=2))
     else:
         for problem in problems:
             print(f"MISSING {problem}")
         if not problems:
             print("Every declared section is present and in the form the "
                   "contract asks for.")
+        if records["resolved"]:
+            print(f"\nDecision records: {records['resolved']}"
+                  + (f" -- {records['note']}" if records["note"] else ""))
         print(f"\n{len(problems)} problem(s).")
     return 1 if problems else 0
 
