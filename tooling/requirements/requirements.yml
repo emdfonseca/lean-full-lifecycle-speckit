@@ -3281,3 +3281,57 @@ requirements:
       - "tests/test_ratchet.py::test_the_command_documents_what_a_baseline_must_say_it_measured"
     evidence:
       - "Issue #142"
+  - id: REQ-CORE-BINARIES-001
+    statement: >-
+      Doctor must report the external binaries this project will execute --
+      gh, git, and the model-inventory binary -- each with its status, the
+      condition under which it is needed, and what its absence costs, rather
+      than probing gh alone. gh is reported unconditional; git optional,
+      naming the working_tree_disagreement audit rule its absence loses; and
+      the model-inventory binary only when the named integration declares an
+      inventory command in model-routing.yml, so an integration declared with
+      a null command is reported as needing none instead of being told to
+      install a binary it never runs. With the governance preset absent the
+      conditional binary is reported unknown rather than guessed.
+    priority: must
+    owner: framework
+    release: "0.3.0"
+    status: verified
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/ratchet.py
+      - command:speckit.github-lifecycle.ratchet
+      - policy:quality-gates.yml
+    verified_by:
+      - "tests/test_ratchet.py::test_a_baseline_recording_no_scope_is_refused_rather_than_compared"
+      - "tests/test_ratchet.py::test_an_unscoped_baseline_is_not_silently_treated_as_no_baseline"
+      - "tests/test_ratchet.py::test_a_run_that_states_no_conditions_is_refused"
+      - "tests/test_ratchet.py::test_widening_what_is_measured_is_not_a_regression"
+      - "tests/test_ratchet.py::test_a_run_under_other_conditions_says_what_it_did_not_compare_against"
+      - "tests/test_ratchet.py::test_narrowing_what_is_measured_does_not_move_the_wider_baseline"
+      - "tests/test_ratchet.py::test_two_conditions_for_one_gate_are_held_separately"
+      - "tests/test_ratchet.py::test_a_run_is_compared_against_the_baseline_for_its_own_conditions"
+      - "tests/test_ratchet.py::test_loosening_names_which_baseline_it_loosens"
+      - "tests/test_ratchet.py::test_the_policy_declares_that_a_baseline_records_its_scope"
+      - "tests/test_ratchet.py::test_the_recorder_writes_exactly_the_fields_the_policy_declares"
+      - "tests/test_ratchet.py::test_a_declared_field_the_recorder_cannot_produce_is_refused"
+      - "tests/test_ratchet.py::test_the_command_line_records_the_conditions_it_measured"
+      - "tests/test_ratchet.py::test_the_command_line_refuses_a_run_that_states_no_conditions"
+      - "tests/test_ratchet.py::test_the_command_documents_what_a_baseline_must_say_it_measured"
+    evidence:
+      - "Issue #142"
+      - script:bundle/components/extensions/github-lifecycle/scripts/doctor.py
+      - command:speckit.github-lifecycle.doctor
+      - policy:model-routing.yml
+    verified_by:
+      - "tests/test_doctor_binaries.py::test_a_missing_inventory_binary_is_reported_for_the_integration_that_runs_it"
+      - "tests/test_doctor_binaries.py::test_the_missing_inventory_binary_names_what_fails"
+      - "tests/test_doctor_binaries.py::test_an_integration_with_no_inventory_command_is_not_told_to_install_one"
+      - "tests/test_doctor_binaries.py::test_that_integration_is_still_accounted_for_rather_than_omitted"
+      - "tests/test_doctor_binaries.py::test_a_missing_git_is_reported_as_optional_and_names_the_rule_it_costs"
+      - "tests/test_doctor_binaries.py::test_a_missing_gh_is_reported_as_unconditional"
+      - "tests/test_doctor_binaries.py::test_a_present_binary_is_reported_present"
+      - "tests/test_doctor_binaries.py::test_without_the_preset_the_conditional_binary_is_unknown_not_guessed"
+      - "tests/test_doctor_binaries.py::test_the_unconditional_binaries_are_reported_without_the_preset"
+      - "tests/test_doctor_binaries.py::test_the_doctor_report_carries_the_binaries_section"
+    evidence:
+      - "Issue #159"

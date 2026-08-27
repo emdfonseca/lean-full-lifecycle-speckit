@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import subprocess
@@ -41,6 +42,110 @@ POLICY_CANDIDATES = (
     ".specify/presets/lean-full-lifecycle-governance/policy/bootstrap-policy.yml",
     "policy/bootstrap-policy.yml",
 )
+
+MODEL_ROUTING_CANDIDATES = (
+    ".specify/presets/lean-full-lifecycle-governance/policy/model-routing.yml",
+    "policy/model-routing.yml",
+)
+
+# The binaries a shipped script executes without a condition attached, and what
+# their absence costs. A flat pass/fail list would be wrong: `gh` and `git` do
+# not fail alike, and stating only that one is missing says nothing about which
+# workflow stops.
+FIXED_BINARIES = (
+    {
+        "binary": "gh",
+        "condition": "unconditional",
+        "on_absence": "every board command fails; the extension reaches "
+                      "GitHub no other way",
+    },
+    {
+        "binary": "git",
+        "condition": "optional",
+        "on_absence": "transition_plan.modified_tracked_files returns None and "
+                      "the audit runs without its working_tree_disagreement "
+                      "rule, reporting nothing rather than failing",
+    },
+)
+
+
+def _load_yaml(path: Path):
+    import yaml
+
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def binary_dependencies(project: Path, integration: str = "opencode",
+                        which=shutil.which) -> list[dict]:
+    """Every binary this project will execute, with the condition attached.
+
+    `gh` and `git` are executed by every project. The model-inventory binary is
+    not: `model-routing.yml` keys `inventory_command` by integration, and an
+    integration declaring null cannot be asked at all. Naming that binary to a
+    project that never runs it would be a false prerequisite, which is the same
+    defect as not naming it to a project that does.
+    """
+    reports = [
+        {**entry,
+         "status": "ok" if which(entry["binary"]) else "missing"}
+        for entry in FIXED_BINARIES
+    ]
+
+    declared = None
+    for rel in MODEL_ROUTING_CANDIDATES:
+        candidate = project / rel
+        if candidate.is_file():
+            try:
+                declared = _load_yaml(candidate)["resolution"]["inventory_command"]
+            except Exception:  # noqa: BLE001
+                declared = None
+            break
+    if declared is None:
+        reports.append({
+            "integration": integration,
+            "status": "unknown",
+            "detail": "the governance preset is not installed, so no inventory "
+                      "command is declared for this integration",
+        })
+        return reports
+
+    if isinstance(declared, list):
+        # A policy predating the per-integration form, honoured the way
+        # opencode_models.inventory_command honours it.
+        command = list(declared)
+    elif integration not in declared:
+        reports.append({
+            "integration": integration,
+            "status": "unknown",
+            "detail": f"model-routing.yml declares no inventory command for "
+                      f"{integration!r}; it has {sorted(declared)}",
+        })
+        return reports
+    else:
+        command = declared[integration]
+
+    if not command:
+        # Stated, not omitted: this project has no model-inventory binary, and
+        # saying so is different from having failed to look.
+        reports.append({
+            "integration": integration,
+            "status": "not_applicable",
+            "detail": f"{integration!r} declares no inventory command in "
+                      f"model-routing.yml, so this project executes no binary "
+                      f"to read a model inventory",
+        })
+        return reports
+
+    reports.append({
+        "binary": command[0],
+        "condition": f"required by integration {integration!r}, whose "
+                     f"inventory command is {' '.join(command)!r}",
+        "on_absence": "opencode_models.read_inventory raises InventoryError, "
+                      "so no model id can be verified and model routing "
+                      "refuses",
+        "status": "ok" if which(command[0]) else "missing",
+    })
+    return reports
 
 
 def script_flavour(project: Path) -> dict:
@@ -90,6 +195,12 @@ def script_flavour(project: Path) -> dict:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    # A flag rather than a lookup: framework.yml sets `integration: auto` and
+    # Spec Kit resolves it at run time, so the project file does not record an
+    # answer to read back.
+    ap.add_argument("--integration", default="opencode")
+    args = ap.parse_args()
     # The command whose job is saying where you are had the worst version of
     # the bug: run it one directory below a project and it reported
     # `specify_project: false` about a project that was right there.
@@ -124,8 +235,12 @@ def main() -> int:
         ),
         "specify_project": (project / ".specify").exists(),
         "script_flavour": flavour,
+        "binaries": binary_dependencies(project, args.integration),
         "notes": [
             "This doctor is read-only.",
+            "binaries lists what this project will execute, with the condition "
+            "attached. A binary another integration needs is not reported to a "
+            "project that never runs it.",
             "Use the inspect command for agent-assisted schema inspection.",
             "config_source=template-only means the extension was installed via "
             "`specify bundle install`, which does not scaffold config. Run "
