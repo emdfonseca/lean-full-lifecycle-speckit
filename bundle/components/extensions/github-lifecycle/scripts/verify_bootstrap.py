@@ -240,13 +240,21 @@ class GateReport:
     def every_gate_answered(self) -> bool:
         return not self.unexamined and not self.problems
 
+    unresolved_outcomes: tuple[str, ...] = ()
+
     @property
     def settled(self) -> bool:
         # A filed gate names work that has not been done. Counting it as
         # settled would let a project pass this check by filing sixteen items
         # and delivering none, which is the shape of the failure the record
         # exists to make visible.
-        return self.every_gate_answered and not self.filed
+        #
+        # Which outcomes leave a gate unresolved comes from policy. Hardcoding
+        # `not self.filed` would make `leaves_unresolved:` a switch that looks
+        # like one and is not.
+        outstanding = any(getattr(self, name)
+                          for name in self.unresolved_outcomes)
+        return self.every_gate_answered and not outstanding
 
     def to_dict(self) -> dict:
         return {
@@ -366,7 +374,8 @@ def merge(record: dict, incoming: dict, gates: dict, policy: dict,
 
 def report_gates(record: dict, gates: dict, policy: dict) -> GateReport:
     """Every declared gate in one bucket, in declared order."""
-    report = GateReport()
+    report = GateReport(unresolved_outcomes=tuple(
+        policy["gate_resolution"].get("leaves_unresolved") or ()))
     recorded = record.get("gates") or {}
     pending = record.get("pending_filings") or {}
     outcomes = policy["gate_resolution"]["outcomes"]

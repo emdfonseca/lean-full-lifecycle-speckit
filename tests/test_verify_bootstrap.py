@@ -338,6 +338,9 @@ def test_a_filed_gate_leaves_the_project_unsettled():
     report = vb.report_gates(record, GATES, POLICY)
     assert report.every_gate_answered
     assert not report.settled
+    # Which outcomes leave a gate unresolved is policy, not a literal here.
+    assert report.unresolved_outcomes == tuple(
+        POLICY["gate_resolution"]["leaves_unresolved"])
 
 
 @pytest.mark.req("REQ-CORE-GATERES-001")
