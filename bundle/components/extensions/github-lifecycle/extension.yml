@@ -131,6 +131,10 @@ provides:
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
     description: Run read-only GitHub lifecycle diagnostics.
+  - name: speckit.github-lifecycle.status
+    file: commands/status.md
+    description: Report what is true in this project and what is startable, in one read-only
+      pass.
   config:
   - name: github-lifecycle-config.yml
     template: config-template.yml

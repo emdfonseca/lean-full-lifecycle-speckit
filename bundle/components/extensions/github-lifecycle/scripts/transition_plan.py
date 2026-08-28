@@ -750,7 +750,79 @@ def ready_queue(gh: GitHub, backend: FieldBackend, inspection: Inspection,
     return entries
 
 
-def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = False):
+DEFAULT_QUEUE_TARGET = 3
+
+
+@dataclass(frozen=True)
+class QueueReport:
+    """The queue sorted into the four answers a reader actually wants.
+
+    The sorting lived inside `main`, where the only way to reach it was to run
+    the command and read its printed lines. `status.py` wants the same four
+    buckets and the same shortfall sentence; parsing them back out of stdout
+    would be a second reading of a format nothing promised to keep.
+    """
+
+    startable: list[QueueEntry]
+    blocked: list[QueueEntry]
+    refinable: list[QueueEntry]
+    awaiting: list[QueueEntry]
+    target: int = DEFAULT_QUEUE_TARGET
+
+    @property
+    def shortfall(self) -> int:
+        return max(0, self.target - len(self.startable))
+
+    @property
+    def advice(self) -> str:
+        """What to do about the queue, in the sentence the command already used."""
+        if not self.shortfall:
+            return f"Queue is at target ({self.target})."
+        source = ("Refine from the safe list" if self.refinable
+                  else "Decompose an Epic first; nothing is refinable")
+        return (f"{self.shortfall} short of a startable queue of {self.target}. "
+                f"{source}. Those items have no open blocker, so nothing "
+                f"in flight can change their shape.")
+
+
+def classify_queue(entries: list[QueueEntry],
+                   target: int = DEFAULT_QUEUE_TARGET) -> QueueReport:
+    """Sort queue entries into startable, blocked, refinable and awaiting.
+
+    An Epic is decomposed, not refined to Ready. Listing them together tells a
+    refiner to do the wrong thing, which is why `awaiting` is separate from
+    `refinable` rather than a note on one list.
+    """
+    pending = [e for e in entries
+               if e.state in ("Inbox", "Refining") and not e.blocked_by]
+    return QueueReport(
+        startable=[e for e in entries if e.startable],
+        blocked=[e for e in entries if e.blocked_by],
+        refinable=[e for e in pending if not e.decomposable],
+        awaiting=[e for e in pending if e.decomposable],
+        target=target,
+    )
+
+
+def in_progress_issues(entries: list[QueueEntry]) -> list[int]:
+    """Open items the board says are being worked on.
+
+    `audit_board` derives the same set while walking every issue, open and
+    closed. A closed item left at `In Progress` is a contradiction the audit
+    reports on its own; for the working-tree comparison what matters is whether
+    anybody has claimed the work, and an open item is the honest reading of
+    that.
+    """
+    return [e.issue for e in entries if e.state == START_STATE]
+
+
+def open_target(repo: str, project: int | None, audit: Path | None,
+                dry_run: bool = False):
+    """Resolve the board this run will read, refusing an unusable target.
+
+    Public because `status.py` opens the same board for the same reason. A
+    leading underscore said "nothing else needs this", and something did.
+    """
     owner, _, name = repo.partition("/")
     if not owner or not name:
         raise PlanError("--repo must be owner/name")
@@ -843,7 +915,7 @@ def main() -> int:
 
     p_queue = sub.add_parser(
         "queue", help="Show what is startable now, what is blocked, and what is next.")
-    p_queue.add_argument("--target", type=int, default=3,
+    p_queue.add_argument("--target", type=int, default=DEFAULT_QUEUE_TARGET,
                          help="Desired number of startable items.")
 
     args = ap.parse_args()
@@ -863,7 +935,7 @@ def main() -> int:
         return 2
     try:
         machine = load_state_machine(args.policy_root)
-        gh, inspection, backend = _setup(
+        gh, inspection, backend = open_target(
             args.repo, args.project, args.audit,
             dry_run=getattr(args, "dry_run", False),
         )
@@ -889,38 +961,21 @@ def main() -> int:
             return 1 if problems else 0
 
         if args.cmd == "queue":
-            entries = ready_queue(gh, backend, inspection)
-            startable = [e for e in entries if e.startable]
-            blocked = [e for e in entries if e.blocked_by]
-            pending = [e for e in entries
-                       if e.state in ("Inbox", "Refining") and not e.blocked_by]
-            # An Epic is decomposed, not refined to Ready. Listing them
-            # together tells a refiner to do the wrong thing.
-            refinable = [e for e in pending if not e.decomposable]
-            awaiting = [e for e in pending if e.decomposable]
-
-            print(f"Startable now ({len(startable)}):")
-            for e in startable:
+            report = classify_queue(
+                ready_queue(gh, backend, inspection), args.target)
+            print(f"Startable now ({len(report.startable)}):")
+            for e in report.startable:
                 print(f"  #{e.issue} [{e.item_type}]")
-            print(f"\nBlocked ({len(blocked)}):")
-            for e in blocked:
+            print(f"\nBlocked ({len(report.blocked)}):")
+            for e in report.blocked:
                 print(f"  #{e.issue} [{e.state}] blocked by {', '.join(e.blocked_by)}")
-            print(f"\nSafe to refine ahead ({len(refinable)}):")
-            for e in refinable:
+            print(f"\nSafe to refine ahead ({len(report.refinable)}):")
+            for e in report.refinable:
                 print(f"  #{e.issue} [{e.state}] {e.item_type}")
-            print(f"\nAwaiting decomposition ({len(awaiting)}):")
-            for e in awaiting:
+            print(f"\nAwaiting decomposition ({len(report.awaiting)}):")
+            for e in report.awaiting:
                 print(f"  #{e.issue} [{e.state}] {e.item_type}")
-
-            shortfall = args.target - len(startable)
-            if shortfall > 0:
-                source = ("Refine from the safe list" if refinable
-                          else "Decompose an Epic first; nothing is refinable")
-                print(f"\n{shortfall} short of a startable queue of {args.target}. "
-                      f"{source}. Those items have no open blocker, so nothing "
-                      f"in flight can change their shape.")
-            else:
-                print(f"\nQueue is at target ({args.target}).")
+            print(f"\n{report.advice}")
             return 0
 
         # Compare-and-swap, which is the whole of what the plan file bought.

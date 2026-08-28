@@ -194,21 +194,13 @@ def script_flavour(project: Path) -> dict:
             "detail": " ".join(policy["on_mismatch"].split())}
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    # A flag rather than a lookup: framework.yml sets `integration: auto` and
-    # Spec Kit resolves it at run time, so the project file does not record an
-    # answer to read back.
-    ap.add_argument("--integration", default="opencode")
-    args = ap.parse_args()
-    # The command whose job is saying where you are had the worst version of
-    # the bug: run it one directory below a project and it reported
-    # `specify_project: false` about a project that was right there.
-    try:
-        project = project_root.resolve(required=False) or Path.cwd()
-    except project_root.ProjectRootError as exc:
-        print(json.dumps({"status": "error", "detail": str(exc)}, indent=2))
-        return 2
+def report(project: Path, integration: str = "opencode") -> dict:
+    """Everything this doctor knows about one project.
+
+    Separated from `main` so `status.py` can compose the same answer instead of
+    shelling out to this command and parsing it back, or -- worse -- carrying a
+    second copy of the wiring checks that would drift from these.
+    """
     # Spec Kit scaffolds extension config as <id>-config.yml and reads the
     # .local.yml sibling first; anything else is not preserved across an update.
     #
@@ -224,7 +216,7 @@ def main() -> int:
     ]
     template = ext_home / "config-template.yml"
     resolved = next((p for p in config_candidates if p.exists()), None)
-    report = {
+    return {
         "gh_auth": run(["gh", "auth", "status"]),
         "repository": run(["gh", "repo", "view", "--json", "nameWithOwner,url"]),
         "config": str(resolved) if resolved else None,
@@ -235,7 +227,7 @@ def main() -> int:
         ),
         "specify_project": (project / ".specify").exists(),
         "script_flavour": flavour,
-        "binaries": binary_dependencies(project, args.integration),
+        "binaries": binary_dependencies(project, integration),
         "notes": [
             "This doctor is read-only.",
             "binaries lists what this project will execute, with the condition "
@@ -248,7 +240,24 @@ def main() -> int:
             "to github-lifecycle-config.yml.",
         ],
     }
-    print(json.dumps(report, indent=2))
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    # A flag rather than a lookup: framework.yml sets `integration: auto` and
+    # Spec Kit resolves it at run time, so the project file does not record an
+    # answer to read back.
+    ap.add_argument("--integration", default="opencode")
+    args = ap.parse_args()
+    # The command whose job is saying where you are had the worst version of
+    # the bug: run it one directory below a project and it reported
+    # `specify_project: false` about a project that was right there.
+    try:
+        project = project_root.resolve(required=False) or Path.cwd()
+    except project_root.ProjectRootError as exc:
+        print(json.dumps({"status": "error", "detail": str(exc)}, indent=2))
+        return 2
+    print(json.dumps(report(project, args.integration), indent=2))
     return 0
 
 

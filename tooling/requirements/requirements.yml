@@ -3060,3 +3060,41 @@ requirements:
       - "tests/test_doctor_binaries.py::test_without_the_preset_the_conditional_binary_is_unknown_not_guessed"
       - "tests/test_doctor_binaries.py::test_the_unconditional_binaries_are_reported_without_the_preset"
       - "tests/test_doctor_binaries.py::test_the_doctor_report_carries_the_binaries_section"
+
+  - id: REQ-CORE-STATUS-001
+    statement: >-
+      One read-only command answers what is true in a project and what is
+      startable, composing the doctor's wiring report, the resolved target, the
+      queue's four buckets, the audit's findings and the working tree into a
+      single output in both a text and a JSON form carrying the same fields.
+      It establishes no fact of its own: every section is produced by the
+      module that owns that rule, so a rule cannot mean one thing here and
+      another where it is enforced. When the board cannot be read -- no
+      configured repository, or a target that is not usable -- it reports what
+      the doctor reports plus the reason, omits the queue and audit sections
+      entirely rather than emitting empty ones, and exits non-zero. It never
+      transitions anything. The working tree is reported in every case, and
+      names the In Progress items that account for the changes when any do,
+      which is the case the audit is silent on.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/status.py
+      - command:speckit.github-lifecycle.status
+      - policy:state-machine.yml
+    verified_by:
+      - "tests/test_status.py::test_one_run_carries_target_queue_audit_and_working_tree"
+      - "tests/test_status.py::test_the_queue_buckets_are_the_ones_the_queue_command_produces"
+      - "tests/test_status.py::test_the_report_writes_nothing"
+      - "tests/test_status.py::test_an_unconfigured_project_gets_the_doctor_and_no_board_state"
+      - "tests/test_status.py::test_an_unusable_target_reports_why_rather_than_an_empty_queue"
+      - "tests/test_status.py::test_an_unread_board_leaves_the_tree_unattributed_rather_than_drifting"
+      - "tests/test_status.py::test_the_text_form_says_no_queue_follows_and_why"
+      - "tests/test_status.py::test_a_tree_no_item_accounts_for_is_drift"
+      - "tests/test_status.py::test_a_tree_an_item_accounts_for_names_that_item"
+      - "tests/test_status.py::test_a_tree_git_could_not_read_is_unknown_not_clean"
+      - "tests/test_status.py::test_a_clean_tree_is_clean"
+      - "tests/test_status.py::test_the_json_form_parses_and_carries_the_text_form_fields"
+      - "tests/test_status.py::test_the_command_line_emits_json_on_request"
+      - "tests/test_status.py::test_the_command_documents_that_it_never_transitions"
+      - "tests/test_status.py::test_the_command_documents_the_exit_status_that_means_unread"
