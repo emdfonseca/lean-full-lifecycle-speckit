@@ -83,7 +83,7 @@ def working_tree(root: Path | None, in_progress: list[int] | None) -> dict:
 
 
 def collect(root: Path, repo: str | None = None, project: int | None = None,
-            integration: str = "opencode",
+            integration: str | None = None,
             target_size: int = tp.DEFAULT_QUEUE_TARGET) -> tuple[dict, int]:
     """The whole report, and the exit code that describes it.
 
@@ -166,7 +166,8 @@ def render(report: dict) -> str:
     lines.append(f"Wiring: gh_auth={doc['gh_auth']['status']} "
                  f"repository={doc['repository']['status']} "
                  f"config={doc['config_source']} "
-                 f"script_flavour={doc['script_flavour']['status']}")
+                 f"script_flavour={doc['script_flavour']['status']} "
+                 f"integration={doc['integration']['integration'] or 'undeclared'}")
     missing = [b["binary"] for b in doc["binaries"]
                if b.get("status") == "missing"]
     if missing:
@@ -220,8 +221,9 @@ def main() -> int:
     ap.add_argument("--repo", default=None,
                     help="owner/name. Defaults to the repository the extension config declares.")
     ap.add_argument("--project", type=int, default=None)
-    ap.add_argument("--integration", default="opencode",
-                    help="Which integration's model-inventory binary to report on.")
+    ap.add_argument("--integration", default=None,
+                    help="Override the integration doctor reports on. Without "
+                         "it the project's own integration.json decides.")
     ap.add_argument("--target", type=int, default=tp.DEFAULT_QUEUE_TARGET,
                     help="Desired number of startable items.")
     ap.add_argument("--format", choices=("text", "json"), default="text")

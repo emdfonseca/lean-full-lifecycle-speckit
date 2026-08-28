@@ -75,7 +75,43 @@ def _load_yaml(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def binary_dependencies(project: Path, integration: str = "opencode",
+INTEGRATION_JSON = ".specify/integration.json"
+
+
+def resolve_integration(project: Path, override: str | None = None) -> dict:
+    """Which integration this project uses, and where that was read.
+
+    The bundle is agent-neutral, so no agent is named as a default here. Spec
+    Kit records the project's answer in `.specify/integration.json` --
+    `default_integration`, or `integration` in the older shape -- and that is
+    the only place it exists, because `framework.yml` says `integration: auto`
+    and leaves resolution to run time.
+
+    Unresolved is a real answer and is reported as one. Assuming an agent is
+    how a project gets told to install a binary nothing here will run.
+    """
+    if override:
+        return {"integration": override, "source": "--integration"}
+    path = project / INTEGRATION_JSON
+    if not path.is_file():
+        return {"integration": None, "source": None,
+                "detail": f"{INTEGRATION_JSON} is absent, so this project "
+                          f"declares no integration and none is assumed"}
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"integration": None, "source": None,
+                "detail": f"{INTEGRATION_JSON} could not be read "
+                          f"({exc.__class__.__name__})"}
+    key = state.get("default_integration") or state.get("integration")
+    key = str(key).strip().lower() if isinstance(key, str) and key.strip() else None
+    if key is None:
+        return {"integration": None, "source": None,
+                "detail": f"{INTEGRATION_JSON} names no default integration"}
+    return {"integration": key, "source": INTEGRATION_JSON}
+
+
+def binary_dependencies(project: Path, integration: str | None = None,
                         which=shutil.which) -> list[dict]:
     """Every binary this project will execute, with the condition attached.
 
@@ -90,6 +126,17 @@ def binary_dependencies(project: Path, integration: str = "opencode",
          "status": "ok" if which(entry["binary"]) else "missing"}
         for entry in FIXED_BINARIES
     ]
+
+    if not integration:
+        # Not "no binary needed": we do not know which one, and saying so is
+        # different from having looked.
+        reports.append({
+            "integration": None,
+            "status": "unknown",
+            "detail": "this project declares no integration, so which "
+                      "model-inventory binary it executes is unknown",
+        })
+        return reports
 
     declared = None
     for rel in MODEL_ROUTING_CANDIDATES:
@@ -194,7 +241,7 @@ def script_flavour(project: Path) -> dict:
             "detail": " ".join(policy["on_mismatch"].split())}
 
 
-def report(project: Path, integration: str = "opencode") -> dict:
+def report(project: Path, integration: str | None = None) -> dict:
     """Everything this doctor knows about one project.
 
     Separated from `main` so `status.py` can compose the same answer instead of
@@ -208,6 +255,7 @@ def report(project: Path, integration: str = "opencode") -> dict:
     # not scaffold extension config (only `specify extension add` does), so a
     # bundle-installed project legitimately has no scaffolded file yet.
     flavour = script_flavour(project)
+    resolved_integration = resolve_integration(project, integration)
 
     ext_home = project / ".specify/extensions/github-lifecycle"
     config_candidates = [
@@ -227,7 +275,9 @@ def report(project: Path, integration: str = "opencode") -> dict:
         ),
         "specify_project": (project / ".specify").exists(),
         "script_flavour": flavour,
-        "binaries": binary_dependencies(project, integration),
+        "integration": resolved_integration,
+        "binaries": binary_dependencies(
+            project, resolved_integration["integration"]),
         "notes": [
             "This doctor is read-only.",
             "binaries lists what this project will execute, with the condition "
@@ -244,10 +294,13 @@ def report(project: Path, integration: str = "opencode") -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    # A flag rather than a lookup: framework.yml sets `integration: auto` and
-    # Spec Kit resolves it at run time, so the project file does not record an
-    # answer to read back.
-    ap.add_argument("--integration", default="opencode")
+    # An override, not a default. framework.yml says `integration: auto`, and
+    # the project's own integration.json is where Spec Kit records what that
+    # resolved to.
+    ap.add_argument("--integration", default=None,
+                    help="Override the integration. Without it the project's "
+                         "own .specify/integration.json decides, and an "
+                         "absent one is reported rather than guessed.")
     args = ap.parse_args()
     # The command whose job is saying where you are had the worst version of
     # the bug: run it one directory below a project and it reported

@@ -120,9 +120,64 @@ def test_a_missing_gh_is_reported_as_unconditional(tmp_path):
 @pytest.mark.req("REQ-CORE-BINARIES-001")
 def test_a_present_binary_is_reported_present(tmp_path):
     reports = by_binary(doctor.binary_dependencies(
-        project(tmp_path), which=absent()))
+        project(tmp_path), integration="opencode", which=absent()))
     assert [reports[b]["status"] for b in ("gh", "git", "opencode")] == \
         ["ok", "ok", "ok"]
+
+
+# --- which integration, and never a guess ------------------------------------
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_an_undeclared_integration_is_unknown_rather_than_assumed(tmp_path):
+    # The bundle is agent-neutral. Defaulting to one meant a project using a
+    # different agent was told about a binary it never executes.
+    reports = doctor.binary_dependencies(project(tmp_path), which=absent())
+    assert "opencode" not in by_binary(reports)
+    conditional = [r for r in reports if "binary" not in r]
+    assert [r["status"] for r in conditional] == ["unknown"]
+    assert conditional[0]["integration"] is None
+
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_the_integration_is_read_from_the_project(tmp_path):
+    root = project(tmp_path)
+    (root / ".specify/integration.json").write_text(
+        json.dumps({"default_integration": "claude"}), encoding="utf-8")
+    assert doctor.resolve_integration(root) == {
+        "integration": "claude", "source": ".specify/integration.json"}
+
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_the_older_integration_key_is_still_read(tmp_path):
+    root = project(tmp_path)
+    (root / ".specify/integration.json").write_text(
+        json.dumps({"integration": "opencode"}), encoding="utf-8")
+    assert doctor.resolve_integration(root)["integration"] == "opencode"
+
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_an_absent_integration_file_names_what_was_missing(tmp_path):
+    resolved = doctor.resolve_integration(project(tmp_path))
+    assert resolved["integration"] is None
+    assert ".specify/integration.json" in resolved["detail"]
+
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_an_unreadable_integration_file_is_not_read_as_absent(tmp_path):
+    root = project(tmp_path)
+    (root / ".specify/integration.json").write_text("{not json", encoding="utf-8")
+    resolved = doctor.resolve_integration(root)
+    assert resolved["integration"] is None
+    assert "could not be read" in resolved["detail"]
+
+
+@pytest.mark.req("REQ-CORE-BINARIES-001")
+def test_the_flag_overrides_what_the_project_declares(tmp_path):
+    root = project(tmp_path)
+    (root / ".specify/integration.json").write_text(
+        json.dumps({"default_integration": "claude"}), encoding="utf-8")
+    assert doctor.resolve_integration(root, "opencode") == {
+        "integration": "opencode", "source": "--integration"}
 
 
 # --- what it does when the policy that carries the condition is absent -------
