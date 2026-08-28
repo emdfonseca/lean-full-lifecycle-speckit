@@ -85,7 +85,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   input:
     args: Order regression/characterization tests before minimum fix and refactor.
 - id: analyze
-  timeout: 1800
+  timeout: 600
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
@@ -111,7 +111,7 @@ Begin the file with a "What you are approving" block: one line per decision that
       a pass makes every later comparison meaningless. On a refusal, report the gate,
       the baseline, and the measurement, and do not re-run hoping for a different number.'
 - id: converge
-  timeout: 1800
+  timeout: 600
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

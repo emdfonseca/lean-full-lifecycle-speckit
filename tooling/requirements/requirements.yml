@@ -3410,3 +3410,40 @@ requirements:
       - "tests/test_measure_traceability.py::test_subprocess_coverage_is_configured"
       - "tests/test_measure_traceability.py::test_the_disagreement_between_the_two_systems_is_recorded"
       - "tests/test_measure_traceability.py::test_the_record_says_what_each_system_can_and_cannot_answer"
+
+  - id: REQ-WORKFLOW-RECOVERY-001
+    statement: >-
+      A workflow run left unresumable by a death the CLI cannot catch has a
+      documented recovery, and the exposure that produces it is bounded by the
+      timeout tiers. The page states which deaths produce the state -- an
+      interrupt does not, because `KeyboardInterrupt` is caught and written as
+      paused -- makes the reader check for a live process before editing
+      anything, says that editing another component's state file is a
+      deliberate act, and names both the upstream item and what removes the
+      page. Nothing shipped repairs the state file: a script doing it on the
+      operator's behalf would make the workaround permanent and would
+      eventually do it while a run was genuinely alive, which is the one case
+      the flag exists to prevent. Every step declaring a timeout takes it from
+      a tier `step_timeouts` names, command steps included -- twenty-two of the
+      thirty steps on the longest tier were command steps that no check held to
+      anything. A command that reads and reports does not sit on the synthesis
+      tier, and the steps that genuinely build an artifact keep it, so the
+      review is neither a blanket reduction nor a claim that changed nothing.
+    priority: must
+    release: "0.3.0"
+    components:
+      - check:INV-STEP-TIMEOUT-TIER
+      - policy:bootstrap-policy.yml
+      - workflow:lifecycle-story-delivery
+      - workflow:lifecycle-bugfix
+    verified_by:
+      - "tests/test_run_recovery.py::test_the_page_says_which_deaths_produce_the_state"
+      - "tests/test_run_recovery.py::test_the_page_makes_the_reader_check_for_a_live_run_first"
+      - "tests/test_run_recovery.py::test_the_page_states_that_the_manual_step_is_deliberate"
+      - "tests/test_run_recovery.py::test_the_page_names_the_upstream_item_and_what_removes_it"
+      - "tests/test_run_recovery.py::test_nothing_shipped_repairs_the_state_file"
+      - "tests/test_run_recovery.py::test_every_declared_timeout_is_a_tier"
+      - "tests/test_run_recovery.py::test_the_check_holds_command_steps_too"
+      - "tests/test_run_recovery.py::test_a_reporting_command_does_not_sit_on_the_synthesis_tier"
+      - "tests/test_run_recovery.py::test_the_steps_that_build_an_artifact_keep_the_longest_tier"
+      - "tests/test_run_recovery.py::test_the_review_actually_moved_something"

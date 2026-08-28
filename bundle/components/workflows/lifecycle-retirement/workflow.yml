@@ -49,7 +49,7 @@ steps:
   input:
     args: Create phased, reversible retirement tasks with communication and verification.
 - id: analyze
-  timeout: 1800
+  timeout: 600
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
@@ -83,7 +83,7 @@ steps:
   type: shell
   run: devbox run verify
 - id: converge
-  timeout: 1800
+  timeout: 600
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

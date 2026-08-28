@@ -750,7 +750,7 @@ def apply_step_budget(ctx: Ctx) -> Iterator[Finding]:
 
 
 @check("INV-STEP-TIMEOUT-TIER",
-       "Every prompt step declares a timeout from a policy tier",
+       "Every step that declares a timeout takes it from a policy tier",
        scope="workflow")
 def step_timeout_tier(ctx: Ctx) -> Iterator[Finding]:
     """No step runs on an unstated default, and no check guesses which are slow.
@@ -765,6 +765,18 @@ def step_timeout_tier(ctx: Ctx) -> Iterator[Finding]:
     reliable in a way inference is not: a step with no timeout, or one with a
     number the policy does not name, is reported, and nobody has to predict
     which ids mean expensive.
+
+    Every step that declares one, not only prompt steps. Twenty-two of the
+    thirty steps carrying 1800 were command steps, and skipping them meant the
+    largest tier was being spent on `speckit.analyze` and
+    `speckit.github-lifecycle.documents` with nothing to hold either to what
+    the tier means. A command step still has a cost, and its author still
+    chooses.
+
+    A step with no timeout is reported only when it is a prompt. A command step
+    without one inherits the runner's default, which is the runner's business;
+    demanding a tier of every command step would be inventing a requirement
+    rather than checking one.
     """
     policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
     tiers = policy.get("step_timeouts") or {}
@@ -781,15 +793,16 @@ def step_timeout_tier(ctx: Ctx) -> Iterator[Finding]:
     for comp in ctx.inv.by_kind("workflow"):
         for step in _steps(comp):
             kind = step.get("type") or ("command" if step.get("command") else "prompt")
-            if kind != "prompt":
+            if kind not in ("prompt", "command"):
                 continue
             step_id = str(step.get("id") or "")
             declared = step.get("timeout")
             if declared is None:
-                yield ctx.finding(
-                    "INV-STEP-TIMEOUT-TIER", f"{comp.id}:{step_id}",
-                    f"declares no timeout, so it runs on the runner's default; "
-                    f"choose a tier from {sorted(allowed)}")
+                if kind == "prompt":
+                    yield ctx.finding(
+                        "INV-STEP-TIMEOUT-TIER", f"{comp.id}:{step_id}",
+                        f"declares no timeout, so it runs on the runner's "
+                        f"default; choose a tier from {sorted(allowed)}")
             elif declared not in allowed:
                 yield ctx.finding(
                     "INV-STEP-TIMEOUT-TIER", f"{comp.id}:{step_id}",

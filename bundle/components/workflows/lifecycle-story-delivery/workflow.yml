@@ -323,7 +323,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   input:
     args: '{{ inputs.intent }}'
 - id: analyze
-  timeout: 1800
+  timeout: 600
   command: speckit.analyze
   integration: '{{ inputs.integration }}'
   input:
@@ -408,7 +408,7 @@ Begin the file with a "What you are approving" block: one line per decision that
     none: []
   default: []
 - id: converge
-  timeout: 1800
+  timeout: 600
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:

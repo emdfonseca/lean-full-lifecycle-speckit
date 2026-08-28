@@ -229,7 +229,7 @@ Begin the file with a "What you are approving" block: one line per decision that
 - id: write-product-documents
   command: speckit.github-lifecycle.documents
   integration: '{{ inputs.integration }}'
-  timeout: 1800
+  timeout: 600
   input:
     args: 'Write every document bootstrap-policy.yml declares under product_documents,
       then run the command again to check them. Length is not budgeted; form is

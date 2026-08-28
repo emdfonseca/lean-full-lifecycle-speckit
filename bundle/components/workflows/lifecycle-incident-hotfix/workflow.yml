@@ -77,7 +77,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   type: shell
   run: devbox run verify
 - id: converge
-  timeout: 1800
+  timeout: 600
   command: speckit.converge
   integration: '{{ inputs.integration }}'
   input:
