@@ -5,6 +5,7 @@ inventory and generators directly instead of shelling out to them.
 """
 from __future__ import annotations
 
+import os
 import shutil
 
 import pytest
@@ -33,3 +34,19 @@ def pytest_runtest_setup(item):
         pytest.skip("opencode CLI not on PATH")
     if item.get_closest_marker("requires_specify") and not shutil.which("specify"):
         pytest.skip("specify CLI not on PATH")
+
+
+def pytest_runtest_protocol(item, nextitem):
+    """Name the current test where a spawned process can read it.
+
+    Many tests here drive a script through `subprocess.run` because the refusal
+    text is what a reader sees. Coverage's `dynamic_context` needs a pytest
+    frame, which a spawned process does not have, so its lines land against no
+    context at all. `tooling/coverage-subprocess/.coveragerc` reads this
+    variable as a static context, which is what lets a `check:` component be
+    attributed to the test that exercised it.
+
+    Unset outside a measurement run, where it costs one env write per test.
+    """
+    os.environ["COVERAGE_CONTEXT"] = item.name.split("[", 1)[0]
+    return None

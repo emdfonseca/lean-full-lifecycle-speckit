@@ -3341,3 +3341,49 @@ requirements:
       - "tests/test_documents.py::test_one_observed_entry_anywhere_makes_the_document_answerable"
       - "tests/test_documents.py::test_the_policy_states_the_form_an_author_writes"
       - "tests/test_documents.py::test_solution_strategy_no_longer_answers_two_questions"
+
+  - id: REQ-TOOLING-MEASURE-001
+    statement: >-
+      Whether a requirement's cited tests actually execute the component it
+      names is measured, not asserted. One suite run under coverage with
+      per-test contexts records which test touched which line, and a
+      requirement whose `verified_by` tests never execute a component it names
+      is reported with the requirement and the component. That catches what the
+      catalogue provably cannot: `validate_requirements.py` reads decorators
+      and never opens a test body, so a cited test reduced to `assert True`
+      still reports traceability consistent. Coverage speaks only for
+      executable components -- `check:` at function granularity, since every
+      check lives in one module, and `script:` only when it names a Python
+      file, since `script:` is also used for a Makefile or a README. A
+      requirement naming no such component is reported unmeasurable and never
+      passing, because an absent measurement reading as a satisfied one is the
+      defect this removes. Subprocesses the suite spawns measure themselves and
+      inherit the current test as a context, or every check reads as never
+      executed while the suite exercises all of them. The measurement runs
+      alongside the marker system and their disagreement is recorded, so the
+      markers can be removed on evidence rather than on faith; it is not wired
+      into `validate`, which would make every source check pay for a full
+      instrumented suite run.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:scripts/measure_traceability.py
+      - script:tooling/coverage-subprocess/sitecustomize.py
+    verified_by:
+      - "tests/test_measure_traceability.py::test_a_component_no_cited_test_executes_is_reported"
+      - "tests/test_measure_traceability.py::test_the_report_distinguishes_untested_from_uncited"
+      - "tests/test_measure_traceability.py::test_a_cited_test_that_runs_the_component_passes"
+      - "tests/test_measure_traceability.py::test_a_test_gutted_to_assert_true_is_caught"
+      - "tests/test_measure_traceability.py::test_a_requirement_with_no_executable_component_is_unmeasurable"
+      - "tests/test_measure_traceability.py::test_unmeasurable_is_reported_separately_from_passing"
+      - "tests/test_measure_traceability.py::test_a_non_python_file_cited_as_a_script_is_unmeasurable"
+      - "tests/test_measure_traceability.py::test_the_render_states_that_unmeasurable_is_not_passing"
+      - "tests/test_measure_traceability.py::test_a_check_is_measured_by_its_own_function_not_its_file"
+      - "tests/test_measure_traceability.py::test_every_registered_check_maps_to_a_function"
+      - "tests/test_measure_traceability.py::test_an_unknown_check_is_refused_rather_than_passed"
+      - "tests/test_measure_traceability.py::test_a_citation_and_a_context_reduce_to_the_same_name"
+      - "tests/test_measure_traceability.py::test_an_absent_database_is_refused_not_reported_as_clean"
+      - "tests/test_measure_traceability.py::test_the_measurement_is_not_wired_into_validate"
+      - "tests/test_measure_traceability.py::test_subprocess_coverage_is_configured"
+      - "tests/test_measure_traceability.py::test_the_disagreement_between_the_two_systems_is_recorded"
+      - "tests/test_measure_traceability.py::test_the_record_says_what_each_system_can_and_cannot_answer"

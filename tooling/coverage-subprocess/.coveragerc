@@ -1,0 +1,15 @@
+# The config subprocesses use, separate from the parent's on purpose.
+#
+# `dynamic_context = test_function` works only where pytest is running. A
+# script a test spawns has no test frame, so its lines were recorded against no
+# context and every `check:` component read as never executed while the suite
+# was exercising all of them.
+#
+# A static context solves it: `tests/conftest.py` puts the current test's name
+# in COVERAGE_CONTEXT before each test, and a spawned process inherits it.
+[run]
+context = ${COVERAGE_CONTEXT}
+parallel = true
+source =
+    scripts
+    bundle/components/extensions

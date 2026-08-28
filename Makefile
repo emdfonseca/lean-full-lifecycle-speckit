@@ -1,4 +1,4 @@
-.PHONY: generate generate-check validate test build smoke official coverage
+.PHONY: generate generate-check validate test build smoke official coverage measure
 
 generate:
 	python scripts/generate_manifests.py
@@ -32,6 +32,13 @@ official:
 
 smoke:
 	python scripts/smoke_test.py --integration opencode
+
+# Does a requirement's cited tests actually run the code it names? Runs the
+# suite under coverage with per-test contexts, so it is slow and deliberately
+# outside `validate`. It runs alongside the marker system for a release before
+# anything is removed on its evidence.
+measure:
+	python scripts/measure_traceability.py --run
 
 # Requirement coverage, for the CI step summary.
 coverage:

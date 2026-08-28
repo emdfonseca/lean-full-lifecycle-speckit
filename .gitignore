@@ -9,3 +9,5 @@ __pycache__/
 .devbox-venv/
 __pycache__/
 *.pyc
+.coverage
+.coverage.*

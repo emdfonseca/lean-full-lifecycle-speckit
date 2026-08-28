@@ -32,3 +32,15 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+
+# Per-test contexts are what makes traceability measurable: the database records
+# which test executed which line, so a requirement's cited tests can be asked
+# whether they ran the component the requirement names.
+[tool.coverage.run]
+dynamic_context = "test_function"
+branch = false
+source = ["scripts", "bundle/components/extensions"]
+# Tests drive scripts through subprocess.run because the refusal text is what a
+# reader sees. Without this the parent process is measured and every check:
+# component reads as never executed. See tooling/coverage-subprocess/.
+parallel = true
