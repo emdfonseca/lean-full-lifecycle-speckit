@@ -3188,3 +3188,48 @@ requirements:
       - "tests/test_command_tiers.py::test_the_manifests_still_parse_after_being_rewritten"
       - "tests/test_command_tiers.py::test_the_front_matter_carries_the_clause_because_that_is_what_agents_render"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-COMMAND-TIER]"
+
+  - id: REQ-TOOLING-LINEAGE-001
+    statement: >-
+      An item records which artifacts it was derived from -- each path, its
+      content hash, and the git revision the record was taken at -- so a spec,
+      plan or task list edited out of band is visible instead of silent. What
+      is hashed comes from the `produces` declarations on the workflow's own
+      steps, never a list of artifact names in the recorder, so adding a
+      producing step extends lineage with no code change. A recorded artifact
+      whose content differs, that has been deleted, or that appeared after the
+      record was written is reported as OUT_OF_BAND_CHANGE naming the file; an
+      item with no record at all is reported as ABSENT_LINEAGE and never as a
+      pass, because an unrecorded item is not an unchanged one. Drift exits
+      non-zero so a gate can act on it. `transition_plan.py audit` reports the
+      same findings for items in the delivering state and no other: earlier
+      states have no feature directory, since `speckit.specify` creates it on
+      the way in, and a terminal item cannot record lineage retroactively --
+      a rule that fires where nothing can be done is how an audit gets ignored.
+      Epics are exempt because their artifacts are their children. The record detects and never reconciles, and carries no
+      delivery state -- the board keeps that answer.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/lineage.py
+      - command:speckit.github-lifecycle.lineage
+      - workflow:lifecycle-story-delivery
+      - workflow:lifecycle-bugfix
+    verified_by:
+      - "tests/test_lineage.py::test_a_changed_artifact_is_reported_and_named"
+      - "tests/test_lineage.py::test_matching_hashes_report_no_drift"
+      - "tests/test_lineage.py::test_an_absent_record_is_a_finding_not_a_pass"
+      - "tests/test_lineage.py::test_a_deleted_artifact_is_drift"
+      - "tests/test_lineage.py::test_an_artifact_that_appeared_after_recording_is_drift"
+      - "tests/test_lineage.py::test_a_file_added_to_a_directory_artifact_is_drift"
+      - "tests/test_lineage.py::test_a_renamed_file_in_a_directory_artifact_is_drift"
+      - "tests/test_lineage.py::test_the_artifacts_come_from_what_the_workflow_declares"
+      - "tests/test_lineage.py::test_a_workflow_declaring_nothing_is_refused_rather_than_recorded"
+      - "tests/test_lineage.py::test_an_uninstalled_workflow_is_refused"
+      - "tests/test_lineage.py::test_an_unreadable_record_is_not_read_as_absent"
+      - "tests/test_lineage.py::test_the_record_carries_no_delivery_state"
+      - "tests/test_lineage.py::test_drift_exits_non_zero_so_a_gate_can_act_on_it"
+      - "tests/test_lineage.py::test_a_clean_item_exits_zero"
+      - "tests/test_lineage.py::test_the_command_refuses_to_reconcile_or_re_record"
+      - "tests/test_lineage.py::test_the_delivery_workflows_record_lineage_before_the_delivery_record"
+      - "tests/test_lineage.py::test_the_audit_asks_only_the_state_whose_artifacts_exist"

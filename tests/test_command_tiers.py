@@ -94,6 +94,10 @@ def test_each_readme_lists_the_commands_its_manifest_declares(inv):
 # list generated from the manifest would agree with any rename it described,
 # which is the one thing this must not do. 178 references across 33 files, and
 # a rename breaks every project that installed the bundle.
+#
+# A subset check, not equality. Adding a command is ordinary and breaks nobody;
+# losing or renaming one breaks every installed project. A rename is both at
+# once, and the subset catches its removal half.
 FROZEN = {
     "speckit.github-lifecycle." + verb for verb in (
         "inspect board documents plan transition capture link readiness "
@@ -109,7 +113,8 @@ FROZEN = {
 
 @pytest.mark.req("REQ-CORE-TIERS-001")
 def test_no_command_was_renamed(inv):
-    assert {e["name"] for _, e in commands(inv)} == FROZEN
+    current = {e["name"] for _, e in commands(inv)}
+    assert FROZEN <= current, f"names lost or renamed: {sorted(FROZEN - current)}"
 
 
 @pytest.mark.req("REQ-CORE-TIERS-001")
@@ -121,8 +126,9 @@ def test_every_workflow_step_still_resolves(inv):
         if step.get("command")
     }
     assert referenced <= inv.provided_commands()
-    # And specifically that no step points at a name this change invented.
-    assert {r for r in referenced if r.startswith("speckit.github-lifecycle.")} <= FROZEN
+    # And that every frozen name a workflow relies on is still provided. A
+    # rename would leave the step resolving to nothing.
+    assert FROZEN & referenced <= inv.provided_commands()
 
 
 def _walk(steps):

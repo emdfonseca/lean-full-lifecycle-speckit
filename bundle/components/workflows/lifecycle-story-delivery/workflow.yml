@@ -413,6 +413,19 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: Converge implementation, spec, tasks, Constitution, and Output Done evidence.
+- id: record-lineage
+  command: speckit.github-lifecycle.lineage
+  integration: '{{ inputs.integration }}'
+  input:
+    args: >-
+      Record what {{ inputs.issue_ref }} was derived from: run `record` with the
+      issue number, this run's feature directory, and --workflow lifecycle-story-delivery.
+      After converge and before the delivery record, so what is hashed is what
+      the item was actually built against.
+
+      Do not pass a list of artifacts. The workflow's own `produces`
+      declarations say what to hash, which is why adding a producing step
+      extends lineage with nothing to change here.
 - id: write-delivery-record
   type: prompt
   timeout: 600

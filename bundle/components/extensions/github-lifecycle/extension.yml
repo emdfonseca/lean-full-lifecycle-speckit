@@ -160,6 +160,10 @@ provides:
     file: commands/status.md
     tier: driver
     description: Yours to run — report what is true in this project and what is startable, in one read-only pass.
+  - name: speckit.github-lifecycle.lineage
+    file: commands/lineage.md
+    tier: per-item
+    description: Drivers and workflows — record what an item was derived from, and detect a spec changed out of band.
   config:
   - name: github-lifecycle-config.yml
     template: config-template.yml

@@ -47,6 +47,8 @@ import yaml  # noqa: E402
 
 from field_backend import FieldBackend, for_inspection  # noqa: E402
 from github_api import Conflict, Forbidden, GitHub, GitHubError, NotFound  # noqa: E402
+import lineage  # noqa: E402
+
 from inspect_target import Inspection, inspect  # noqa: E402
 
 PLAN_BLOCK = re.compile(r"```yaml\n(.*?)\n```", re.DOTALL)
@@ -452,6 +454,15 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
                     number,
                     f"is Ready but blocked by {named}. It claims to be "
                     f"startable and is not."))
+        if value == START_STATE:
+            # Only here. Earlier states have no feature directory at all --
+            # `speckit.specify` creates it on the way into this one -- so
+            # asking them for lineage is asking about artifacts that cannot
+            # exist. Later ones cannot record it retroactively. Either way the
+            # finding is one nobody can act on, and an audit carrying a dozen
+            # of those is an audit people learn to skip.
+            found.extend(lineage_findings(number, value, issue, root))
+
         is_epic = item_type_of(issue, {"epic"}) == "epic"
         if is_epic or value == TERMINAL_STATE:
             # Read children only when a rule could use them. For every other
@@ -468,6 +479,38 @@ def audit_board(gh: GitHub, backend: FieldBackend, inspection: Inspection,
     if drift:
         found.append(Inconsistency(None, drift))
     return found
+
+
+def lineage_findings(number: int, value: str, issue: dict,
+                     root: Path | None) -> list[Inconsistency]:
+    """Artifacts that changed under an item, or an item that recorded none.
+
+    Delegates the comparison to `lineage.py` rather than re-hashing here. The
+    audit's job is to notice; what counts as drift is one definition and it
+    lives with the records it describes.
+
+    Epics are exempt because their artifacts are their children, which the
+    parent/child rules already cover -- and because the story that added this
+    put revisions on Epics out of scope rather than leaving it implied.
+    """
+    if root is None or item_type_of(issue, {"epic"}) == "epic":
+        return []
+    try:
+        results = lineage.check(root, int(number))
+    except lineage.LineageError as exc:
+        return [Inconsistency(number, f"lineage could not be read: {exc}")]
+    out = []
+    for item in results:
+        if item["finding"] == lineage.ABSENT:
+            out.append(Inconsistency(
+                number,
+                f"is {value!r} with no recorded lineage, so nothing can say "
+                f"whether the spec it is being built against still matches "
+                f"what it was derived from."))
+        else:
+            out.append(Inconsistency(
+                number, f"{lineage.OUT_OF_BAND}: {item['detail']}"))
+    return out
 
 
 def modified_tracked_files(root: Path) -> list[str] | None:

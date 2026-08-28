@@ -36,7 +36,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 14
+        "steps": 15
       }
     },
     "lifecycle-decompose": {
@@ -234,7 +234,7 @@
       "verified": false,
       "url": "UNSET",
       "provides": {
-        "steps": 19
+        "steps": 20
       }
     },
     "lifecycle-triage": {
