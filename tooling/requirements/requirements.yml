@@ -768,7 +768,10 @@ requirements:
       current one, because work here happens in several at once and that is
       the situation the rule exists for. Untracked files do not count, a closed
       item is not somebody working, and git being unable to answer is reported
-      as unknown rather than as clean.
+      as unknown rather than as clean. The reported half is provisional and
+      says so where it is documented: it is silent when the loop is followed,
+      so it speaks only when a transition was skipped, and it is deleted rather
+      than tuned if it ever fires on work that followed the loop.
     priority: must
     release: "0.3.0"
     components:
@@ -785,6 +788,7 @@ requirements:
       - "tests/test_transition.py::test_a_tree_git_cannot_read_is_not_counted_as_clean"
       - "tests/test_transition.py::test_no_worktree_list_means_no_verdict"
       - "tests/test_transition.py::test_every_worktree_is_enumerated_not_just_the_current_one"
+      - "tests/test_transition.py::test_the_reported_rule_states_what_would_end_it"
       - "tests/test_transition.py::test_the_audit_reports_the_tree_when_nothing_is_in_progress"
       - "tests/test_transition.py::test_the_audit_stays_silent_when_an_item_is_in_progress"
       - "tests/test_transition.py::test_a_closed_item_in_progress_does_not_silence_it"

@@ -1468,3 +1468,17 @@ def test_every_worktree_is_enumerated_not_just_the_current_one(tmp_path):
     # for. Run against the real repository, whose list git alone can answer.
     found = tp.working_trees(ROOT)
     assert found and ROOT in [p.resolve() for p in found]
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_the_reported_rule_states_what_would_end_it():
+    """Probation with no exit condition is just a comment.
+
+    The rule earns its keep only while it stays silent through correct work.
+    Saying so where a reader meets the rule is what makes "delete it" an
+    available answer rather than an argument to have later.
+    """
+    text = (ROOT / "bundle/components/extensions/github-lifecycle/commands"
+            / "transition.md").read_text(encoding="utf-8")
+    assert "This rule is provisional" in text
+    assert "Delete it when it fires on work that followed the loop" in text

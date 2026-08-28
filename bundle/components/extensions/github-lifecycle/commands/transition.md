@@ -82,6 +82,16 @@ board already answers it: an issue has an assignee. A branch convention or a
 claim file invented here would be a third source of truth for something the
 board already holds.
 
+**This rule is provisional.** It is silent when the loop is followed — move the
+item, then build — so it speaks only when the transition was skipped, and what
+it catches is a board offering items as startable while several trees carry
+work. On a board one person reads, that is bookkeeping hygiene rather than
+defect prevention.
+
+Delete it when it fires on work that followed the loop. A rule that reports
+during correct work is worse than no rule, and the answer then is removal, not
+a tighter condition — tuning is how a rule nobody trusts survives.
+
 It reports rather than refuses. An extension `events:` guard could refuse an
 agent's tool call, but `specify bundle install` does not arm one — the user
 must run `specify integration upgrade --force` — so a bundle cannot ship
