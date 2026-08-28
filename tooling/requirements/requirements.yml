@@ -3233,3 +3233,34 @@ requirements:
       - "tests/test_lineage.py::test_the_command_refuses_to_reconcile_or_re_record"
       - "tests/test_lineage.py::test_the_delivery_workflows_record_lineage_before_the_delivery_record"
       - "tests/test_lineage.py::test_the_audit_asks_only_the_state_whose_artifacts_exist"
+
+  - id: REQ-BACKLOG-INVALIDATE-001
+    statement: >-
+      A captured finding records what it makes wrong. `--invalidates N` is
+      repeatable and comments on each named item after the new issue is created
+      and read back, naming that issue and the reason; `--invalidation-reason`
+      is required with it, because a mark that does not say why is one nobody
+      can act on. The check that each named item exists and is open is
+      read-only and runs before creation, so a closed or unreadable target
+      refuses while there is still nothing to undo -- a run never leaves a
+      created issue beside a refusal. A closed item is refused and the refusal
+      names it: it has already been decided. Without `--create` nothing is
+      written to any issue. The comment marks and stops: whether the
+      invalidated item is retired, respecified or left alone is a person's
+      judgement, and the comment says so rather than proposing one.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/capture.py
+      - command:speckit.github-lifecycle.capture
+    verified_by:
+      - "tests/test_capture.py::test_an_invalidated_item_is_commented_on_with_the_new_issue_and_reason"
+      - "tests/test_capture.py::test_a_closed_item_cannot_be_invalidated_and_the_refusal_names_it"
+      - "tests/test_capture.py::test_a_refused_invalidation_creates_nothing"
+      - "tests/test_capture.py::test_the_comment_follows_creation_and_never_precedes_it"
+      - "tests/test_capture.py::test_several_items_are_each_marked"
+      - "tests/test_capture.py::test_an_unreadable_item_is_not_treated_as_open"
+      - "tests/test_capture.py::test_the_comment_does_not_decide_what_happens_next"
+      - "tests/test_capture.py::test_searching_without_create_writes_to_no_issue"
+      - "tests/test_capture.py::test_invalidating_without_a_reason_is_refused"
+      - "tests/test_capture.py::test_the_command_documents_that_it_marks_and_stops"

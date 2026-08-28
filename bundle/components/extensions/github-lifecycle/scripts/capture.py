@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config  # noqa: E402
 
-from github_api import GitHub, GitHubError, NotFound  # noqa: E402
+from github_api import Forbidden, GitHub, GitHubError, NotFound  # noqa: E402
 
 # Words carrying no signal for similarity.
 STOPWORDS = frozenset("""
@@ -166,13 +166,75 @@ def with_provenance(body: str, found_in: int | None) -> str:
     return f"{body.rstrip()}\n\n{line}\n"
 
 
+INVALIDATION = "Invalidated by "
+
+
+def check_invalidatable(gh: GitHub, repo: str, numbers: list[int]) -> None:
+    """Every named item exists and is still open. Reads only.
+
+    Runs *before* anything is created, which is the whole shape of this
+    feature. Discovering that a target is closed after the new issue exists
+    would leave a created item and a refusal in the same run, and the refusal
+    would be the only part anybody could act on.
+
+    A closed item is refused rather than commented on: it has already been
+    decided, and a comment saying it is invalidated says nothing a reader can
+    do anything with.
+    """
+    for number in numbers:
+        issue = gh.rest("GET", f"repos/{repo}/issues/{number}")
+        if not issue:
+            raise NotFound(
+                f"#{number} could not be read, so whether it is still open is "
+                f"unknown. Nothing is invalidated on an unread item.")
+        if issue.get("pull_request"):
+            raise Forbidden(
+                f"#{number} is a pull request, not a backlog item.")
+        if issue.get("state") == "closed":
+            raise Forbidden(
+                f"#{number} is closed, so it cannot be invalidated. A closed "
+                f"item has already been decided; if the decision was wrong, "
+                f"reopen it deliberately rather than commenting on it.")
+
+
+def mark_invalidated(gh: GitHub, repo: str, numbers: list[int],
+                     created: int, reason: str,
+                     operation_id: str | None = None) -> list[int]:
+    """Comment on each invalidated item, naming the new issue and the reason.
+
+    After creation, never before -- the same rule `post_comment` follows in
+    transition_plan for the same reason: a comment describing an issue that was
+    then not created is a false record, and this one points at a number that
+    would not exist.
+
+    It says what was found and stops. Whether the invalidated item should be
+    retired, respecified or left alone is a person's judgement, and a tool that
+    proposed one would be making it.
+    """
+    marked = []
+    for number in numbers:
+        gh.rest("POST", f"repos/{repo}/issues/{number}/comments",
+                body={"body": f"{INVALIDATION}#{created}.\n\n{reason.strip()}\n\n"
+                              f"What happens to this item is not decided here."},
+                operation_id=(f"{operation_id}-invalidates-{number}"
+                              if operation_id else None))
+        marked.append(number)
+    return marked
+
+
 def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
                 parent: int | None = None, operation_id: str | None = None,
                 project: int | None = None,
                 policy_root: Path | None = None,
                 considered: list[int] | None = None,
-                found_in: int | None = None) -> dict:
+                found_in: int | None = None,
+                invalidates: list[int] | None = None,
+                invalidation_reason: str | None = None) -> dict:
     body = with_provenance(body, found_in)
+    # Read-only, and before the POST below. A target that cannot be
+    # invalidated must stop the run while there is still nothing to undo.
+    if invalidates:
+        check_invalidatable(gh, repo, invalidates)
     created = gh.rest("POST", f"repos/{repo}/issues",
                       body={"title": title, "body": body, "labels": [item_type]},
                       operation_id=operation_id)
@@ -201,6 +263,10 @@ def create_item(gh: GitHub, repo: str, title: str, body: str, item_type: str,
     result = {"number": number, "type": item_type, "parent": parent}
     if found_in is not None:
         result["found_in"] = found_in
+    if invalidates:
+        result["invalidates"] = mark_invalidated(
+            gh, repo, invalidates, number, invalidation_reason or "",
+            operation_id=operation_id)
     if considered:
         # The decision travels with the creation it authorized. Without this
         # the record is a flag someone passed and nothing anyone can read back.
@@ -307,6 +373,15 @@ def main() -> int:
                     help="Issue this finding was discovered during. Recorded "
                          "in the body as a cross-reference, so the source "
                          "shows it too.")
+    ap.add_argument("--invalidates", type=int, action="append", default=[],
+                    metavar="N",
+                    help="Issue this finding makes wrong. Repeatable. Each is "
+                         "commented on after the new issue is created, naming "
+                         "it and the reason. A closed item is refused.")
+    ap.add_argument("--invalidation-reason", default=None, metavar="TEXT",
+                    help="Why the named items are wrong. Required with "
+                         "--invalidates: a comment that does not say why is a "
+                         "mark nobody can act on.")
     ap.add_argument("--considered", type=int, action="append", default=[],
                     metavar="N",
                     help="Issue number a person compared this against and "
@@ -345,6 +420,11 @@ def main() -> int:
 
         if not args.item_type:
             print("--type is required with --create", file=sys.stderr)
+            return 2
+
+        if args.invalidates and not (args.invalidation_reason or "").strip():
+            print("--invalidation-reason is required with --invalidates",
+                  file=sys.stderr)
             return 2
 
         missing = has_evidence(args.body, args.item_type)
@@ -388,11 +468,13 @@ def main() -> int:
                                   project=args.project,
                                   policy_root=args.policy_root,
                                   considered=args.considered,
-                                  found_in=args.found_in))
+                                  found_in=args.found_in,
+                                  invalidates=args.invalidates,
+                                  invalidation_reason=args.invalidation_reason))
         report["action"] = "created"
         print(json.dumps(report, indent=2))
         return 0
-    except (GitHubError, NotFound) as exc:
+    except (GitHubError, NotFound, Forbidden) as exc:
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
 

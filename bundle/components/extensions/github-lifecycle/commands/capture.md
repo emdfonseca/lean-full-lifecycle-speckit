@@ -83,6 +83,37 @@ transitioned is the failure this reporting exists to prevent.
 Organization Issue Fields carry state on the issue itself, so there is no board
 to be off. That case is reported too, and is not a failure.
 
+## Marking what the finding makes wrong
+
+A discovery that breaks an Epic's shape, filed as an ordinary sibling, leaves
+that Epic unmarked — and the next person to read it is reading something known
+to be wrong.
+
+```bash
+{SCRIPT} ... --create \
+  --invalidates <n> --invalidates <n> \
+  --invalidation-reason "what about those items is no longer true"
+```
+
+Each named item gets a comment naming the new issue and the reason. The reason
+is required: a comment saying an item is invalidated without saying why is a
+mark nobody can act on.
+
+**The check runs before creation and the comments after it.** A closed target
+is refused while there is still nothing to undo, so a run never leaves a
+created issue alongside a refusal. The comments are posted only once the new
+issue has been created and read back, because a comment pointing at a number
+that does not exist is a false record.
+
+A closed item is refused rather than commented on. It has already been decided;
+if the decision was wrong, reopen it deliberately.
+
+Without `--create` nothing is written to any issue. The search path returns
+before any of this.
+
+**It marks and stops.** Whether the invalidated item should be retired,
+respecified, or left alone is a person's judgement, and the comment says so.
+
 ## Distinct from `speckit.taskstoissues`
 
 That command converts a feature's `tasks.md` into dependency-ordered issues:
@@ -97,3 +128,7 @@ backlog with a duplicate search. Do not use one for the other's job.
   record the comparison with `--considered`.
 - File an observation with no reproduction and no stated outcome. That is a
   discovery note, and the script will say so.
+- Decide what happens to an invalidated item. `--invalidates` records that it
+  is wrong; retiring or respecifying it is a separate decision a person makes.
+- Comment on an invalidated item before the new issue exists, or by any route
+  other than `--invalidates`. The ordering is what keeps the comment true.

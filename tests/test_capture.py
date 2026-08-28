@@ -46,6 +46,9 @@ class Repo:
         self.drop_label = drop_label
         self.calls: list[list[str]] = []
         self.next_number = 100
+        # number -> [body]. Recorded because a comment on an issue other than
+        # the one being created is the one write no other capture path makes.
+        self.comments: dict[int, list[str]] = {}
 
     def __call__(self, args, stdin):
         self.calls.append(list(args))
@@ -72,6 +75,11 @@ class Repo:
                                 "body": body.get("body", ""),
                                 "state": "open", "labels": labels})
             return self._ok({"number": number})
+        if url.endswith("/comments") and method == "POST":
+            number = int(url.split("/issues/")[1].split("/")[0])
+            self.comments.setdefault(number, []).append(
+                json.loads(stdin or "{}").get("body", ""))
+            return self._ok({"id": 1})
         if url.endswith("/issues"):
             if wanted_state == "all":
                 return self._ok(self.issues)
@@ -520,3 +528,137 @@ def test_the_delivery_capture_searches_before_it_creates_and_links_its_source():
         "the delivery route bypasses the duplicate decision #98 added"
 
 
+
+
+# --- marking what a finding invalidates ----------------------------------------
+
+def _posts(repo):
+    """(index, url) for every POST the fake saw, in order.
+
+    The url is the argument after `--method POST`, not the last one: `gh api`
+    takes fields after the url, and reading argv[-1] made an ordering assertion
+    match nothing and pass vacuously.
+    """
+    out = []
+    for i, call in enumerate(repo.calls):
+        if "--method" in call and call[call.index("--method") + 1] == "POST":
+            out.append((i, call[call.index("--method") + 2].split("?")[0]))
+    return out
+
+
+def invalidation_repo():
+    """An open item and a closed one, to invalidate or fail to."""
+    return Repo(issues=[
+        {"number": 42, "id": 10042, "title": "An epic this breaks",
+         "state": "open", "labels": [{"name": "epic"}]},
+        {"number": 43, "id": 10043, "title": "Already decided",
+         "state": "closed", "labels": [{"name": "story"}]},
+    ])
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_an_invalidated_item_is_commented_on_with_the_new_issue_and_reason():
+    repo = invalidation_repo()
+    result = cap.create_item(
+        client(repo), "o/r", "A finding", "body", "story",
+        invalidates=[42], invalidation_reason="its exit condition cannot hold")
+
+    assert result["invalidates"] == [42]
+    body = repo.comments[42][0]
+    assert f"#{result['number']}" in body
+    assert "its exit condition cannot hold" in body
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_a_closed_item_cannot_be_invalidated_and_the_refusal_names_it():
+    repo = invalidation_repo()
+    with pytest.raises(gh_api.Forbidden) as exc:
+        cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                        invalidates=[43], invalidation_reason="why")
+    assert "#43" in str(exc.value)
+    assert "closed" in str(exc.value)
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_a_refused_invalidation_creates_nothing():
+    # The whole shape of the feature. Discovering the target was closed after
+    # creating the issue would leave a created item beside a refusal, and the
+    # refusal would be the only part anyone could act on.
+    repo = invalidation_repo()
+    with pytest.raises(gh_api.Forbidden):
+        cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                        invalidates=[43], invalidation_reason="why")
+    assert not [url for _, url in _posts(repo) if url.endswith("/issues")]
+    assert [i["number"] for i in repo.issues] == [42, 43]
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_the_comment_follows_creation_and_never_precedes_it():
+    repo = invalidation_repo()
+    cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                    invalidates=[42], invalidation_reason="why")
+    posts = _posts(repo)
+    created_at = next(i for i, url in posts if url.endswith("/issues"))
+    commented_at = next(i for i, url in posts if url.endswith("/comments"))
+    assert created_at < commented_at
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_several_items_are_each_marked():
+    repo = Repo(issues=[
+        {"number": 42, "id": 10042, "title": "One", "state": "open", "labels": []},
+        {"number": 44, "id": 10044, "title": "Two", "state": "open", "labels": []},
+    ])
+    result = cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                             invalidates=[42, 44], invalidation_reason="why")
+    assert result["invalidates"] == [42, 44]
+    assert set(repo.comments) == {42, 44}
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_an_unreadable_item_is_not_treated_as_open():
+    repo = invalidation_repo()
+    with pytest.raises(gh_api.NotFound):
+        cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                        invalidates=[999], invalidation_reason="why")
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_the_comment_does_not_decide_what_happens_next():
+    # Retiring or respecifying the item is a person's judgement, and the
+    # comment saying so is what keeps this from looking like a proposal.
+    repo = invalidation_repo()
+    cap.create_item(client(repo), "o/r", "A finding", "body", "story",
+                    invalidates=[42], invalidation_reason="why")
+    body = repo.comments[42][0]
+    assert "not decided here" in body
+    for word in ("retire", "respecify", "close"):
+        assert word not in body.lower()
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_searching_without_create_writes_to_no_issue(monkeypatch, capsys):
+    repo = invalidation_repo()
+    assert _run(monkeypatch, repo, [
+        "--repo", "o/r", "--title", "A finding",
+        "--invalidates", "42", "--invalidation-reason", "why"]) == 0
+    assert repo.comments == {}
+    assert json.loads(capsys.readouterr().out)["action"] == "searched only"
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_invalidating_without_a_reason_is_refused(monkeypatch, capsys):
+    repo = invalidation_repo()
+    code = _run(monkeypatch, repo, [
+        "--repo", "o/r", "--title", "A finding", "--create", "--type", "bug",
+        "--body", GOOD_BODY, "--invalidates", "42"])
+    assert code == 2
+    assert repo.comments == {}
+
+
+@pytest.mark.req("REQ-BACKLOG-INVALIDATE-001")
+def test_the_command_documents_that_it_marks_and_stops():
+    text = (ROOT / "bundle/components/extensions/github-lifecycle/commands"
+            / "capture.md").read_text(encoding="utf-8")
+    assert "Decide what happens to an invalidated item" in text
+    assert "before creation and the comments after it" in text
