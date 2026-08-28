@@ -351,6 +351,8 @@ requirements:
       - "tests/test_field_backend.py::test_an_unset_field_reads_as_none"
       - "tests/test_field_backend.py::test_selection_returns_the_backend_the_inspection_chose"
       - "tests/test_policy_shape.py::test_the_schema_and_the_state_machine_agree_on_delivery_status"
+      - "tests/test_field_backend.py::test_an_issue_added_by_the_board_itself_is_placed_not_failed"
+      - "tests/test_field_backend.py::test_the_state_can_still_be_written_after_that_race"
   - id: REQ-GITHUB-ORGFIELDS-001
     statement: >-
       Where an organization has opted into Issue Fields carrying the delivery
@@ -401,6 +403,9 @@ requirements:
       - "tests/test_transition.py::test_a_prototype_run_needs_a_disposal_record_whatever_the_item_is_labelled"
       - "tests/test_transition.py::test_a_recorded_disposal_satisfies_the_prototype_guard"
       - "tests/test_transition.py::test_a_run_declaring_no_uncertainty_still_falls_back_to_the_labels"
+      - "tests/test_transition.py::test_an_empty_expect_means_no_delivery_state"
+      - "tests/test_transition.py::test_a_named_state_is_carried_through_unchanged"
+      - "tests/test_transition.py::test_the_state_machine_declares_the_edge_out_of_no_state"
   - id: REQ-GITHUB-COMMANDS-001
     statement: >-
       A command that reaches GitHub invokes the deterministic adapter rather

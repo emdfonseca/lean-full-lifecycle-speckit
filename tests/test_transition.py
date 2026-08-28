@@ -1345,3 +1345,33 @@ def test_a_run_declaring_no_uncertainty_still_falls_back_to_the_labels(tmp_path)
 def _insp():
     return inspection()
 
+
+# --- the one transition out of the null state --------------------------------
+#
+# state-machine.yml declares the edge from no state to Inbox, and it was
+# unreachable from the CLI: --expect is a string and argparse can never make
+# one equal None, so an item placed on the board without a state could not be
+# repaired by the tool that owns transitions. Repair meant `gh project
+# item-edit` with a raw field id and option id, outside the extension.
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+@pytest.mark.parametrize("raw", ["", "   ", None])
+def test_an_empty_expect_means_no_delivery_state(raw):
+    assert tp.expected_state(raw) is None
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_a_named_state_is_carried_through_unchanged():
+    # The empty case must not swallow a real one: "None" is a state name a
+    # board could legitimately carry, and it is not the absence of a state.
+    assert tp.expected_state("In Progress") == "In Progress"
+    assert tp.expected_state("None") == "None"
+
+
+@pytest.mark.req("REQ-GITHUB-TRANSITION-002")
+def test_the_state_machine_declares_the_edge_out_of_no_state():
+    edges = [e for e in MACHINE["delivery_status"]["transitions"]
+             if e["from"] is None]
+    assert edges, "nothing declares how an item with no state gets one"
+    assert [e["to"] for e in edges] == [START := "Inbox"]
+

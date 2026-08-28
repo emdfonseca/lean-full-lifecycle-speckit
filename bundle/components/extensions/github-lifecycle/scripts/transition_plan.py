@@ -770,6 +770,18 @@ def _setup(repo: str, project: int | None, audit: Path | None, dry_run: bool = F
 DENIALS = frozenset({"false", "no", "none", "0", "not", "unverified", "unknown", ""})
 
 
+def expected_state(raw: str | None) -> str | None:
+    """What `--expect` names, with the empty string meaning "no state".
+
+    `state-machine.yml` declares the edge out of the null state, and argparse
+    can never make a string equal `None` -- so the one transition that repairs
+    an item placed on the board without a delivery state was unreachable from
+    this CLI, and repairing one meant `gh project item-edit` with a raw field
+    id and option id, outside the extension entirely.
+    """
+    return raw if (raw or "").strip() else None
+
+
 def post_comment(gh, inspection, plan, path: Path) -> str:
     """Post the delivery record on the issue the plan named.
 
@@ -817,7 +829,7 @@ def main() -> int:
     p_apply.add_argument("--to", required=True)
     p_apply.add_argument("--role", default="delivery_state")
     p_apply.add_argument("--expect", required=True, metavar="STATE",
-                         help="The state this transition was approved against. The write is refused if the board is no longer there, which is what stops one run overwriting a change it never saw.")
+                         help="The state this transition was approved against. The write is refused if the board is no longer there, which is what stops one run overwriting a change it never saw. Pass an empty string for an item on the board with no delivery state.")
     p_apply.add_argument("--evidence", action="append", default=[],
                          metavar="KEY=VALUE",
                          help="Assert one required evidence item. Repeatable.")
@@ -927,9 +939,10 @@ def main() -> int:
                 "audit": [a.outcome for a in gh.audit],
             }, indent=2))
             return 0
-        if current.value != args.expect:
+        expected = expected_state(args.expect)
+        if current.value != expected:
             raise Conflict(
-                f"expected {args.expect!r} but {issue_ref} {args.role} is now "
+                f"expected {expected!r} but {issue_ref} {args.role} is now "
                 f"{current.value!r}. Re-read the board rather than overwriting a "
                 f"change this run did not account for.")
         plan = build_plan(backend, inspection, machine, args.issue, args.to,

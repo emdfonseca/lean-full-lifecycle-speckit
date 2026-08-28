@@ -585,3 +585,51 @@ def test_the_projects_reader_is_not_used_for_issue_fields():
     entry = {"single_select_option": {"name": "Inbox"}, "value": 80557703}
     assert fb._read_value(entry) == "80557703"
     assert fb._issue_field_value(entry) == "Inbox"
+
+
+# --- an auto-add workflow races the placement --------------------------------
+#
+# A project with an auto-add workflow adds the issue between `place`'s lookup
+# and its POST. The POST then returns "Content already exists" (HTTP 422),
+# which classifies as Conflict. Treating that as failure left the item on the
+# board with no delivery state and took the field write down with it: capture
+# reported `on_board: false` about an item that was on the board, and nothing
+# in the extension could repair it. Observed creating #176 and #178.
+
+class RacedBoard(FakeBoard):
+    """Adds the issue itself the moment `place` decides it is absent."""
+
+    def __init__(self):
+        super().__init__()
+        self.posted = 0
+
+    def __call__(self, args, stdin):
+        url = (args[args.index("--method") + 2] if "--method" in args
+               else args[args.index("api") + 1]).partition("?")[0]
+        method = args[args.index("--method") + 1] if "--method" in args else "GET"
+        if url.endswith("/items") and method == "POST":
+            self.posted += 1
+            # the auto-add workflow won
+            self.items[42] = 4242
+            self.values[4242] = {}
+            self.calls.append(list(args))
+            return self._err("gh: Content already exists in this project (HTTP 422)")
+        return super().__call__(args, stdin)
+
+
+@pytest.mark.req("REQ-GITHUB-FIELDS-001")
+def test_an_issue_added_by_the_board_itself_is_placed_not_failed():
+    be, board = backend(board=RacedBoard())
+    assert be.place(42, 4200) == 4242
+    assert board.posted == 1, "it should not retry the add, only re-resolve"
+
+
+@pytest.mark.req("REQ-GITHUB-FIELDS-001")
+def test_the_state_can_still_be_written_after_that_race():
+    # The point of the fix. Placement failing took the field write with it, and
+    # an item on the board with no delivery state is skipped by the queue,
+    # reported by the audit, and cannot be planned from.
+    be, _ = backend(board=RacedBoard())
+    be.place(42, 4200)
+    assert be.write(42, "delivery_state", "Inbox").value == "Inbox"
+

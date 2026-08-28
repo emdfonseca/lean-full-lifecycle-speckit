@@ -117,18 +117,30 @@ class ProjectFieldBackend(FieldBackend):
               operation_id: str | None = None) -> int:
         """Put an issue on the board, and return its item id.
 
-        Idempotent: an issue already present returns its existing id rather
-        than creating a second row.
+        Idempotent, and it has to be idempotent against a race rather than
+        only against a repeat. The lookup below is not enough on a project
+        with an auto-add workflow: that workflow can add the issue between the
+        lookup and the POST, and the POST then returns "Content already exists"
+        (HTTP 422). Treating that as a failure left the item on the board with
+        no delivery state and took the field write down with it -- the caller
+        reported `on_board: false` about an item that was on the board.
+
+        An add that fails because the row is already there has its
+        postcondition satisfied. Re-resolve and carry on.
         """
         try:
             return self.item_id(issue_number)
         except NotFound:
             pass
-        created = self.gh.rest(
-            "POST", f"{self._base}/items",
-            body={"type": "Issue", "id": int(issue_id)},
-            operation_id=operation_id,
-        )
+        try:
+            created = self.gh.rest(
+                "POST", f"{self._base}/items",
+                body={"type": "Issue", "id": int(issue_id)},
+                operation_id=operation_id,
+            )
+        except Conflict:
+            self._items = None      # the cached listing predates the race
+            return self.item_id(issue_number)
         if self.gh.last_outcome == "dry-run":
             return -1
         if not created or created.get("id") is None:
