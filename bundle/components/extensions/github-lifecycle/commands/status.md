@@ -24,8 +24,8 @@ The report composes what four commands already knew and nothing else:
 - **Queue** — startable now, blocked, safe to refine ahead, awaiting
   decomposition, and the shortfall sentence `transition_plan queue` prints.
 - **Audit** — every board state that contradicts the policy.
-- **Working tree** — tracked modifications, and whether an `In Progress` item
-  accounts for them.
+- **Working tree** — tracked modifications, and whether the items the board
+  says are started account for the trees carrying them.
 
 It establishes no fact of its own. Each section is produced by the module that
 owns that rule, so a rule cannot mean one thing here and another where it is
@@ -41,11 +41,15 @@ confuse with an empty board, which is why it is not `0`.
 
 ## The working tree section
 
-The audit reports the tree only when it disagrees with the board — tracked
-modifications while nothing is `In Progress`. Status reports it either way, and
-names the items that account for the changes when some do. Resuming after a
-break, "these files belong to #178" is the more useful half, and the audit is
-silent there because nothing is wrong.
+The audit reports the tree only when it disagrees with the board — more working
+trees carrying changes than there are items at `In Progress`. Status reports it
+either way, and names the items that account for the changes when they do.
+Resuming after a break, "these files belong to work already started" is the more
+useful half, and the audit is silent there because nothing is wrong.
+
+Both use one definition of accounted, so the two surfaces cannot answer
+differently. Neither attributes a change to an item: that question needs a
+second person, and the board answers it with an assignee.
 
 `unknown` means git could not answer. It is not `clean`.
 

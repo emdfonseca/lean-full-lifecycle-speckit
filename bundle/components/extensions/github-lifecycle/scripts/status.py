@@ -70,16 +70,28 @@ def working_tree(root: Path | None, in_progress: list[int] | None) -> dict:
                 "detail": f"{len(changed)} tracked file(s) modified. The board "
                           f"was not read, so whether an item accounts for them "
                           f"is unknown."}
-    if in_progress:
+    # One definition of "is this work accounted for", shared with the audit.
+    # Deciding it here as "something is In Progress" would leave the same blind
+    # spot the audit had: four trees carrying work while one item said started
+    # and three sat at Ready.
+    drift = tp.working_tree_disagreement(root, in_progress)
+    if drift is None and in_progress:
+        dirty = tp.trees_with_changes(root) or []
         return {"status": "accounted", "modified": changed,
                 "in_progress": in_progress,
-                "detail": f"{len(changed)} tracked file(s) modified, and "
+                "detail": f"{len(changed)} tracked file(s) modified across "
+                          f"{len(dirty)} working tree(s), and "
                           f"{', '.join(f'#{n}' for n in in_progress)} "
                           f"{'is' if len(in_progress) == 1 else 'are'} "
                           f"{tp.START_STATE}."}
-    return {"status": "drift", "modified": changed,
-            "in_progress": [],
-            "detail": tp.working_tree_disagreement(root, [])}
+    if drift is not None:
+        return {"status": "drift", "modified": changed,
+                "in_progress": in_progress, "detail": drift}
+    # Nothing started and nothing the counted rule could say: git answered for
+    # the files but not for the trees.
+    return {"status": "unknown", "modified": changed, "in_progress": [],
+            "detail": "the working trees could not be enumerated, so what is "
+                      "in flight was not compared against the board"}
 
 
 def collect(root: Path, repo: str | None = None, project: int | None = None,

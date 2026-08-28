@@ -272,6 +272,7 @@ def test_the_text_form_says_no_queue_follows_and_why(tmp_path, quiet_doctor):
 
 @pytest.mark.req("REQ-CORE-STATUS-001")
 def test_a_tree_no_item_accounts_for_is_drift(tmp_path, monkeypatch):
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
     monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
     tree = status.working_tree(tmp_path, [])
     assert tree["status"] == "drift"
@@ -279,8 +280,31 @@ def test_a_tree_no_item_accounts_for_is_drift(tmp_path, monkeypatch):
 
 
 @pytest.mark.req("REQ-CORE-STATUS-001")
+def test_more_trees_than_started_items_is_drift_not_accounted(tmp_path, monkeypatch):
+    # The blind spot both surfaces had: something is In Progress, so the tree
+    # read as accounted while three other trees carried work.
+    made = [tmp_path / f"t{i}" for i in range(3)]
+    for d in made:
+        d.mkdir()
+    monkeypatch.setattr(tp, "working_trees", lambda root: made)
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
+    tree = status.working_tree(tmp_path, [178])
+    assert tree["status"] == "drift"
+
+
+@pytest.mark.req("REQ-CORE-STATUS-001")
+def test_trees_that_cannot_be_enumerated_are_unknown_not_drift(tmp_path, monkeypatch):
+    monkeypatch.setattr(tp, "working_trees", lambda root: None)
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
+    tree = status.working_tree(tmp_path, [])
+    assert tree["status"] == "unknown"
+    assert "could not be enumerated" in tree["detail"]
+
+
+@pytest.mark.req("REQ-CORE-STATUS-001")
 def test_a_tree_an_item_accounts_for_names_that_item(tmp_path, monkeypatch):
     # The case the audit is silent on, and the one a resuming agent needs.
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
     monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
     tree = status.working_tree(tmp_path, [178])
     assert tree["status"] == "accounted"

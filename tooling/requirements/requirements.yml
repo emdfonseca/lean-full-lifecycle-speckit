@@ -758,10 +758,17 @@ requirements:
       from their ids, because `work_started` is evidence that means nothing if
       the work started first. Outside a workflow the bundle cannot prevent it:
       an events guard is not armed by `specify bundle install`, so the audit
-      reports a working tree carrying tracked modifications while no open item
-      is In Progress. Untracked files do not count, a closed item does not
-      silence it, and git being unable to answer is reported as unknown rather
-      than as clean.
+      compares how much work is in flight against how much the board says has
+      started: it reports when more working trees carry tracked modifications
+      than there are open items In Progress. Counted, never attributed --
+      which change belongs to which item is a question a second person makes
+      interesting, and where it is interesting the board already answers it
+      through an issue's assignee, so no branch convention or claim file is
+      invented for it. Every working tree is enumerated rather than only the
+      current one, because work here happens in several at once and that is
+      the situation the rule exists for. Untracked files do not count, a closed
+      item is not somebody working, and git being unable to answer is reported
+      as unknown rather than as clean.
     priority: must
     release: "0.3.0"
     components:
@@ -770,6 +777,14 @@ requirements:
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
       - policy:state-machine.yml
     verified_by:
+      - "tests/test_transition.py::test_more_trees_than_started_items_is_reported"
+      - "tests/test_transition.py::test_as_many_started_items_as_dirty_trees_is_silent"
+      - "tests/test_transition.py::test_more_started_items_than_trees_is_silent"
+      - "tests/test_transition.py::test_a_clean_tree_does_not_count_towards_work_in_flight"
+      - "tests/test_transition.py::test_nothing_is_attributed_to_an_item"
+      - "tests/test_transition.py::test_a_tree_git_cannot_read_is_not_counted_as_clean"
+      - "tests/test_transition.py::test_no_worktree_list_means_no_verdict"
+      - "tests/test_transition.py::test_every_worktree_is_enumerated_not_just_the_current_one"
       - "tests/test_transition.py::test_the_audit_reports_the_tree_when_nothing_is_in_progress"
       - "tests/test_transition.py::test_the_audit_stays_silent_when_an_item_is_in_progress"
       - "tests/test_transition.py::test_a_closed_item_in_progress_does_not_silence_it"
@@ -3068,8 +3083,10 @@ requirements:
       the doctor reports plus the reason, omits the queue and audit sections
       entirely rather than emitting empty ones, and exits non-zero. It never
       transitions anything. The working tree is reported in every case, and
-      names the In Progress items that account for the changes when any do,
-      which is the case the audit is silent on.
+      names the In Progress items that account for the changes when they do,
+      which is the case the audit is silent on. Both surfaces share one
+      definition of accounted -- more working trees carrying changes than items
+      started -- so the two cannot answer differently.
     priority: must
     release: "0.3.0"
     components:
@@ -3085,6 +3102,8 @@ requirements:
       - "tests/test_status.py::test_an_unread_board_leaves_the_tree_unattributed_rather_than_drifting"
       - "tests/test_status.py::test_the_text_form_says_no_queue_follows_and_why"
       - "tests/test_status.py::test_a_tree_no_item_accounts_for_is_drift"
+      - "tests/test_status.py::test_more_trees_than_started_items_is_drift_not_accounted"
+      - "tests/test_status.py::test_trees_that_cannot_be_enumerated_are_unknown_not_drift"
       - "tests/test_status.py::test_a_tree_an_item_accounts_for_names_that_item"
       - "tests/test_status.py::test_a_tree_git_could_not_read_is_unknown_not_clean"
       - "tests/test_status.py::test_a_clean_tree_is_clean"

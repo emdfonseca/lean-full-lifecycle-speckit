@@ -67,10 +67,20 @@ This is the record a later reader is told to trust over re-deriving the work.
 ## What the audit adds
 
 `transition_plan.py audit` compares the board to the policy, and also to the
-working tree. A tree carrying tracked modifications while no open item is
-`In Progress` is reported as `working tree: ...`, because `Ready` → `In
-Progress` takes the evidence `work_started` and that means nothing if the work
-started first.
+work in flight. It counts the working trees carrying tracked modifications and
+compares that against the open items at `In Progress`; more trees than started
+items is reported as `working tree: ...`, because `Ready` → `In Progress` takes
+the evidence `work_started` and that means nothing if the work started first.
+
+Every working tree, not the current one. Work here happens in several at once,
+and a rule that fired only when *nothing* was started stayed silent while four
+trees carried work and three items sat at `Ready`.
+
+**It counts and never attributes.** Which change belongs to which item is a
+question a second person makes interesting, and where it is interesting the
+board already answers it: an issue has an assignee. A branch convention or a
+claim file invented here would be a third source of truth for something the
+board already holds.
 
 It reports rather than refuses. An extension `events:` guard could refuse an
 agent's tool call, but `specify bundle install` does not arm one — the user

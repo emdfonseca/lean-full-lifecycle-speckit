@@ -10,6 +10,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -655,6 +656,7 @@ def test_a_delivered_child_is_not_asked_about_blockers():
 def test_the_audit_reports_the_tree_when_nothing_is_in_progress(monkeypatch, tmp_path):
     # End to end through audit_board: the board says Refining, the tree says
     # two files changed, and the audit is what reconciles them.
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
     monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py", "b.py"])
     gh, insp, be = audit_setup({1: "open"}, {1: "Refining"})
     problems = [p for p in tp.audit_board(gh, be, insp, root=tmp_path)
@@ -675,6 +677,7 @@ def test_the_audit_stays_silent_when_an_item_is_in_progress(monkeypatch, tmp_pat
 def test_a_closed_item_in_progress_does_not_silence_it(monkeypatch, tmp_path):
     # A closed issue is not somebody working. Counting it would let a stale
     # board silence the rule permanently.
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
     monkeypatch.setattr(tp, "modified_tracked_files", lambda root: ["a.py"])
     gh, insp, be = audit_setup({1: "closed"}, {1: "In Progress"})
     assert [p for p in tp.audit_board(gh, be, insp, root=tmp_path)
@@ -696,10 +699,11 @@ def test_an_item_in_progress_silences_it(monkeypatch, tmp_path):
 
 @pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
 def test_nothing_in_progress_with_a_modified_tree_reports(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
     monkeypatch.setattr(tp, "modified_tracked_files",
                         lambda root: ["a.py", "b.py"])
     drift = tp.working_tree_disagreement(tmp_path, [])
-    assert drift and "a.py" in drift and "b.py" in drift
+    assert drift and tmp_path.name in drift
     assert "work_started" in drift, "the refusal does not say why it matters"
 
 
@@ -1375,3 +1379,92 @@ def test_the_state_machine_declares_the_edge_out_of_no_state():
     assert edges, "nothing declares how an item with no state gets one"
     assert [e["to"] for e in edges] == [START := "Inbox"]
 
+
+
+# --- work in flight, counted rather than attributed ---------------------------
+
+def trees(monkeypatch, tmp_path, dirty, clean=0):
+    """`dirty` trees carrying changes and `clean` carrying none."""
+    made = []
+    for i in range(dirty + clean):
+        d = tmp_path / f"tree-{i}"
+        d.mkdir()
+        made.append(d)
+    monkeypatch.setattr(tp, "working_trees", lambda root: list(made))
+    monkeypatch.setattr(
+        tp, "modified_tracked_files",
+        lambda root: ["a.py"] if made.index(Path(root)) < dirty else [])
+    return made
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_more_trees_than_started_items_is_reported(monkeypatch, tmp_path):
+    """The case the old rule stayed silent through.
+
+    Four trees were carrying work while one item said `In Progress` and three
+    others said `Ready`. A rule that fired only when *nothing* was started saw
+    the one and said nothing about the three.
+    """
+    trees(monkeypatch, tmp_path, dirty=4)
+    drift = tp.working_tree_disagreement(tmp_path, [155])
+    assert drift
+    assert "4 working tree(s)" in drift
+    assert "1 item(s) are In Progress" in drift and "#155" in drift
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_as_many_started_items_as_dirty_trees_is_silent(monkeypatch, tmp_path):
+    trees(monkeypatch, tmp_path, dirty=2)
+    assert tp.working_tree_disagreement(tmp_path, [1, 2]) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_more_started_items_than_trees_is_silent(monkeypatch, tmp_path):
+    # Work committed but the item not yet moved on is ordinary, not a defect.
+    trees(monkeypatch, tmp_path, dirty=1)
+    assert tp.working_tree_disagreement(tmp_path, [1, 2, 3]) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_a_clean_tree_does_not_count_towards_work_in_flight(monkeypatch, tmp_path):
+    trees(monkeypatch, tmp_path, dirty=1, clean=3)
+    assert tp.working_tree_disagreement(tmp_path, [1]) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_nothing_is_attributed_to_an_item(monkeypatch, tmp_path):
+    """It counts and never guesses which item a change belongs to.
+
+    Attribution is a question a second person makes interesting, and where it
+    is interesting the board already answers it: an issue has an assignee.
+    Inventing a branch convention or a claim file here would be a third source
+    of truth for something the board already holds.
+    """
+    trees(monkeypatch, tmp_path, dirty=3)
+    drift = tp.working_tree_disagreement(tmp_path, [])
+    assert "a.py" not in drift            # no file is named against an item
+    assert "belongs" not in drift.lower()
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_a_tree_git_cannot_read_is_not_counted_as_clean(monkeypatch, tmp_path):
+    # "we could not look" and "nothing changed" are different answers.
+    monkeypatch.setattr(tp, "working_trees", lambda root: [tmp_path])
+    monkeypatch.setattr(tp, "modified_tracked_files", lambda root: None)
+    assert tp.trees_with_changes(tmp_path) is None
+    assert tp.working_tree_disagreement(tmp_path, []) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_no_worktree_list_means_no_verdict(monkeypatch, tmp_path):
+    monkeypatch.setattr(tp, "working_trees", lambda root: None)
+    assert tp.working_tree_disagreement(tmp_path, []) is None
+
+
+@pytest.mark.req("REQ-BACKLOG-BUILDORDER-001")
+def test_every_worktree_is_enumerated_not_just_the_current_one(tmp_path):
+    # Work here happens in several trees at once, which is the whole reason
+    # worktrees exist; looking at one would be blind to the situation this is
+    # for. Run against the real repository, whose list git alone can answer.
+    found = tp.working_trees(ROOT)
+    assert found and ROOT in [p.resolve() for p in found]

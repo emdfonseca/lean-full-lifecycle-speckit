@@ -536,6 +536,41 @@ def modified_tracked_files(root: Path) -> list[str] | None:
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
+def working_trees(root: Path) -> list[Path] | None:
+    """Every working tree attached to this repository, or None if git cannot say.
+
+    `git worktree list` and not a guess: work here happens in several trees at
+    once, which is the whole reason worktrees exist, and a rule that looked at
+    one would be blind to exactly the situation it is for.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return [Path(line[len("worktree "):].strip())
+            for line in result.stdout.splitlines()
+            if line.startswith("worktree ")]
+
+
+def trees_with_changes(root: Path) -> list[Path] | None:
+    """The working trees carrying uncommitted changes to tracked files."""
+    trees = working_trees(root)
+    if trees is None:
+        return None
+    found = []
+    for tree in trees:
+        changed = modified_tracked_files(tree)
+        if changed is None:
+            return None                   # could not look; not "nothing there"
+        if changed:
+            found.append(tree)
+    return found
+
+
 def working_tree_disagreement(root: Path | None,
                               in_progress: list[int]) -> str | None:
     """Work that has been built while the board says nothing was started.
@@ -551,17 +586,30 @@ def working_tree_disagreement(root: Path | None,
     """
     if root is None:
         return None
-    changed = modified_tracked_files(root)
-    if not changed:
+    dirty = trees_with_changes(root)
+    if dirty is None or len(dirty) <= len(in_progress):
         return None
-    if in_progress:
-        return None
-    listed = ", ".join(sorted(changed)[:5])
-    more = f" and {len(changed) - 5} more" if len(changed) > 5 else ""
-    return (f"{len(changed)} tracked file(s) modified while no item is "
-            f"{START_STATE}: {listed}{more}. `Ready` -> `{START_STATE}` takes "
-            f"the evidence `work_started`, which means nothing if the work "
-            f"started first. Move the item, or say which item this is.")
+
+    # Counted, never attributed. Which item a given file belongs to is a
+    # question only a second person makes interesting, and where it is
+    # interesting the board already answers it: an issue has an assignee.
+    # Inventing a branch convention or a claim file to answer it here would be
+    # a third source of truth for something the board already holds.
+    #
+    # The count is enough for the defect this exists to catch. Four trees were
+    # carrying work while one item said `In Progress` and three others said
+    # `Ready`, and a rule that only fired when *nothing* was started stayed
+    # silent through all of it.
+    started = (f"{len(in_progress)} item(s) are {START_STATE} "
+               f"({', '.join(f'#{n}' for n in sorted(in_progress))})"
+               if in_progress else f"no item is {START_STATE}")
+    names = ", ".join(sorted(t.name for t in dirty)[:5])
+    more = f" and {len(dirty) - 5} more" if len(dirty) > 5 else ""
+    return (f"{len(dirty)} working tree(s) carry uncommitted changes ({names}"
+            f"{more}) while {started}. `Ready` -> `{START_STATE}` takes the "
+            f"evidence `work_started`, which means nothing if the work started "
+            f"first. Move what is being built, so the board stops offering it "
+            f"as startable.")
 
 
 def blockers(gh: GitHub, owner: str, repo: str, issue_number: int) -> list[dict]:
