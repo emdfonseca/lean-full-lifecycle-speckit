@@ -1,5 +1,5 @@
 ---
-description: Hold each measurable gate to the best it has ever done.
+description: Workflows, not people — hold each measurable gate to the best it has ever done.
 scripts:
   py: scripts/ratchet.py
 ---

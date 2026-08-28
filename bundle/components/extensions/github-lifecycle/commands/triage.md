@@ -1,5 +1,5 @@
 ---
-description: Assess an incoming item and propose what happens to it next.
+description: Drivers and workflows — assess an incoming item and propose what happens to it next.
 scripts:
   py: scripts/triage.py
 ---

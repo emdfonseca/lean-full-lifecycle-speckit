@@ -1,5 +1,5 @@
 ---
-description: Split a Story too large to start, or merge two that turned out to be one.
+description: Drivers and workflows — split a Story too large to start, or merge two that turned out to be one.
 scripts:
   py: scripts/restructure.py
 ---

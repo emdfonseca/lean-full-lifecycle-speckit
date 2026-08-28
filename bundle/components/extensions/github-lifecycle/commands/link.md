@@ -1,5 +1,5 @@
 ---
-description: Manage approved issue hierarchy and dependency links.
+description: Drivers and workflows — manage approved issue hierarchy and dependency links.
 scripts:
   py: scripts/relationships.py
 ---

@@ -1,5 +1,5 @@
 ---
-description: Create the Projects v2 board a project-scoped deployment needs.
+description: Bootstrap, once — create the Projects v2 board a project-scoped deployment needs.
 scripts:
   py: scripts/board.py
 ---

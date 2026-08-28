@@ -1,5 +1,5 @@
 ---
-description: Validate an exception against the exception policy.
+description: Workflows, not people — validate an exception against the exception policy.
 scripts:
   py: scripts/exception.py
 ---

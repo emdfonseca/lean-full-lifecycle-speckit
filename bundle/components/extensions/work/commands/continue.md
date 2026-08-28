@@ -1,5 +1,5 @@
 ---
-description: Perform exactly one next lifecycle step, then stop.
+description: Yours to run — perform exactly one next lifecycle step, then stop.
 scripts:
   py: scripts/router.py
 ---

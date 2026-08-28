@@ -1,5 +1,5 @@
 ---
-description: Validate a bounded discovery record.
+description: Workflows, not people — validate a bounded discovery record.
 scripts:
   py: scripts/discover.py
 ---

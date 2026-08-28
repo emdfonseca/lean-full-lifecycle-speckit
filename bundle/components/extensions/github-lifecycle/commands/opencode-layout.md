@@ -1,5 +1,5 @@
 ---
-description: Detect which OpenCode layout a project uses before writing near it.
+description: Bootstrap, once — detect which OpenCode layout a project uses before writing near it.
 scripts:
   py: scripts/opencode_layout.py
 ---

@@ -1,5 +1,5 @@
 ---
-description: Retire a Story that will not be delivered, or supersede one another carries.
+description: Drivers and workflows — retire a Story that will not be delivered, or supersede one another carries.
 scripts:
   py: scripts/retire.py
 ---

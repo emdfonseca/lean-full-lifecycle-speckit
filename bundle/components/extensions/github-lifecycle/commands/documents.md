@@ -1,5 +1,5 @@
 ---
-description: Write and check the core documents a bootstrapped project must have.
+description: Bootstrap, once — write and check the core documents a bootstrapped project must have.
 scripts:
   py: scripts/documents.py
 ---

@@ -54,87 +54,112 @@ provides:
   commands:
   - name: speckit.github-lifecycle.inspect
     file: commands/inspect.md
-    description: Inspect GitHub lifecycle configuration without mutation.
+    tier: project-setup
+    description: Bootstrap, once — inspect GitHub lifecycle configuration without mutation.
   - name: speckit.github-lifecycle.board
     file: commands/board.md
-    description: Create the Projects v2 board a project-scoped deployment needs.
+    tier: project-setup
+    description: Bootstrap, once — create the Projects v2 board a project-scoped deployment needs.
   - name: speckit.github-lifecycle.documents
     file: commands/documents.md
-    description: Write and check the core documents a bootstrapped project must have.
+    tier: project-setup
+    description: Bootstrap, once — write and check the core documents a bootstrapped project must have.
   - name: speckit.github-lifecycle.plan
     file: commands/plan.md
-    description: Create a read-only plan for GitHub lifecycle changes.
+    tier: policy-validator
+    description: Workflows, not people — create a read-only plan for GitHub lifecycle changes.
   - name: speckit.github-lifecycle.transition
     file: commands/transition.md
-    description: Apply one approved lifecycle transition and read it back.
+    tier: per-item
+    description: Drivers and workflows — apply one approved lifecycle transition and read it back.
   - name: speckit.github-lifecycle.capture
     file: commands/capture.md
-    description: Deduplicate and create an approved backlog finding.
+    tier: per-item
+    description: Drivers and workflows — deduplicate and create an approved backlog finding.
   - name: speckit.github-lifecycle.link
     file: commands/link.md
-    description: Manage approved issue hierarchy and dependency links.
+    tier: per-item
+    description: Drivers and workflows — manage approved issue hierarchy and dependency links.
   - name: speckit.github-lifecycle.readiness
     file: commands/readiness.md
-    description: Validate a readiness verdict before an item may become Ready.
+    tier: per-item
+    description: Drivers and workflows — validate a readiness verdict before an item may become Ready.
   - name: speckit.github-lifecycle.decompose
     file: commands/decompose.md
-    description: Report an Epic's decomposition horizon and create approved children.
+    tier: per-item
+    description: Drivers and workflows — report an Epic's decomposition horizon and create approved children.
   - name: speckit.github-lifecycle.retire
     file: commands/retire.md
-    description: Retire a Story that will not be delivered, or supersede one another carries.
+    tier: per-item
+    description: Drivers and workflows — retire a Story that will not be delivered, or supersede one another carries.
   - name: speckit.github-lifecycle.restructure
     file: commands/restructure.md
-    description: Split a Story too large to start, or merge two that turned out to be one.
+    tier: per-item
+    description: Drivers and workflows — split a Story too large to start, or merge two that turned out to be one.
   - name: speckit.github-lifecycle.triage
     file: commands/triage.md
-    description: Assess an incoming item and propose what happens to it next.
+    tier: per-item
+    description: Drivers and workflows — assess an incoming item and propose what happens to it next.
   - name: speckit.github-lifecycle.risk
     file: commands/risk.md
-    description: Score a change's risk from policy and name the controls it requires.
+    tier: policy-validator
+    description: Workflows, not people — score a change's risk from policy and name the controls it requires.
   - name: speckit.github-lifecycle.discover
     file: commands/discover.md
-    description: Validate a bounded discovery record.
+    tier: policy-validator
+    description: Workflows, not people — validate a bounded discovery record.
   - name: speckit.github-lifecycle.disposal
     file: commands/disposal.md
-    description: Validate the disposal decision for a prototype or spike.
+    tier: policy-validator
+    description: Workflows, not people — validate the disposal decision for a prototype or spike.
   - name: speckit.github-lifecycle.claude-config
     file: commands/claude-config.md
-    description: Generate Claude Code settings from policy, and report what does not map.
+    tier: project-setup
+    description: Bootstrap, once — generate Claude Code settings from policy, and report what does not map.
   - name: speckit.github-lifecycle.opencode-config
     file: commands/opencode-config.md
-    description: Generate the OpenCode configuration from policy, and report what it cannot enforce.
+    tier: project-setup
+    description: Bootstrap, once — generate the OpenCode configuration from policy, and report what it cannot enforce.
   - name: speckit.github-lifecycle.opencode-layout
     file: commands/opencode-layout.md
-    description: Detect which OpenCode layout a project uses before writing near it.
+    tier: project-setup
+    description: Bootstrap, once — detect which OpenCode layout a project uses before writing near it.
   - name: speckit.github-lifecycle.models
     file: commands/models.md
-    description: Verify every role's model against the installed OpenCode inventory.
+    tier: project-setup
+    description: Bootstrap, once — verify every role's model against the installed OpenCode inventory.
   - name: speckit.github-lifecycle.ratchet
     file: commands/ratchet.md
-    description: Hold each measurable gate to the best it has ever done.
+    tier: policy-validator
+    description: Workflows, not people — hold each measurable gate to the best it has ever done.
   - name: speckit.github-lifecycle.sensitive
     file: commands/sensitive.md
-    description: Refuse unauthorized production data, and keep credentials out of framework evidence.
+    tier: policy-validator
+    description: Workflows, not people — refuse unauthorized production data, and keep credentials out of framework evidence.
   - name: speckit.github-lifecycle.exception
     file: commands/exception.md
-    description: Validate an exception against the exception policy.
+    tier: policy-validator
+    description: Workflows, not people — validate an exception against the exception policy.
   - name: speckit.github-lifecycle.verify-bootstrap
     file: commands/verify-bootstrap.md
-    description: Check at bootstrap that the project defines the verification commands the workflows run.
+    tier: project-setup
+    description: Bootstrap, once — check that the project defines the verification commands the workflows run.
   - name: speckit.github-lifecycle.mismatch
     file: commands/mismatch.md
-    description: Decide whether a repository already contains a product before greenfield bootstrap writes
-      anything.
+    tier: project-setup
+    description: Bootstrap, once — decide whether a repository already contains a product before greenfield bootstrap writes anything.
   - name: speckit.github-lifecycle.outcome
     file: commands/outcome.md
-    description: Assess an outcome record and recommend a status.
+    tier: policy-validator
+    description: Workflows, not people — assess an outcome record and recommend a status.
   - name: speckit.github-lifecycle.doctor
     file: commands/doctor.md
-    description: Run read-only GitHub lifecycle diagnostics.
+    tier: project-setup
+    description: Bootstrap, once — run read-only GitHub lifecycle diagnostics.
   - name: speckit.github-lifecycle.status
     file: commands/status.md
-    description: Report what is true in this project and what is startable, in one read-only
-      pass.
+    tier: driver
+    description: Yours to run — report what is true in this project and what is startable, in one read-only pass.
   config:
   - name: github-lifecycle-config.yml
     template: config-template.yml

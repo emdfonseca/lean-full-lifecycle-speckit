@@ -162,6 +162,14 @@ def break_state_workflow_resolves(tmp):
         encoding="utf-8")
 
 
+def break_command_tier(tmp):
+    # Drop one command's tier. An untiered command is the case the check exists
+    # for: nobody said who runs it, and the surface goes back to being flat.
+    def mutate(d):
+        d["provides"]["commands"][0].pop("tier", None)
+    _edit_yaml(tmp / EXT / "extension.yml", mutate)
+
+
 def break_write_behind_gate(tmp):
     writes = set(yaml.safe_load(
         (ROOT / "tooling/invariants.yml").read_text(encoding="utf-8")
@@ -479,6 +487,7 @@ MUTATORS = {
     "INV-SCRIPT-FLAVOUR": break_script_flavour,
     "INV-COMMAND-RESOLVES": break_command_resolves,
     "INV-STATE-WORKFLOW-RESOLVES": break_state_workflow_resolves,
+    "INV-COMMAND-TIER": break_command_tier,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
@@ -562,6 +571,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-WORKFLOW-GATEART-001")
 @pytest.mark.req("REQ-SECURITY-IDENTITY-001")
 @pytest.mark.req("REQ-WORKFLOW-ROUTER-001")
+@pytest.mark.req("REQ-CORE-TIERS-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

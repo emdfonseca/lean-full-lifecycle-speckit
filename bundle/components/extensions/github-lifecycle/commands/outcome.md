@@ -1,5 +1,5 @@
 ---
-description: Assess an outcome record and recommend a status.
+description: Workflows, not people — assess an outcome record and recommend a status.
 scripts:
   py: scripts/outcome.py
 ---

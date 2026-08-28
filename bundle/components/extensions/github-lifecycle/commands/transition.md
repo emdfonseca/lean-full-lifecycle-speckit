@@ -1,5 +1,5 @@
 ---
-description: Apply one approved GitHub lifecycle field transition.
+description: Drivers and workflows — apply one approved lifecycle transition and read it back.
 scripts:
   py: scripts/transition_plan.py
 ---

@@ -1,5 +1,5 @@
 ---
-description: Report an Epic's decomposition horizon and create approved children.
+description: Drivers and workflows — report an Epic's decomposition horizon and create approved children.
 scripts:
   py: scripts/decompose.py
 ---

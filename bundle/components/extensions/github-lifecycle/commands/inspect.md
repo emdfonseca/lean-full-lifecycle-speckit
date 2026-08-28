@@ -1,5 +1,5 @@
 ---
-description: Inspect GitHub lifecycle configuration without mutation.
+description: Bootstrap, once — inspect GitHub lifecycle configuration without mutation.
 scripts:
   py: scripts/inspect_target.py
 ---

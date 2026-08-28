@@ -1,5 +1,5 @@
 ---
-description: Route a discovery to capture, invalidate, retire or exception without leaving the item.
+description: Yours to run — route a discovery to capture, invalidate, retire or exception without leaving the item.
 scripts:
   py: scripts/router.py
 ---

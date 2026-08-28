@@ -1,5 +1,5 @@
 ---
-description: Generate the OpenCode configuration from policy, and report what it cannot enforce.
+description: Bootstrap, once — generate the OpenCode configuration from policy, and report what it cannot enforce.
 scripts:
   py: scripts/opencode_config.py
 ---

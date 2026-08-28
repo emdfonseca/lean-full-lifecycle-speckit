@@ -39,20 +39,24 @@ provides:
   commands:
   - name: speckit.work.status
     file: commands/status.md
-    description: Report one item's state, blockers, children and next step. Writes nothing.
+    tier: driver
+    description: Yours to run — report one item's state, blockers, children and next step. Writes nothing.
   - name: speckit.work.start
     file: commands/start.md
-    description: Report an item's type, state, parent, blockers and recorded readiness verdict.
+    tier: driver
+    description: Yours to run — report an item's type, state, parent, blockers and recorded readiness verdict.
   - name: speckit.work.continue
     file: commands/continue.md
-    description: Perform exactly one next lifecycle step, then stop.
+    tier: driver
+    description: Yours to run — perform exactly one next lifecycle step, then stop.
   - name: speckit.work.change
     file: commands/change.md
-    description: Route a discovery to capture, invalidate, retire or exception without leaving
-      the item.
+    tier: driver
+    description: Yours to run — route a discovery to capture, invalidate, retire or exception without leaving the item.
   - name: speckit.work.finish
     file: commands/finish.md
-    description: Take a delivered item to Output Done and close it.
+    tier: driver
+    description: Yours to run — take a delivered item to Output Done and close it.
 tags:
 - lifecycle
 - backlog

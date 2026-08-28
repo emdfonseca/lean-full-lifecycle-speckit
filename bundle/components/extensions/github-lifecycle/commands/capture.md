@@ -1,5 +1,5 @@
 ---
-description: Deduplicate and create an approved backlog finding.
+description: Drivers and workflows — deduplicate and create an approved backlog finding.
 scripts:
   py: scripts/capture.py
 ---

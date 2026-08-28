@@ -1,5 +1,5 @@
 ---
-description: Validate a readiness verdict before an item may become Ready.
+description: Drivers and workflows — validate a readiness verdict before an item may become Ready.
 scripts:
   py: scripts/readiness.py
 ---

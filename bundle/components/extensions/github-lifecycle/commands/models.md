@@ -1,5 +1,5 @@
 ---
-description: Verify every role's model against the installed OpenCode inventory.
+description: Bootstrap, once — verify every role's model against the installed OpenCode inventory.
 scripts:
   py: scripts/opencode_models.py
 ---

@@ -1,5 +1,5 @@
 ---
-description: Generate Claude Code settings from policy, and report what does not map.
+description: Bootstrap, once — generate Claude Code settings from policy, and report what does not map.
 scripts:
   py: scripts/claude_config.py
 ---

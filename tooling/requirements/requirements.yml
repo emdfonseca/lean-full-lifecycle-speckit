@@ -3152,3 +3152,39 @@ requirements:
       - "tests/test_work_router.py::test_continue_performs_one_step_and_says_so"
       - "tests/test_work_router.py::test_change_leaves_the_item_where_it_is"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-STATE-WORKFLOW-RESOLVES]"
+
+  - id: REQ-CORE-TIERS-001
+    statement: >-
+      Every command an extension provides declares who runs it, as one of four
+      tiers -- driver, per-item, project-setup, policy-validator -- and its
+      description opens with that tier's clause, so a flattened agent command
+      list says who calls a command before it says what the command does. The
+      tier is metadata; the description is what a reader actually sees, and a
+      tier invisible from the command list would be an annotation rather than a
+      front door. The clause lives in both the manifest and the command file's
+      front matter, and they must agree: `specify extension add` prints the
+      manifest description once, while the command or skill file an agent
+      renders carries the front matter. A command declaring no tier, or one outside the four, is
+      refused rather than defaulted into the largest tier. The driver tier
+      spans both extensions, because a tier states the caller and not which
+      manifest a command sits in. Grouping renames nothing: every command name
+      and every workflow step reference is unchanged, since a rename would
+      break every project that installed the bundle.
+    priority: must
+    release: "0.3.0"
+    components:
+      - extension:github-lifecycle
+      - extension:work
+      - check:INV-COMMAND-TIER
+    verified_by:
+      - "tests/test_command_tiers.py::test_every_command_declares_a_tier"
+      - "tests/test_command_tiers.py::test_every_tier_is_one_of_the_four"
+      - "tests/test_command_tiers.py::test_the_description_says_who_before_it_says_what"
+      - "tests/test_command_tiers.py::test_the_driver_tier_spans_both_extensions"
+      - "tests/test_command_tiers.py::test_every_tier_is_used_by_something"
+      - "tests/test_command_tiers.py::test_each_readme_lists_the_commands_its_manifest_declares"
+      - "tests/test_command_tiers.py::test_no_command_was_renamed"
+      - "tests/test_command_tiers.py::test_every_workflow_step_still_resolves"
+      - "tests/test_command_tiers.py::test_the_manifests_still_parse_after_being_rewritten"
+      - "tests/test_command_tiers.py::test_the_front_matter_carries_the_clause_because_that_is_what_agents_render"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-COMMAND-TIER]"

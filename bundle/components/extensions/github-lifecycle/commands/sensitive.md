@@ -1,5 +1,5 @@
 ---
-description: Refuse unauthorized production data, and keep credentials out of framework evidence.
+description: Workflows, not people — refuse unauthorized production data, and keep credentials out of framework evidence.
 scripts:
   py: scripts/sensitive.py
 ---

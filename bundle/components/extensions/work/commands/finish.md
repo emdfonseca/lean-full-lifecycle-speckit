@@ -1,5 +1,5 @@
 ---
-description: Take a delivered item to Output Done and close it.
+description: Yours to run — take a delivered item to Output Done and close it.
 scripts:
   py: scripts/router.py
 ---

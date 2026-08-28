@@ -1,5 +1,5 @@
 ---
-description: Report one item's state, blockers, children and next step. Writes nothing.
+description: Yours to run — report one item's state, blockers, children and next step. Writes nothing.
 scripts:
   py: scripts/router.py
 ---

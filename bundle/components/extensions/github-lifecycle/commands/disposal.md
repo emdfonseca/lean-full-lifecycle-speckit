@@ -1,5 +1,5 @@
 ---
-description: Validate the disposal decision for a prototype or spike.
+description: Workflows, not people — validate the disposal decision for a prototype or spike.
 scripts:
   py: scripts/disposal.py
 ---

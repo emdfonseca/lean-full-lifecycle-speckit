@@ -1,5 +1,5 @@
 ---
-description: Run read-only GitHub lifecycle diagnostics.
+description: Bootstrap, once — run read-only GitHub lifecycle diagnostics.
 scripts:
   py: scripts/doctor.py
 ---

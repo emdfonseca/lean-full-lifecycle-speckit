@@ -1,5 +1,5 @@
 ---
-description: Report what is true in this project and what is startable, in one read-only pass.
+description: Yours to run — report what is true in this project and what is startable, in one read-only pass.
 scripts:
   py: scripts/status.py
 ---

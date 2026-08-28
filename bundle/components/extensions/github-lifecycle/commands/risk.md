@@ -1,5 +1,5 @@
 ---
-description: Score a change's risk from policy and name the controls it requires.
+description: Workflows, not people — score a change's risk from policy and name the controls it requires.
 scripts:
   py: scripts/risk.py
 ---

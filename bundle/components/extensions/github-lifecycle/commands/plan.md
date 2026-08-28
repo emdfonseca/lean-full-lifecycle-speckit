@@ -1,5 +1,5 @@
 ---
-description: Preview what a GitHub lifecycle transition requires, without applying it.
+description: Workflows, not people — create a read-only plan for GitHub lifecycle changes.
 scripts:
   py: scripts/transition_plan.py
 ---

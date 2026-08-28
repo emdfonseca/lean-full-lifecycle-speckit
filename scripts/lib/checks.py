@@ -1298,6 +1298,86 @@ def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
                         "docs/security.md says the bundle performs none")
 
 
+# Who runs a command, as an allowlist. Adding a fifth tier is deliberate: the
+# value of four is that a reader can hold them, and a tier per command is the
+# same flat list with more words in it.
+COMMAND_TIERS = {
+    "driver",            # a person, every day
+    "per-item",          # drivers and workflows both
+    "project-setup",     # once, at bootstrap
+    "policy-validator",  # workflows, not people
+}
+
+# The clause each tier's description must open with, so the caller is readable
+# in a flattened agent command list without opening anything.
+TIER_CLAUSE = {
+    "driver": "Yours to run",
+    "per-item": "Drivers and workflows",
+    "project-setup": "Bootstrap, once",
+    "policy-validator": "Workflows, not people",
+}
+
+
+@check("INV-COMMAND-TIER", "Every command declares who runs it, and says so first",
+       scope="extension")
+def command_tier(ctx: Ctx) -> Iterator[Finding]:
+    """A flat list of thirty-two commands says nothing about which are yours.
+
+    Two properties, and the second is the one that reaches a reader. The tier
+    is metadata a manifest carries; the description is what an agent actually
+    renders. A tier nobody can see from the command list would be an
+    annotation, not a front door.
+
+    Refuses an absent tier rather than defaulting one. A command whose caller
+    nobody stated is the case this exists to surface, and quietly filing it
+    under the largest tier is how the surface goes back to being flat.
+    """
+    for ext in ctx.inv.extensions:
+        for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
+            name = str(entry.get("name", "?"))
+            subject = f"{ext.ref}:{name}"
+            tier = entry.get("tier")
+            if tier is None:
+                yield ctx.finding(
+                    "INV-COMMAND-TIER", subject,
+                    f"declares no tier; say who runs it, one of "
+                    f"{sorted(COMMAND_TIERS)}")
+                continue
+            if tier not in COMMAND_TIERS:
+                yield ctx.finding(
+                    "INV-COMMAND-TIER", subject,
+                    f"tier {tier!r} is not one of {sorted(COMMAND_TIERS)}")
+                continue
+            clause = TIER_CLAUSE[tier]
+            description = str(entry.get("description", ""))
+            if not description.startswith(clause):
+                yield ctx.finding(
+                    "INV-COMMAND-TIER", subject,
+                    f"manifest description must open with {clause!r} so the "
+                    f"caller is readable in a flattened command list")
+            # The manifest description is what `specify extension add` prints
+            # once. What an agent lists is the command file's own front matter,
+            # and that is the list a person reads every day -- so the clause has
+            # to be in both, and they must not disagree.
+            path = ext.path / str(entry.get("file", ""))
+            if not path.is_file():
+                continue
+            front = re.match(r"^---\n(.*?)\n---\n",
+                             path.read_text(encoding="utf-8"), re.DOTALL)
+            declared = re.search(r"^description:[ \t]*(.*)$", front.group(1),
+                                 re.MULTILINE) if front else None
+            if declared is None:
+                yield ctx.finding(
+                    "INV-COMMAND-TIER", subject,
+                    f"{path.name} declares no description, so nothing names "
+                    f"its caller where an agent renders it")
+            elif declared.group(1).strip() != description.strip():
+                yield ctx.finding(
+                    "INV-COMMAND-TIER", subject,
+                    f"{path.name} front matter disagrees with the manifest "
+                    f"description; the agent renders the front matter")
+
+
 @check("INV-EXTENSION-CONFIG-NAME", "Extension config targets a name Spec Kit preserves",
        scope="extension")
 def extension_config_name(ctx: Ctx) -> Iterator[Finding]:

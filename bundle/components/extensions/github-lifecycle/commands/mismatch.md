@@ -1,5 +1,5 @@
 ---
-description: Decide whether a repository already contains a product before greenfield bootstrap writes anything.
+description: Bootstrap, once — decide whether a repository already contains a product before greenfield bootstrap writes anything.
 scripts:
   py: scripts/mismatch.py
 ---

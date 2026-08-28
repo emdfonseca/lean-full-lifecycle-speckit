@@ -1,5 +1,5 @@
 ---
-description: Check at bootstrap that the project defines the verification commands the workflows run.
+description: Bootstrap, once — check that the project defines the verification commands the workflows run.
 scripts:
   py: scripts/verify_bootstrap.py
 ---

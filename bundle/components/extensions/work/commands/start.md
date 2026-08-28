@@ -1,5 +1,5 @@
 ---
-description: Report an item's type, state, parent, blockers and recorded readiness verdict.
+description: Yours to run — report an item's type, state, parent, blockers and recorded readiness verdict.
 scripts:
   py: scripts/router.py
 ---
