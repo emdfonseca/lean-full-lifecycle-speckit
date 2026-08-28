@@ -162,11 +162,38 @@ def test_no_project_returns_none_when_not_required(tmp_path):
 
 # --- AC5: one resolved root per run -------------------------------------------
 
+def _defaults_to_cwd(path, flag):
+    """Whether `path` declares `flag` with a Path.cwd() default.
+
+    Read from the parsed argument declaration rather than by matching the
+    source text: the text form fixed the spacing, so the same defect written
+    with a line break or a keyword in another order passed unnoticed.
+    """
+    import ast
+
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "add_argument"):
+            continue
+        names = [a.value for a in node.args if isinstance(a, ast.Constant)]
+        if flag not in names:
+            continue
+        for kw in node.keywords:
+            if kw.arg != "default":
+                continue
+            v = kw.value
+            if (isinstance(v, ast.Call) and isinstance(v.func, ast.Attribute)
+                    and v.func.attr == "cwd"):
+                return True
+    return False
+
+
 @pytest.mark.req("REQ-TEAM-PROJECT-001")
 def test_no_script_defaults_its_policy_root_to_the_working_directory():
     offenders = [p.name for p in sorted(SCRIPTS.glob("*.py"))
-                 if '"--policy-root", type=Path, default=Path.cwd()'
-                 in p.read_text(encoding="utf-8")]
+                 if _defaults_to_cwd(p, "--policy-root")]
     assert offenders == [], offenders
 
 
@@ -176,8 +203,7 @@ def test_only_the_greenfield_check_still_defaults_a_path_to_the_cwd():
     # which by definition may have no `.specify/` yet, so it cannot resolve to
     # a project root. Every other path-taking script follows the project.
     offenders = [p.name for p in sorted(SCRIPTS.glob("*.py"))
-                 if '"--path", type=Path, default=Path.cwd()'
-                 in p.read_text(encoding="utf-8")]
+                 if _defaults_to_cwd(p, "--path")]
     assert offenders == ["mismatch.py"], offenders
 
 

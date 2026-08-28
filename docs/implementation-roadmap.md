@@ -111,7 +111,6 @@ omissions.
 requirements/
 ├── requirements.yml
 ├── traceability.yml
-├── acceptance-scenarios.yml
 └── release-gates.yml
 
 schemas/
@@ -1014,9 +1013,9 @@ Also test:
 
 ## Phase 9 exit gate
 
-Run `make p12-exit`. Only `p12` registry rows participate in this gate, and all
-`must` rows must be covered. Route `p13` rows to controlled pilots and blocked
-rows to their `tracked_by` issues. Every behavioral failure produces a
+Run `make validate` and `make test`. Every `must` requirement for the release
+names tests that collect, and `INV-RELEASE-LADDER` reports when a rung is fully
+cited and the shipped version has not moved. Every behavioral failure produces a
 regression test before its fix is accepted.
 
 ---

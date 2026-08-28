@@ -32,7 +32,6 @@ drifts is the one nobody tests.
 | What a state means and what may follow it | `policy/state-machine.yml` |
 | What an item type must contain | `policy/item-types.yml` |
 | How a command behaves, and what it refuses | that command's `.md` in the extension |
-| Which acceptance scenario is deliverable when | `tooling/acceptance-scenarios.yml` |
 | Why the phase order differs from the roadmap | `docs/plan-corrections.md` |
 | What is proven under which agent | `docs/compatibility.md` |
 

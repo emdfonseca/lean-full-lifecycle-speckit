@@ -1,4 +1,4 @@
-.PHONY: generate generate-check validate test build smoke official coverage p12-exit
+.PHONY: generate generate-check validate test build smoke official coverage
 
 generate:
 	python scripts/generate_manifests.py
@@ -15,7 +15,6 @@ generate-check:
 validate: generate-check
 	python scripts/validate_source.py
 	python scripts/validate_requirements.py
-	python scripts/validate_acceptance.py
 
 test:
 	python -m pytest
@@ -36,7 +35,3 @@ smoke:
 coverage:
 	python scripts/validate_requirements.py --report md
 
-p12-exit: validate
-	$(MAKE) official
-	python -m pytest -m "not wording"
-	python scripts/validate_acceptance.py --phase p12

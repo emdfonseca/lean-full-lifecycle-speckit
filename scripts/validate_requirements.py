@@ -36,7 +36,6 @@ CATALOGUE = ROOT / "tooling" / "requirements" / "requirements.yml"
 SCHEMA = ROOT / "tooling" / "schemas" / "requirements.schema.json"
 
 # status -> whether verified_by is required
-NEEDS_TESTS = {"implemented", "verified"}
 
 
 class Result:
@@ -154,12 +153,14 @@ def validate(result: Result) -> dict:
                 result.error(f"{rid}: component {ref!r}: {problem}")
 
         verified_by = req.get("verified_by", [])
-        status = req["status"]
-
-        if status in NEEDS_TESTS and not verified_by:
-            result.error(f"{rid}: status {status!r} requires verified_by")
-        if status == "withdrawn" and not (req.get("superseded_by") or req.get("rationale")):
-            result.error(f"{rid}: withdrawn requires superseded_by or rationale")
+        # `status` went, and with it the rules keyed off it. Every one of the
+        # 119 requirements read `verified`, one value of a four-value enum, so
+        # the branches for the other three were unreachable and the field said
+        # nothing. A requirement earns its keep by naming tests that exist and
+        # components that resolve; both are checked below against things this
+        # file does not write.
+        if not verified_by:
+            result.error(f"{rid}: names no verified_by test")
 
         known_fns = {_fn_key(n) for n in nodes}
         for node in verified_by:
@@ -191,32 +192,25 @@ def validate(result: Result) -> dict:
 
 def report(data: dict, fmt: str) -> str:
     rows = data["requirements"]
-    by_status: dict[str, int] = defaultdict(int)
     by_release: dict[str, list] = defaultdict(list)
     for r in rows:
-        by_status[r["status"]] += 1
         by_release[r["release"]].append(r)
 
     if fmt == "json":
         return json.dumps({
             "total": len(rows),
-            "by_status": dict(by_status),
             "by_release": {k: len(v) for k, v in by_release.items()},
         }, indent=2)
 
     lines = [f"# Requirement coverage\n", f"{len(rows)} requirements\n"]
-    lines.append("| Status | Count |")
-    lines.append("|---|---|")
-    for status in ("verified", "implemented", "planned", "withdrawn"):
-        if by_status.get(status):
-            lines.append(f"| {status} | {by_status[status]} |")
-    lines.append("\n| Release | Must | Verified |")
+    lines.append("| Release | Must | Tests cited |")
     lines.append("|---|---|---|")
     for rel in sorted(by_release):
         items = by_release[rel]
         musts = sum(1 for r in items if r["priority"] == "must")
-        ok = sum(1 for r in items if r["priority"] == "must" and r["status"] == "verified")
-        lines.append(f"| {rel} | {musts} | {ok} |")
+        cited = sum(len(r.get("verified_by") or []) for r in items
+                    if r["priority"] == "must")
+        lines.append(f"| {rel} | {musts} | {cited} |")
     return "\n".join(lines)
 
 
@@ -232,10 +226,10 @@ def main() -> int:
     if args.release:
         for req in data["requirements"]:
             if (req["release"] == args.release and req["priority"] == "must"
-                    and req["status"] != "verified"):
+                    and not req.get("verified_by")):
                 result.error(
                     f"{req['id']}: must-level requirement for {args.release} "
-                    f"is {req['status']!r}, not verified"
+                    f"names no test"
                 )
 
     for w in result.warnings:

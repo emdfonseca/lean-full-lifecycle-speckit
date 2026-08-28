@@ -32,12 +32,10 @@ gates:
     statement: >-
       Four pilot streams complete with collected evidence, signed off by their
       named pilot owners.
-    status: pending
   - release: "1.0.0"
     statement: >-
       The repository is public and the published catalogs resolve for a user
       who is not the author.
-    status: pending
 
 requirements:
 
@@ -49,26 +47,20 @@ requirements:
       Core command content contributed by Lean, or by Spec Kit where Lean
       contributes none, survives installation intact.
     priority: must
-    owner: engineering governance owner
     release: "0.1.1"
-    status: verified
     components:
       - preset:lean-full-lifecycle-governance
       - check:INV-PRESET-COMPOSITION
     verified_by:
       - "tests/sandbox/test_lifecycle.py::test_preset_composition_layers_over_lean"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-PRESET-COMPOSITION]"
-    evidence:
-      - "docs/evidence/substrate-1.0.1.md#h7-composition-is-correct"
 
   - id: REQ-CORE-COMMANDS-001
     statement: >-
       Every command a workflow step invokes is provided by an installed
       component. A workflow cannot reference a command that will not exist.
     priority: must
-    owner: workflow maintainer
     release: "0.1.1"
-    status: verified
     components:
       - check:INV-COMMAND-RESOLVES
     verified_by:
@@ -83,26 +75,20 @@ requirements:
       the only path a real user has. A built archive is a manifest of references
       and installs nothing on its own.
     priority: must
-    owner: release owner
     release: "0.1.1"
-    status: verified
     components:
       - script:scripts/local_catalog.py
       - script:scripts/generate_catalogs.py
     verified_by:
       - "tests/sandbox/test_lifecycle.py::test_bundle_installs_from_catalog"
       - "tests/sandbox/test_lifecycle.py::test_all_workflows_installed"
-    evidence:
-      - "docs/evidence/substrate-1.0.1.md#d7-the-artifact-is-not-self-contained"
 
   - id: REQ-PACKAGE-LIFECYCLE-001
     statement: >-
       Install, second install, update, remove, and reinstall each succeed, and a
       second install changes nothing.
     priority: must
-    owner: release owner
     release: "0.1.1"
-    status: verified
     components:
       - script:scripts/smoke_test.py
     verified_by:
@@ -116,25 +102,19 @@ requirements:
       tooling, tests, build output, and CI configuration are structurally
       outside the packaged directory rather than filtered out of it.
     priority: must
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - script:scripts/build_release.py
     verified_by:
       - "tests/test_packaging.py::test_every_artifact_entry_is_declared_by_the_inventory"
       - "tests/test_packaging.py::test_no_component_archive_ships_build_residue"
       - "tests/test_policy_shape.py::test_every_workflow_artifact_is_scoped_to_its_run"
-    evidence:
-      - "docs/decisions/0001-target-spec-kit-1-0-x.md"
   - id: REQ-PACKAGE-PIN-001
     statement: >-
       One declared Spec Kit version range governs the bundle, and every manifest
       and catalog entry states it identically.
     priority: must
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - check:INV-SPECKIT-PIN
     verified_by:
@@ -146,9 +126,7 @@ requirements:
       repeated install, and continues to apply. A product repository does not
       lose its customization by upgrading.
     priority: must
-    owner: workflow maintainer
     release: "0.1.1"
-    status: verified
     components:
       - workflow:lifecycle-story-delivery
     verified_by:
@@ -165,9 +143,7 @@ requirements:
       creating one directory; bundle.yml and every catalog derive from it and
       drift is a build failure.
     priority: must
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - script:scripts/lib/inventory.py
       - script:scripts/generate_manifests.py
@@ -183,9 +159,7 @@ requirements:
       invariant it guards. A check that silently stopped working must not be
       indistinguishable from one that passes.
     priority: must
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - script:scripts/lib/registry.py
       - script:scripts/lib/checks.py
@@ -198,9 +172,7 @@ requirements:
       Canonical policy is mirrored byte-identically into the installable preset,
       so what governs the source is what reaches the user.
     priority: must
-    owner: engineering governance owner
     release: "0.1.1"
-    status: verified
     components:
       - policy:framework.yml
       - policy:state-machine.yml
@@ -222,9 +194,7 @@ requirements:
       boundary, not by which module is imported, because import closure alone
       names modules that only use a writer's read-only functions.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:tooling/invariants.yml
     verified_by:
@@ -240,9 +210,7 @@ requirements:
       disable a security gate with no way to tell whether the claim is true is
       a bypass rather than an exemption.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:tooling/invariants.yml
     verified_by:
@@ -254,9 +222,7 @@ requirements:
       nothing. Neither workflow inputs nor agent output can decide what
       executes.
     priority: must
-    owner: security reviewer
     release: "0.1.1"
-    status: verified
     components:
       - check:SEC-SHELL-ALLOWLIST
       - check:SEC-SHELL-NO-INTERPOLATION
@@ -272,9 +238,7 @@ requirements:
       gate, and every gate can represent an undecided verdict rather than
       defaulting to approval.
     priority: must
-    owner: security reviewer
     release: "0.1.1"
-    status: verified
     components:
       - check:SEC-WRITE-BEHIND-GATE
       - check:INV-GATE-VERDICT
@@ -291,9 +255,7 @@ requirements:
       contract and the field backend rather than in config defaults a caller
       could turn off: a switch that changes nothing is worse than no switch.
     priority: must
-    owner: security reviewer
     release: "0.1.1"
-    status: verified
     components:
       - extension:github-lifecycle
       - check:INV-EXTENSION-CONFIG-NAME
@@ -308,9 +270,7 @@ requirements:
       approved. It names the approved plan, and the plan path must match one a
       previous step actually wrote.
     priority: must
-    owner: GitHub integration engineer
     release: "0.1.1"
-    status: verified
     components:
       - command:speckit.github-lifecycle.transition
       - check:SEC-TRANSITION-CONTRACT
@@ -323,9 +283,7 @@ requirements:
       caller must handle, retries only what is safe to retry, refuses to apply a
       mutation twice, and can describe a mutation without performing it.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
@@ -343,9 +301,7 @@ requirements:
       Every GitHub operation is recorded, and no credential reaches the audit
       trail or an error message.
     priority: must
-    owner: security reviewer
     release: "0.2.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
       - policy:agent-policy.yml
@@ -361,9 +317,7 @@ requirements:
       a field backend, resolves fields and options to stable ids rather than
       display names, and refuses to proceed when the target is ambiguous.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
@@ -383,9 +337,7 @@ requirements:
       callers use without knowing which backend answered. Values are addressed
       by option id rather than display name, and labels are never written.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
@@ -405,9 +357,7 @@ requirements:
       state, they are used through the same interface and with the same
       read-back guarantee as the project backend.
     priority: should
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
@@ -422,9 +372,6 @@ requirements:
       - "tests/test_field_backend.py::test_a_single_select_reads_its_name_not_its_option_id"
       - "tests/test_field_backend.py::test_a_field_with_no_option_falls_back_to_the_plain_value"
       - "tests/test_field_backend.py::test_the_projects_reader_is_not_used_for_issue_fields"
-    evidence:
-      - "docs/evidence/orgfields-round-trip.md"
-      - "Issue #37"
 
   - id: REQ-GITHUB-TRANSITION-002
     statement: >-
@@ -432,9 +379,7 @@ requirements:
       the state machine, evidenced as that transition's authority requires, and
       refused if the value has changed since the plan observed it.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:state-machine.yml
@@ -462,9 +407,7 @@ requirements:
       than describing the calls, so the agent decides what to report and when
       to stop, never how to reach the API.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - command:speckit.github-lifecycle.inspect
@@ -480,9 +423,7 @@ requirements:
       and any link that would make an item its own ancestor is refused before
       it is written.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - script:bundle/components/extensions/github-lifecycle/scripts/relationships.py
@@ -500,9 +441,7 @@ requirements:
       Every write is read back before it is reported as done. A write whose
       read-back disagrees is a conflict, not a success.
     priority: must
-    owner: GitHub integration engineer
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:github-schema.yml
@@ -523,9 +462,7 @@ requirements:
       not counted from the end of its values list, so adding a terminal state
       does not silently make the previous one assert work.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - command:speckit.github-lifecycle.retire
@@ -545,9 +482,7 @@ requirements:
       work never sets an outcome, and an unvalidated outcome never reopens
       completed work.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - policy:outcome-policy.yml
@@ -561,9 +496,7 @@ requirements:
       Every backlog item type defines the content it requires, and the issue
       templates are generated from that definition so the two cannot diverge.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:item-types.yml
       - check:INV-ITEM-CONTENT
@@ -582,9 +515,7 @@ requirements:
       evidenced by criteria being satisfied, which requires criteria that can
       be.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:item-types.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
@@ -601,9 +532,7 @@ requirements:
       The readiness verdict has a schema. Refining to Ready is evidenced by a
       valid verdict with no blocking questions, not by judgement.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:item-types.yml
       - policy:state-machine.yml
@@ -622,9 +551,7 @@ requirements:
       another delivery state. Completion is judged by delivery state, never by
       whether a child's issue is closed.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:item-types.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
@@ -640,9 +567,7 @@ requirements:
       command binds anyone who uses it; closing an issue directly bypasses it,
       so the resulting drift must be reportable rather than only noticeable.
     priority: should
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
       - policy:item-types.yml
@@ -668,9 +593,7 @@ requirements:
       decomposition, and a non-epic parent is never judged by the epic-only
       angles.
     priority: should
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
       - policy:item-types.yml
@@ -690,9 +613,6 @@ requirements:
       - "tests/test_transition.py::test_the_state_order_comes_from_the_state_machine_not_from_constants"
       - "tests/test_transition.py::test_one_rule_decides_every_parent_child_disagreement"
       - "tests/test_transition.py::test_output_done_over_an_incomplete_child_is_reported"
-    evidence:
-      - "Issue #87"
-      - "Issue #96"
 
   - id: REQ-BACKLOG-REFINE-001
     statement: >-
@@ -700,9 +620,7 @@ requirements:
       human approvals, and the resulting delivery state is read back from
       GitHub rather than assumed.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-refine
       - command:speckit.github-lifecycle.readiness
@@ -719,9 +637,7 @@ requirements:
       item that is Ready while blocked is reported, because it claims to be
       startable and is not.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - policy:github-schema.yml
@@ -738,9 +654,7 @@ requirements:
       items safe to refine ahead are distinguished from those awaiting
       decomposition.
     priority: should
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
@@ -762,9 +676,7 @@ requirements:
       somebody once passed. The threshold remains available; what made it a
       problem was being the only lever.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.capture
       - script:bundle/components/extensions/github-lifecycle/scripts/capture.py
@@ -776,8 +688,6 @@ requirements:
       - "tests/test_capture.py::test_the_decision_is_readable_back_off_the_result"
       - "tests/test_capture.py::test_threshold_remains_available_and_is_no_longer_the_only_route"
       - "tests/test_capture.py::test_the_documentation_and_the_refusal_agree"
-    evidence:
-      - "Issue #98"
 
   - id: REQ-BACKLOG-SECURITY-001
     statement: >-
@@ -791,9 +701,7 @@ requirements:
       recommendation rather than a default, and an ordinary bug gets no security
       routing at all.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.triage
       - policy:item-types.yml
@@ -811,8 +719,6 @@ requirements:
       - "tests/test_triage.py::test_nothing_recognisable_recommends_no_severity"
       - "tests/test_triage.py::test_the_recommendation_never_becomes_the_value"
       - "tests/test_triage.py::test_the_marker_comes_from_policy_not_from_this_script"
-    evidence:
-      - "Issue #90"
 
   - id: REQ-BACKLOG-CAPTURE-002
     statement: >-
@@ -825,9 +731,7 @@ requirements:
       than silent, because an absent finding and an unexamined one read the same
       afterwards.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.capture
       - workflow:lifecycle-story-delivery
@@ -839,8 +743,6 @@ requirements:
       - "tests/test_capture.py::test_no_source_leaves_the_body_alone"
       - "tests/test_capture.py::test_delivery_can_capture_a_finding_without_leaving_the_run"
       - "tests/test_capture.py::test_the_delivery_capture_searches_before_it_creates_and_links_its_source"
-    evidence:
-      - "Issue #90"
 
   - id: REQ-BACKLOG-BUILDORDER-001
     statement: >-
@@ -856,9 +758,7 @@ requirements:
       silence it, and git being unable to answer is reported as unknown rather
       than as clean.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - check:INV-BUILD-AFTER-IN-PROGRESS
       - workflow:lifecycle-story-delivery
@@ -877,9 +777,6 @@ requirements:
       - "tests/test_transition.py::test_the_finding_is_attributed_to_the_tree_not_to_an_issue"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BUILD-AFTER-IN-PROGRESS]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-BUILD-AFTER-IN-PROGRESS]"
-    evidence:
-      - "Issue #93"
-      - "Issue #99"
 
   - id: REQ-BACKLOG-CRITERIA-002
     statement: >-
@@ -899,9 +796,7 @@ requirements:
       the content rules, because reporting "no acceptance criteria given"
       against an issue carrying several is worse than reporting nothing.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
     verified_by:
@@ -910,9 +805,6 @@ requirements:
       - "tests/test_acceptance_lint.py::test_emphasised_clause_markers_are_recognised_mid_line"
       - "tests/test_acceptance_lint.py::test_a_bare_then_in_prose_is_not_a_clause_marker"
       - "tests/test_acceptance_lint.py::test_a_bold_criterion_reaches_lint_rather_than_merely_being_captured"
-    evidence:
-      - "Issue #131"
-      - "Issue #130"
 
   - id: REQ-BACKLOG-CRITERIA-001
     statement: >-
@@ -927,9 +819,7 @@ requirements:
       Linting a story is unchanged: a criterion with no observable outcome, and
       a set covering only success, are still reported.
     priority: should
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.readiness
       - script:bundle/components/extensions/github-lifecycle/scripts/lint_acceptance.py
@@ -943,8 +833,6 @@ requirements:
       - "tests/test_acceptance_lint.py::test_a_story_with_no_acceptance_section_is_reported"
       - "tests/test_acceptance_lint.py::test_a_missing_section_is_none_rather_than_the_whole_body"
       - "tests/test_acceptance_lint.py::test_the_types_come_from_policy_not_from_this_script"
-    evidence:
-      - "Issue #106"
 
   - id: REQ-BACKLOG-CLOSURE-002
     statement: >-
@@ -964,9 +852,7 @@ requirements:
       everything between them says something actionable. An item is reported
       once, since two findings for one fact teaches a reader to skim.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
@@ -975,9 +861,6 @@ requirements:
       - "tests/test_transition.py::test_an_exempt_closure_at_inbox_is_not_reported"
       - "tests/test_transition.py::test_a_completed_closure_is_reported_once_not_twice"
       - "tests/test_transition.py::test_the_states_that_claim_work_come_from_the_machine"
-    evidence:
-      - "Issue #139"
-      - "Issue #103"
 
   - id: REQ-BACKLOG-CLOSURE-001
     statement: >-
@@ -992,9 +875,7 @@ requirements:
       A completed closure short of Output Done is still reported, which is the
       rule the exemption must not weaken.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - policy:state-machine.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
@@ -1006,8 +887,6 @@ requirements:
       - "tests/test_transition.py::test_an_unknown_close_reason_is_reported_rather_than_exempted"
       - "tests/test_transition.py::test_the_exempt_reasons_come_from_policy_not_from_the_audit"
       - "tests/test_transition.py::test_the_policy_declares_the_route_supersession_will_use"
-    evidence:
-      - "Issue #107"
 
   - id: REQ-BACKLOG-RETIRE-001
     statement: >-
@@ -1023,9 +902,7 @@ requirements:
       reaching the API. The close is read back, because a write that reports
       success while the read disagrees is not a success.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.retire
       - script:bundle/components/extensions/github-lifecycle/scripts/retire.py
@@ -1042,8 +919,6 @@ requirements:
       - "tests/test_retire.py::test_closed_children_do_not_block_retirement"
       - "tests/test_retire.py::test_an_undeclared_route_is_refused_without_touching_the_api"
       - "tests/test_retire.py::test_a_write_that_does_not_take_is_reported"
-    evidence:
-      - "Issue #108"
 
   - id: REQ-BACKLOG-RESTRUCTURE-001
     statement: >-
@@ -1058,9 +933,7 @@ requirements:
       than inferring survival from argument order, and either operation on an
       item with open children is refused with the children named.
     priority: should
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.restructure
       - script:bundle/components/extensions/github-lifecycle/scripts/restructure.py
@@ -1076,8 +949,6 @@ requirements:
       - "tests/test_restructure.py::test_merging_with_no_reason_is_refused"
       - "tests/test_restructure.py::test_merging_does_not_strand_the_dropped_items_children"
       - "tests/test_restructure.py::test_split_and_merge_are_not_in_decompose"
-    evidence:
-      - "Issue #109"
 
   - id: REQ-BACKLOG-CAPTURE-001
     statement: >-
@@ -1085,9 +956,7 @@ requirements:
       against closed items, and an observation lacking the evidence its type
       requires is reported rather than filed as work.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.capture
       - command:speckit.github-lifecycle.link
@@ -1108,9 +977,7 @@ requirements:
       beyond that horizon is created however much is proposed, the surplus is
       reported as deliberately undecomposed, and new children begin Inbox.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-decompose
       - command:speckit.github-lifecycle.decompose
@@ -1125,8 +992,6 @@ requirements:
       - "tests/test_decompose.py::test_only_ready_children_count_toward_the_horizon"
       - "tests/test_decompose.py::test_the_workflow_gates_before_creating"
       - "tests/test_decompose.py::test_unrefined_children_are_recommended_before_new_ones"
-    evidence:
-      - "Issue #55"
 
   - id: REQ-STATE-OUTCOME-003
     statement: >-
@@ -1136,9 +1001,7 @@ requirements:
       condition for settling it; and a missed outcome produces a follow-up
       finding only after a duplicate search.
     priority: must
-    owner: framework
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-outcome-review
       - command:speckit.github-lifecycle.outcome
@@ -1170,8 +1033,6 @@ requirements:
       - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[measuring]
       - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[validated]
       - tests/test_outcome_review.py::test_each_transition_names_the_state_it_expects[missed]
-    evidence:
-      - "Issue #54"
 
   - id: REQ-CORE-GREENFIELD-001
     statement: >-
@@ -1181,9 +1042,7 @@ requirements:
       rather than reporting empty when the repository cannot be read, and puts
       a human gate ahead of every step that writes.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-greenfield-bootstrap
       - command:speckit.github-lifecycle.mismatch
@@ -1206,8 +1065,6 @@ requirements:
       - tests/test_mismatch.py::test_the_classification_comes_from_policy_not_the_script
       - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths0]"
       - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths1]"
-    evidence:
-      - "Issue #56"
 
   - id: REQ-CORE-VERIFYCMD-002
     statement: >-
@@ -1223,9 +1080,7 @@ requirements:
       heading with nothing beneath it is not a decision either, which is the
       same failure one level down.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:bootstrap-policy.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/verify_bootstrap.py
@@ -1234,9 +1089,6 @@ requirements:
       - "tests/test_verify_bootstrap.py::test_a_constitution_that_records_its_tooling_does_count"
       - "tests/test_verify_bootstrap.py::test_a_declared_heading_with_nothing_under_it_is_not_a_decision"
       - "tests/test_verify_bootstrap.py::test_every_source_declares_where_its_decision_is_recorded"
-    evidence:
-      - "Issue #136"
-      - "Issue #103"
 
   - id: REQ-CORE-GATERES-001
     statement: >-
@@ -1251,9 +1103,7 @@ requirements:
       applied whole is applied not at all, so a run that stops mid-way leaves
       no outcome nobody decided.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/verify_bootstrap.py
       - command:speckit.github-lifecycle.verify-bootstrap
@@ -1279,8 +1129,6 @@ requirements:
       - "tests/test_verify_bootstrap.py::test_resolution_writes_nothing_without_write"
       - "tests/test_verify_bootstrap.py::test_the_record_survives_a_second_merge_and_keeps_earlier_outcomes"
       - "tests/test_verify_bootstrap.py::test_a_gate_with_no_outcome_keeps_the_command_from_passing"
-    evidence:
-      - "Issue #165"
   - id: REQ-CORE-VERIFYCMD-001
     statement: >-
       Bootstrap must establish that the project defines the verification
@@ -1289,9 +1137,7 @@ requirements:
       overlay may satisfy only a command the workflows actually run; and
       nothing is written before a human gate.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-greenfield-bootstrap
       - workflow:lifecycle-brownfield-adoption
@@ -1321,8 +1167,6 @@ requirements:
       - "tests/test_verify_bootstrap.py::test_the_gate_says_what_rejecting_costs[lifecycle-brownfield-adoption]"
       - "tests/test_verify_bootstrap.py::test_the_gate_says_what_rejecting_costs[lifecycle-greenfield-bootstrap]"
       - "tests/test_verify_bootstrap.py::test_the_commands_are_not_hardcoded_in_the_script"
-    evidence:
-      - "Issue #57"
 
   - id: REQ-CORE-EXCEPTION-001
     statement: >-
@@ -1333,9 +1177,7 @@ requirements:
       requires a baseline; and an exception past its review date is reported
       rather than deleted and stops suppressing its rule.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.exception
       - policy:exception-policy.yml
@@ -1379,8 +1221,6 @@ requirements:
       - "tests/test_exception.py::test_an_exact_path_needs_no_baseline"
       - "tests/test_exception.py::test_the_forbidden_shapes_all_have_a_detector"
       - "tests/test_exception.py::test_the_placeholders_are_not_hardcoded_in_the_script"
-    evidence:
-      - "Issue #58"
 
   - id: REQ-CORE-BROWNFIELD-001
     statement: >-
@@ -1390,9 +1230,7 @@ requirements:
       written and stops on a stray one, and it recommends a single bounded
       target rather than a modernization backlog.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-brownfield-adoption
     verified_by:
@@ -1401,8 +1239,6 @@ requirements:
       - "tests/test_exception.py::test_the_scan_reports_what_it_wrote_and_stops_on_a_stray_file"
       - "tests/test_exception.py::test_the_scan_recommends_one_target_not_a_backlog"
       - "tests/test_exception.py::test_only_the_targeted_branch_validates_exceptions"
-    evidence:
-      - "Issue #58"
 
   - id: REQ-PILOT-EVIDENCE-001
     statement: >-
@@ -1423,9 +1259,7 @@ requirements:
       score, and no source is declared that no entry uses: a vocabulary with an
       unused member reads as a capability the contract does not have.
     priority: should
-    owner: product/process owner
     release: "0.9.0"
-    status: verified
     components:
       - script:tooling/pilots/pilot_record.py
     verified_by:
@@ -1460,9 +1294,7 @@ requirements:
       gate showing no file is not covered because the artifact it approves comes
       from outside this bundle.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-brownfield-adoption
       - workflow:lifecycle-greenfield-bootstrap
@@ -1482,9 +1314,7 @@ requirements:
       because a check that no-ops on missing input reports a coverage it does
       not have.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-brownfield-adoption
       - workflow:lifecycle-incident-hotfix
@@ -1504,9 +1334,7 @@ requirements:
       where inference is not, so a step with no timeout, or with a value the
       policy does not name, is reported.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:INV-STEP-TIMEOUT-TIER
       - policy:bootstrap-policy.yml
@@ -1514,10 +1342,6 @@ requirements:
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-STEP-TIMEOUT-TIER]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-STEP-TIMEOUT-TIER]"
-    evidence:
-      - "Issue #116"
-      - "Issue #117"
-      - "Issue #103"
 
   - id: REQ-WORKFLOW-VERDICT-001
     statement: >-
@@ -1539,9 +1363,7 @@ requirements:
       an Unresolved blockers line and a final gate shows it, so the run reaches
       its end only through a verdict given against that line.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-brownfield-adoption
       - workflow:lifecycle-greenfield-bootstrap
@@ -1556,9 +1378,6 @@ requirements:
       - "tests/test_verify_bootstrap.py::test_the_final_gate_shows_the_report_the_step_before_it_writes[lifecycle-greenfield-bootstrap]"
       - "tests/test_verify_bootstrap.py::test_the_final_gates_verdict_is_a_declared_input_that_starts_unanswered[lifecycle-brownfield-adoption]"
       - "tests/test_verify_bootstrap.py::test_the_final_gates_verdict_is_a_declared_input_that_starts_unanswered[lifecycle-greenfield-bootstrap]"
-    evidence:
-      - "Issue #144"
-      - "Issue #104"
 
   - id: REQ-GITHUB-INVOCATION-001
     statement: >-
@@ -1570,18 +1389,13 @@ requirements:
       scripts, and where it lacks PyYAML. Declaring the script also makes the
       command addressable as an event handler, which an undeclared one is not.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:INV-COMMAND-SCRIPT-INVOCATION
       - extension:github-lifecycle
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-COMMAND-SCRIPT-INVOCATION]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-COMMAND-SCRIPT-INVOCATION]"
-    evidence:
-      - "Issue #114"
-      - "Issue #103"
 
   - id: REQ-SECURITY-ROUTING-002
     statement: >-
@@ -1595,9 +1409,7 @@ requirements:
       neither: it is a broken policy and is surfaced, not read as a stated
       limit.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:model-routing.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/opencode_models.py
@@ -1619,9 +1431,7 @@ requirements:
       provider requirement becomes decorative. A policy predating the
       per-integration form still resolves.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:model-routing.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/opencode_models.py
@@ -1632,9 +1442,6 @@ requirements:
       - "tests/test_opencode_models.py::test_an_unknown_integration_is_named_not_guessed"
       - "tests/test_opencode_models.py::test_an_older_flat_policy_still_works"
       - "tests/test_opencode_models.py::test_every_claimed_integration_is_declared"
-    evidence:
-      - "Issue #115"
-      - "Issue #103"
 
   - id: REQ-PRODUCT-DOCUMENTS-003
     statement: >-
@@ -1651,9 +1458,7 @@ requirements:
       check applies only while the policy declares no budget: reinstating one
       must make it stop refusing rather than require deleting it.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:bootstrap-policy.yml
       - command:speckit.github-lifecycle.documents
@@ -1663,9 +1468,6 @@ requirements:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-NO-PHANTOM-BUDGET]"
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
       - "tests/test_documents.py::test_no_document_is_budgeted_by_length"
-    evidence:
-      - "Issue #128"
-      - "Issue #104"
 
   - id: REQ-RELEASE-LADDER-001
     statement: >-
@@ -1683,18 +1485,13 @@ requirements:
       pushing a release whose exit condition is unmet is the same failure in
       the other direction.
     priority: should
-    owner: bundle maintainer
     release: "0.3.0"
-    status: verified
     components:
       - script:scripts/lib/checks.py
     verified_by:
       - "tests/test_check_negatives.py::test_currently_violated_check_fires_on_clean_source[INV-RELEASE-LADDER]"
       - "tests/test_check_negatives.py::test_every_check_has_a_negative_case"
       - "tests/test_validator.py::test_the_release_ladder_compares_against_a_status_the_schema_permits"
-    evidence:
-      - "Issue #130"
-      - "Issue #103"
   - id: REQ-PACKAGE-INTERPRETER-001
     statement: >-
       The extension declares what the interpreter running its scripts must
@@ -1712,9 +1509,7 @@ requirements:
       import is declared, which is the half that catches the next one: its
       first run found jsonschema undeclared in four more scripts.
     priority: must
-    owner: bundle maintainer
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/extension.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/github_api.py
@@ -1723,10 +1518,6 @@ requirements:
       - "tests/test_docs.py::test_no_shipped_script_evaluates_a_pep_604_union_at_import"
       - "tests/test_docs.py::test_an_optional_dependency_says_what_its_absence_costs"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-DECLARED-IMPORTS]"
-    evidence:
-      - "Issue #132"
-      - "Issue #114"
-      - "Issue #103"
 
   - id: REQ-PACKAGE-GIT-001
     statement: >-
@@ -1744,9 +1535,7 @@ requirements:
       the form "every binary the bundle executes is declared" would be false
       on the day it was written.
     priority: must
-    owner: bundle maintainer
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/extension.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/transition_plan.py
@@ -1754,8 +1543,6 @@ requirements:
       - "tests/test_git_dependency.py::test_transition_plan_executes_git"
       - "tests/test_git_dependency.py::test_git_is_declared_in_requires_tools"
       - "tests/test_git_dependency.py::test_git_is_declared_optional_and_says_what_its_absence_costs"
-    evidence:
-      - "Issue #157"
   - id: REQ-PRODUCT-DOCUMENTS-005
     statement: >-
       The decision-record directory is declared as an ordered candidate list in
@@ -1777,9 +1564,7 @@ requirements:
       above them still names this repository's own directory, which is history
       and not an instruction.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - policy:bootstrap-policy.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
@@ -1791,9 +1576,6 @@ requirements:
       - "tests/test_documents.py::test_two_candidate_directories_are_reported_not_ranked"
       - "tests/test_documents.py::test_a_project_with_no_records_is_told_where_they_will_go"
       - "tests/test_documents.py::test_an_empty_candidate_directory_holds_no_records"
-    evidence:
-      - "Issue #141"
-      - "Issue #104"
 
   - id: REQ-PRODUCT-DOCUMENTS-004
     statement: >-
@@ -1814,9 +1596,7 @@ requirements:
       the rest of a testing document restates quality-gates.yml and a second
       copy is the one that drifts.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - policy:bootstrap-policy.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
@@ -1828,9 +1608,6 @@ requirements:
       - "tests/test_documents.py::test_a_runbook_is_declared"
       - "tests/test_documents.py::test_the_domain_document_asks_what_a_word_does_not_mean"
       - "tests/test_documents.py::test_deliberately_untested_is_a_section_not_a_document"
-    evidence:
-      - "Issue #137"
-      - "Issue #103"
 
   - id: REQ-PRODUCT-DOCUMENTS-002
     statement: >-
@@ -1845,9 +1622,7 @@ requirements:
       counted one by one, because a rule statement that runs to two lines is
       the thing the count exists to catch.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:bootstrap-policy.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
@@ -1856,9 +1631,6 @@ requirements:
       - "tests/test_documents.py::test_a_wrapped_rule_statement_is_still_two_lines_of_prose"
       - "tests/test_documents.py::test_every_ordinal_is_a_list_item_not_just_the_first"
       - "tests/test_documents.py::test_a_wrapped_table_row_is_not_prose"
-    evidence:
-      - "Issue #127"
-      - "Issue #104"
 
   - id: REQ-PRODUCT-DOCUMENTS-001
     statement: >-
@@ -1885,9 +1657,7 @@ requirements:
       workflow that bootstraps or adopts produces the whole set, and no
       shipped surface instructs a budget the policy does not declare.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.documents
       - policy:bootstrap-policy.yml
@@ -1922,9 +1692,6 @@ requirements:
       - "tests/test_documents.py::test_the_keywords_are_rfc_2119"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-BOOTSTRAP-DOCUMENTS]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-BOOTSTRAP-DOCUMENTS]"
-    evidence:
-      - "Issue #126"
-      - "Issue #104"
 
   - id: REQ-RISK-SCORING-001
     statement: >-
@@ -1940,9 +1707,7 @@ requirements:
       rather than a literal name, and the report states that the controls it
       names are required and not certified.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:risk-policy.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/risk.py
@@ -1968,8 +1733,6 @@ requirements:
       - "tests/test_risk.py::test_the_band_boundaries_match_the_policy_exactly"
       - "tests/test_risk.py::test_the_escalation_target_follows_a_renamed_policy"
       - "tests/test_risk.py::test_a_total_no_band_covers_is_an_error_not_a_silent_low"
-    evidence:
-      - "Issue #88"
 
   - id: REQ-SECURITY-IDENTITY-001
     statement: >-
@@ -1983,9 +1746,7 @@ requirements:
       an agent's reasoning, and a check claiming to would report a coverage it
       does not have.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:agent-policy.yml
       - command:speckit.github-lifecycle.inspect
@@ -2005,9 +1766,7 @@ requirements:
       never read as stricter than it is. The shell is not denied outright: it
       is already ask, and denying it would stop the workflows the bundle ships.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:agent-policy.yml
       - check:SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION
@@ -2021,8 +1780,6 @@ requirements:
       - "tests/test_docs.py::test_the_issue_reference_is_still_usable"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[SEC-UNTRUSTED-NO-COMMAND-INTERPOLATION]"
-    evidence:
-      - "Issue #88"
 
   - id: REQ-SECURITY-ORGSCHEMA-001
     statement: >-
@@ -2038,17 +1795,13 @@ requirements:
       advice the bundle cannot enforce because it has no schema-administration
       path to gate.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:SEC-NO-ORG-SCHEMA-MUTATION
       - extension:github-lifecycle
     verified_by:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-NO-ORG-SCHEMA-MUTATION]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[SEC-NO-ORG-SCHEMA-MUTATION]"
-    evidence:
-      - "Issue #91"
 
   - id: REQ-SECURITY-SENSITIVE-002
     statement: >-
@@ -2060,9 +1813,7 @@ requirements:
       a permission model does not cover are reported as unmappable rather than
       approximated by naming four of them.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.sensitive
       - command:speckit.github-lifecycle.claude-config
@@ -2100,8 +1851,6 @@ requirements:
       - "tests/test_claude_config.py::test_every_policy_pattern_becomes_a_rule"
       - "tests/test_claude_config.py::test_a_preset_without_the_policy_emits_no_secret_rules"
       - "tests/test_claude_config.py::test_the_secret_rules_are_attributed_to_a_rule_name"
-    evidence:
-      - "Issue #89"
 
   - id: REQ-SECURITY-SENSITIVE-003
     statement: >-
@@ -2112,9 +1861,7 @@ requirements:
       an unscanned record is the failure the scan exists to prevent. Both the
       scan and the rescan that follows redaction take the same path.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.sensitive
       - policy:sensitive-data.yml
@@ -2135,9 +1882,7 @@ requirements:
       visible and does not authorize a read. The shapes live in one policy
       file that the adapter and the scanner both read.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.sensitive
       - workflow:lifecycle-brownfield-adoption
@@ -2183,8 +1928,6 @@ requirements:
       - "tests/test_sensitive.py::test_the_fallback_still_catches_the_common_shape"
       - "tests/test_sensitive.py::test_the_discovery_record_is_scanned_before_it_is_reviewed"
       - "tests/test_sensitive.py::test_the_scan_step_forbids_quoting_the_value"
-    evidence:
-      - "Issue #59"
 
   - id: REQ-GITHUB-BOARD-004
     statement: >-
@@ -2203,9 +1946,7 @@ requirements:
       discovery, so creation would have named a project board's field after the
       other backend's vocabulary.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - policy:github-schema.yml
       - script:bundle/components/extensions/github-lifecycle/scripts/board.py
@@ -2216,9 +1957,6 @@ requirements:
       - "tests/test_board.py::test_an_undeclared_name_refuses_rather_than_defaulting"
       - "tests/test_board.py::test_an_unknown_backend_is_named_not_guessed"
       - "tests/test_board.py::test_no_delivery_field_name_is_hardcoded_in_board"
-    evidence:
-      - "Issue #125"
-      - "Issue #124"
 
   - id: REQ-GITHUB-BOARD-003
     statement: >-
@@ -2235,9 +1973,7 @@ requirements:
       field again rather than by asking which backend the repository would
       resolve to. An owner with no board is an inspection refusal, not a note. Whether the owner has other boards is not a fact about this repository: creation is refused only when the repository is already linked to one, and every discovery call that can be repository-scoped is. A created board carries every field the matrix says the backend carries, with names and options from the schema; a field the policy leaves to a strategy is not invented, and one that cannot be added is reported rather than leaving a board that reads as finished. Linking a board to a repository does not place the repository's issues on it, so issues the board does not carry are reported and placed only when asked; a board that cannot be listed reports every issue as absent rather than none.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.board
       - script:bundle/components/extensions/github-lifecycle/scripts/board.py
@@ -2263,10 +1999,6 @@ requirements:
       - "tests/test_board.py::test_a_field_the_policy_leaves_to_a_strategy_is_not_invented"
       - "tests/test_board.py::test_the_backend_matrix_narrows_what_is_created"
       - "tests/test_board.py::test_a_field_that_cannot_be_added_is_reported_not_left"
-    evidence:
-      - "Issue #119"
-      - "Issue #103"
-      - "Issue #122"
 
   - id: REQ-GITHUB-BACKENDS-001
     statement: >-
@@ -2281,9 +2013,7 @@ requirements:
       preset without the matrix loses the explanation rather than the
       inspection.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:INV-ROLE-REACHABLE
       - script:bundle/components/extensions/github-lifecycle/scripts/inspect_target.py
@@ -2298,9 +2028,6 @@ requirements:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-ROLE-REACHABLE]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-ROLE-REACHABLE]"
       - "tests/test_check_negatives.py::test_a_role_the_code_resolves_and_no_backend_names_is_reported"
-    evidence:
-      - "Issue #118"
-      - "Issue #103"
   - id: REQ-GITHUB-PROJECTSCOPE-001
     statement: >-
       A repository resolves only to a board it is linked to, never to one its
@@ -2315,9 +2042,7 @@ requirements:
       relevant. A repository linked to nothing is an ambiguity naming the
       repository, not a silently chosen board.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/inspect_target.py
       - policy:github-schema.yml
@@ -2328,9 +2053,6 @@ requirements:
       - "tests/test_inspect.py::test_the_repository_scoped_lookup_uses_graphql"
       - "tests/test_inspect.py::test_owner_wide_discovery_survives_for_the_case_that_needs_it"
       - "tests/test_inspect.py::test_no_linked_board_is_an_ambiguity_naming_the_repository"
-    evidence:
-      - "Issue #120"
-      - "Issue #104"
 
   - id: REQ-GITHUB-BOARD-005
     statement: >-
@@ -2343,9 +2065,7 @@ requirements:
       board already matching the policy is not written to at all. Every flag a
       refusal names is a flag the parser accepts.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.board
     verified_by:
@@ -2363,9 +2083,7 @@ requirements:
       capture that cannot place an item reports that rather than returning a
       clean creation.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.capture
       - command:speckit.github-lifecycle.decompose
@@ -2382,8 +2100,6 @@ requirements:
       - "tests/test_capture.py::test_a_capture_that_cannot_place_says_so"
       - "tests/test_capture.py::test_a_backend_without_a_board_is_not_reported_as_a_failure"
       - "tests/test_capture.py::test_a_dry_run_places_nothing"
-    evidence:
-      - "Issue #60"
 
   - id: REQ-GITHUB-BOARD-002
     statement: >-
@@ -2395,9 +2111,7 @@ requirements:
       that rather than reading as a clean creation, and a backend with no board
       is not asked for a state at all.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.capture
       - policy:state-machine.yml
@@ -2407,8 +2121,6 @@ requirements:
       - "tests/test_capture.py::test_the_entry_state_comes_from_the_state_machine_not_this_script"
       - "tests/test_capture.py::test_a_capture_that_places_but_cannot_set_the_state_says_so"
       - "tests/test_capture.py::test_a_backend_without_a_board_is_not_asked_for_a_state"
-    evidence:
-      - "Issue #94"
 
   - id: REQ-CORE-RATCHET-001
     statement: >-
@@ -2420,9 +2132,7 @@ requirements:
       skipped; and loosening a baseline requires a valid, unexpired exception
       naming that gate.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.ratchet
       - workflow:lifecycle-story-delivery
@@ -2456,8 +2166,6 @@ requirements:
       - "tests/test_ratchet.py::test_the_ratchet_runs_after_verification[lifecycle-story-delivery]"
       - "tests/test_ratchet.py::test_the_step_forbids_reporting_a_baseline_as_a_pass[lifecycle-bugfix]"
       - "tests/test_ratchet.py::test_the_step_forbids_reporting_a_baseline_as_a_pass[lifecycle-story-delivery]"
-    evidence:
-      - "Issue #62"
 
   - id: REQ-TEAM-PROJECT-001
     statement: >-
@@ -2468,9 +2176,7 @@ requirements:
       git root is not the project root; and every policy read in one run uses
       one resolved root.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - command:speckit.github-lifecycle.doctor
@@ -2495,8 +2201,6 @@ requirements:
       - "tests/test_project_root.py::test_only_the_greenfield_check_still_defaults_a_path_to_the_cwd"
       - "tests/test_project_root.py::test_the_ratchet_reads_exception_policy_from_the_root_it_was_given"
       - "tests/test_project_root.py::test_doctor_reports_a_project_it_is_standing_below"
-    evidence:
-      - "Issue #65"
 
   - id: REQ-TEAM-FEATURE-001
     statement: >-
@@ -2506,9 +2210,7 @@ requirements:
       undeclared feature is refused with both declaring sources named rather
       than guessed; and a relative value resolves against the project root.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
     verified_by:
@@ -2529,8 +2231,6 @@ requirements:
       - "tests/test_feature_context.py::test_a_relative_feature_json_value_also_resolves_against_the_project"
       - "tests/test_feature_context.py::test_two_members_can_hold_two_active_features"
       - "tests/test_feature_context.py::test_the_source_is_reported_rather_than_implied"
-    evidence:
-      - "Issue #66"
 
   - id: REQ-TEAM-MONOREPO-001
     statement: >-
@@ -2542,9 +2242,7 @@ requirements:
       both paths, and removing the bundle from one member leaves the other
       installed.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - command:speckit.github-lifecycle.transition
@@ -2568,8 +2266,6 @@ requirements:
       - "tests/test_project_root.py::test_the_git_root_is_outside_a_member"
       - "tests/test_project_root.py::test_every_file_writing_script_passes_through_the_guard[transition_plan.py]"
       - "tests/test_project_root.py::test_every_file_writing_script_passes_through_the_guard[ratchet.py]"
-    evidence:
-      - "Issue #67"
 
   - id: REQ-TEAM-BLOCKED-001
     statement: >-
@@ -2580,9 +2276,7 @@ requirements:
       and none of this changes delivery status, which stays a dependency and
       never becomes a state.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.plan
       - policy:state-machine.yml
@@ -2598,8 +2292,6 @@ requirements:
       - "tests/test_transition.py::test_blocking_does_not_change_delivery_status"
       - "tests/test_transition.py::test_a_blocked_item_may_still_be_refined"
       - "tests/test_transition.py::test_the_blocker_check_does_not_run_for_other_targets"
-    evidence:
-      - "Issue #69"
 
   - id: REQ-PACKAGE-OVERLAY-002
     statement: >-
@@ -2609,9 +2301,7 @@ requirements:
       update that reported success, and removing the bundle from a member
       leaves the project-local overlay it did not create.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - workflow:lifecycle-story-delivery
     verified_by:
@@ -2622,8 +2312,6 @@ requirements:
       - "tests/sandbox/test_monorepo_overlays.py::test_an_overlay_survives_an_update_in_its_member"
       - "tests/sandbox/test_monorepo_overlays.py::test_updating_one_member_does_not_disturb_the_other"
       - "tests/sandbox/test_monorepo_overlays.py::test_removing_the_bundle_from_a_member_leaves_both_overlays"
-    evidence:
-      - "Issue #68"
 
   - id: REQ-CORE-MODELS-001
     statement: >-
@@ -2633,9 +2321,7 @@ requirements:
       filled in, and an inventory that cannot be read or reports nothing
       refuses rather than verifying every id.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.models
       - policy:model-routing.yml
@@ -2657,8 +2343,6 @@ requirements:
       - "tests/test_opencode_models.py::test_a_readable_inventory_is_parsed_into_provider_model_ids"
       - "tests/test_opencode_models.py::test_the_inventory_command_comes_from_policy"
       - "tests/test_opencode_models.py::test_the_real_cli_reports_a_usable_inventory"
-    evidence:
-      - "Issue #70"
 
   - id: REQ-CORE-LAYOUT-001
     statement: >-
@@ -2669,9 +2353,7 @@ requirements:
       policy, and detection runs against the resolved project root rather than
       the working directory.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.opencode-layout
       - policy:bootstrap-policy.yml
@@ -2690,8 +2372,6 @@ requirements:
       - "tests/test_opencode_layout.py::test_a_sibling_member_layout_is_not_this_members"
       - "tests/test_opencode_layout.py::test_the_directories_come_from_policy"
       - "tests/test_opencode_layout.py::test_an_undescribed_integration_is_refused"
-    evidence:
-      - "Issue #72"
 
   - id: REQ-SECURITY-OPENCODE-001
     statement: >-
@@ -2703,9 +2383,7 @@ requirements:
       marked as one, and no configuration is written without an approved
       proposal.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.opencode-config
       - policy:agent-policy.yml
@@ -2746,8 +2424,6 @@ requirements:
       - "tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named[mcp_default]"
       - "tests/test_opencode_config.py::test_the_two_rules_with_no_primitive_are_named[plugin_default]"
       - "tests/test_opencode_config.py::test_the_verification_commands_are_allowed_by_pattern"
-    evidence:
-      - "Issue #71"
 
   - id: REQ-CORE-MODELRECORD-001
     statement: >-
@@ -2758,9 +2434,7 @@ requirements:
       consumer names is reported unused rather than removed; and replacing the
       mapping changes no workflow.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.models
       - policy:model-routing.yml
@@ -2780,8 +2454,6 @@ requirements:
       - "tests/test_opencode_models.py::test_every_role_is_currently_reported_unused"
       - "tests/test_opencode_models.py::test_a_role_a_consumer_names_is_not_reported_unused"
       - "tests/test_opencode_models.py::test_the_record_path_comes_from_policy"
-    evidence:
-      - "Issue #73"
 
   - id: REQ-CORE-INTEGRATION-001
     statement: >-
@@ -2790,9 +2462,7 @@ requirements:
       registered check refuses a specific default, and the documentation says
       the workflows follow the project rather than telling a reader to pass one.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:INV-INTEGRATION-DEFAULT
       - policy:framework.yml
@@ -2807,8 +2477,6 @@ requirements:
       - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[INSTALL-LOCAL.md]"
       - "tests/test_integration_default.py::test_no_document_tells_a_user_to_pass_a_specific_integration[bundle/README.md]"
       - "tests/test_integration_default.py::test_the_bundle_readme_says_the_workflows_follow_the_project"
-    evidence:
-      - "Issue #75"
 
   - id: REQ-SECURITY-CLAUDE-002
     statement: >-
@@ -2820,9 +2488,7 @@ requirements:
       reported as an uncompensated gap, and no policy key or generated field
       curates a per-agent tool list in its place.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.claude-config
       - policy:bootstrap-policy.yml
@@ -2842,9 +2508,7 @@ requirements:
       rather than copied across as a gap, and no settings are written without
       an approved proposal.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.claude-config
       - policy:agent-policy.yml
@@ -2876,8 +2540,6 @@ requirements:
       - "tests/test_claude_config.py::test_the_generated_rules_are_the_ones_we_meant[deny]"
       - "tests/test_claude_config.py::test_the_genuine_gaps_are_marked_uncompensated"
       - "tests/test_claude_config.py::test_the_verification_commands_are_allowed_by_name"
-    evidence:
-      - "Issue #76"
 
   - id: REQ-CORE-CLAUDEINST-001
     statement: >-
@@ -2888,9 +2550,7 @@ requirements:
       one project can hold both integrations, and removing the bundle takes
       back the commands it installed.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - policy:bootstrap-policy.yml
@@ -2907,8 +2567,6 @@ requirements:
       - "tests/sandbox/test_claude_install.py::test_removing_the_bundle_removes_its_commands"
       - "tests/sandbox/test_claude_install.py::test_the_naming_convention_is_declared_rather_than_inferred[claude]"
       - "tests/sandbox/test_claude_install.py::test_the_naming_convention_is_declared_rather_than_inferred[opencode]"
-    evidence:
-      - "Issue #77"
 
   - id: REQ-DOCS-COMPAT-001
     statement: >-
@@ -2919,9 +2577,7 @@ requirements:
       rather than implied, and a claim naming a test the suite does not collect
       fails validation.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - check:PUB-COMPAT-CLAIM
       - policy:bootstrap-policy.yml
@@ -2936,8 +2592,6 @@ requirements:
       - "tests/test_compatibility.py::test_the_document_says_it_is_generated"
       - "tests/test_compatibility.py::test_a_registered_check_verifies_the_claims"
       - "tests/test_compatibility.py::test_every_claimed_node_id_is_collected"
-    evidence:
-      - "Issue #78"
 
   - id: REQ-CORE-FLAVOUR-001
     statement: >-
@@ -2948,9 +2602,7 @@ requirements:
       this extension does not honour, rather than leaving the operator to
       discover it when a command fails.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - check:INV-SCRIPT-FLAVOUR
@@ -2966,8 +2618,6 @@ requirements:
       - "tests/test_script_flavour.py::test_a_project_with_no_recorded_choice_is_unknown_not_ok"
       - "tests/test_script_flavour.py::test_an_unreadable_choice_is_unknown_not_ok"
       - "tests/test_script_flavour.py::test_without_the_preset_the_provided_flavour_is_not_asserted"
-    evidence:
-      - "Issue #80"
 
   - id: REQ-TOOLING-HARNESS-001
     statement: >-
@@ -2980,9 +2630,7 @@ requirements:
       recorded and never reported as executed, and a workflow missing an
       expected step fails the run by name.
     priority: must
-    owner: framework
     release: "0.9.0"
-    status: verified
     components:
       - workflow:lifecycle-refine
       - workflow:lifecycle-outcome-review
@@ -3016,8 +2664,6 @@ requirements:
       - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-spike]"
       - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-story-delivery]"
       - "tests/test_harness.py::test_every_workflow_walks_without_a_model[lifecycle-triage]"
-    evidence:
-      - "Issue #82"
 
   - id: REQ-TOOLING-FAILCLOSED-001
     statement: >-
@@ -3030,9 +2676,7 @@ requirements:
       whereas an empty tier list because someone renamed step_timeouts is a
       broken input.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:scripts/lib/checks.py
     verified_by:
@@ -3048,9 +2692,7 @@ requirements:
       a not-ready verdict, the Refining to Ready edge, and a second
       decomposition wave -- are executed.
     priority: must
-    owner: framework
     release: "0.9.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.readiness
       - command:speckit.github-lifecycle.decompose
@@ -3072,17 +2714,13 @@ requirements:
       - "tests/test_readiness.py::test_delivery_refuses_an_item_with_no_recorded_verdict"
       - "tests/test_readiness.py::test_an_emitted_verdict_names_what_the_gate_decides"
       - "tests/test_readiness.py::test_recording_replaces_rather_than_accumulates"
-    evidence:
-      - "Issue #84"
   - id: REQ-BACKLOG-TRIAGE-001
     statement: >-
       Triage decides what an item is and never when it will be done. It cannot
       reach Ready, does not convert an observation into work, and records
       priority only as a recommendation.
     priority: must
-    owner: product/process owner
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-triage
       - command:speckit.github-lifecycle.triage
@@ -3102,9 +2740,7 @@ requirements:
       Published documentation states what has been verified and on what
       platform, and names what has not. A claim no test backs is not made.
     priority: should
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - script:VALIDATION.md
     verified_by:
@@ -3117,9 +2753,7 @@ requirements:
       Devbox provisions the toolchain and supervises processes, and its scripts
       may only delegate.
     priority: must
-    owner: bundle maintainer
     release: "0.1.1"
-    status: verified
     components:
       - script:Makefile
       - script:devbox.json
@@ -3137,9 +2771,7 @@ requirements:
       observation declares whether it is specified or inferred, and an
       incomplete record is refused rather than partially consumed.
     priority: must
-    owner: workflow maintainer
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-discover
       - command:speckit.github-lifecycle.discover
@@ -3161,9 +2793,7 @@ requirements:
       informed can reach Output Done, and promotion names an approver and a
       reason. Throwaway code does not become production code by omission.
     priority: must
-    owner: workflow maintainer
     release: "0.2.0"
-    status: verified
     components:
       - policy:artifact-policy.yml
       - workflow:lifecycle-prototype
@@ -3189,9 +2819,7 @@ requirements:
       mode has a case, an unrecognised mode states what was assumed, and what
       was learned is reconciled with the spec before planning.
     priority: must
-    owner: workflow maintainer
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-story-delivery
     verified_by:
@@ -3205,9 +2833,7 @@ requirements:
       steps and its approval gate. Spec Kit has no sub-workflow step, so the
       duplication is forced and drift must be detected rather than prevented.
     priority: must
-    owner: workflow maintainer
     release: "0.2.0"
-    status: verified
     components:
       - workflow:lifecycle-story-delivery
       - workflow:lifecycle-prototype
@@ -3227,9 +2853,7 @@ requirements:
       than missed; an unreadable data source blocks; and only a named
       authority may record Outcome Validated.
     priority: must
-    owner: framework
     release: "0.2.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - command:speckit.github-lifecycle.outcome
@@ -3254,9 +2878,6 @@ requirements:
       - "tests/test_outcome.py::test_the_required_fields_come_from_policy"
       - "tests/test_outcome.py::test_the_result_vocabulary_comes_from_policy"
       - "tests/test_outcome.py::test_validation_without_a_named_authority_is_refused"
-    evidence:
-      - "Issue #55"
-      - "Issue #86"
 
   - id: REQ-PACKAGE-MECHANICS-001
     statement: >-
@@ -3269,9 +2890,7 @@ requirements:
       of installing from a built archive is pinned; and a failed install leaves
       no partial component and is not recorded as installed.
     priority: must
-    owner: framework
     release: "0.9.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - preset:lean-full-lifecycle-governance
@@ -3284,30 +2903,6 @@ requirements:
       - "tests/sandbox/test_bundle_mechanics.py::test_reinstall_restores_presets_commands_and_components"
       - "tests/sandbox/test_bundle_mechanics.py::test_installing_from_a_built_archive_is_recorded"
       - "tests/sandbox/test_bundle_mechanics.py::test_a_failed_install_leaves_no_partial_component"
-    evidence:
-      - "Issue #83"
-
-  - id: REQ-TOOLING-ACCEPTANCE-001
-    statement: >-
-      The acceptance registry has a strict schema and resolves behavioral test
-      evidence against pytest collection. Wording-only tests cannot count as
-      behavioral evidence, blocked and pilot scenarios remain distinct from
-      test gaps, and the P12 exit gate rejects every must scenario not covered.
-    priority: must
-    owner: framework
-    release: "0.9.0"
-    status: verified
-    components:
-      - script:scripts/validate_acceptance.py
-      - script:tooling/acceptance-scenarios.yml
-      - script:tooling/schemas/acceptance-scenarios.schema.json
-    verified_by:
-      - "tests/test_acceptance_registry.py::test_registry_is_consistent"
-      - "tests/test_acceptance_registry.py::test_unknown_test_evidence_is_rejected"
-      - "tests/test_acceptance_registry.py::test_missing_test_evidence_is_rejected"
-      - "tests/test_acceptance_registry.py::test_wording_evidence_is_rejected"
-      - "tests/test_acceptance_registry.py::test_blocked_metadata_is_required"
-      - "tests/test_acceptance_registry.py::test_p12_gate_rejects_partial_and_absent_but_ignores_other_phases"
 
   - id: REQ-GITHUB-CONFIG-002
     statement: >-
@@ -3320,9 +2915,7 @@ requirements:
       which is the whole defect. A config declaring no repository constrains
       nothing.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/config.py
       - extension:github-lifecycle
@@ -3333,9 +2926,6 @@ requirements:
       - "tests/test_config.py::test_naming_both_halves_explicitly_is_honoured"
       - "tests/test_config.py::test_an_explicit_project_for_the_configured_repository_is_allowed"
       - "tests/test_config.py::test_a_config_declaring_no_repository_constrains_nothing"
-    evidence:
-      - "Issue #121"
-      - "Issue #120"
 
   - id: REQ-GITHUB-CONFIG-001
     statement: >-
@@ -3347,9 +2937,7 @@ requirements:
       and with nothing declared anywhere the command names the file to edit
       instead of guessing a repository.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - extension:github-lifecycle
       - command:speckit.github-lifecycle.doctor
@@ -3366,8 +2954,6 @@ requirements:
       - "tests/test_config.py::test_a_missing_project_number_is_none_not_an_error"
       - "tests/test_config.py::test_declared_field_names_are_readable"
       - "tests/test_config.py::test_the_scripts_no_longer_require_the_flag"
-    evidence:
-      - "Issue #92"
 
   - id: REQ-BACKLOG-RETIRE-002
     statement: >-
@@ -3379,9 +2965,7 @@ requirements:
       run still applies every refusal the real command applies, and the
       read-back still guards the path that actually writes.
     priority: must
-    owner: product/process owner
     release: "0.3.0"
-    status: verified
     components:
       - command:speckit.github-lifecycle.retire
       - script:bundle/components/extensions/github-lifecycle/scripts/retire.py
@@ -3391,8 +2975,6 @@ requirements:
       - "tests/test_retire.py::test_a_dry_run_exits_zero"
       - "tests/test_retire.py::test_a_dry_run_still_refuses_what_a_real_retirement_refuses"
       - "tests/test_retire.py::test_the_read_back_still_guards_a_real_retirement"
-    evidence:
-      - "Issue #149"
   - id: REQ-CORE-RATCHET-002
     statement: >-
       A ratchet baseline records what it measured, and is compared only with a
@@ -3405,9 +2987,7 @@ requirements:
       declares, so a field added to the policy cannot leave the checker writing
       the old set.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/ratchet.py
       - command:speckit.github-lifecycle.ratchet
@@ -3428,8 +3008,6 @@ requirements:
       - "tests/test_ratchet.py::test_the_command_line_records_the_conditions_it_measured"
       - "tests/test_ratchet.py::test_the_command_line_refuses_a_run_that_states_no_conditions"
       - "tests/test_ratchet.py::test_the_command_documents_what_a_baseline_must_say_it_measured"
-    evidence:
-      - "Issue #142"
   - id: REQ-CORE-BINARIES-001
     statement: >-
       Doctor must report the external binaries this project will execute --
@@ -3443,9 +3021,7 @@ requirements:
       install a binary it never runs. With the governance preset absent the
       conditional binary is reported unknown rather than guessed.
     priority: must
-    owner: framework
     release: "0.3.0"
-    status: verified
     components:
       - script:bundle/components/extensions/github-lifecycle/scripts/ratchet.py
       - command:speckit.github-lifecycle.ratchet
@@ -3466,11 +3042,6 @@ requirements:
       - "tests/test_ratchet.py::test_the_command_line_records_the_conditions_it_measured"
       - "tests/test_ratchet.py::test_the_command_line_refuses_a_run_that_states_no_conditions"
       - "tests/test_ratchet.py::test_the_command_documents_what_a_baseline_must_say_it_measured"
-    evidence:
-      - "Issue #142"
-      - script:bundle/components/extensions/github-lifecycle/scripts/doctor.py
-      - command:speckit.github-lifecycle.doctor
-      - policy:model-routing.yml
     verified_by:
       - "tests/test_doctor_binaries.py::test_a_missing_inventory_binary_is_reported_for_the_integration_that_runs_it"
       - "tests/test_doctor_binaries.py::test_the_missing_inventory_binary_names_what_fails"
@@ -3482,5 +3053,3 @@ requirements:
       - "tests/test_doctor_binaries.py::test_without_the_preset_the_conditional_binary_is_unknown_not_guessed"
       - "tests/test_doctor_binaries.py::test_the_unconditional_binaries_are_reported_without_the_preset"
       - "tests/test_doctor_binaries.py::test_the_doctor_report_carries_the_binaries_section"
-    evidence:
-      - "Issue #159"

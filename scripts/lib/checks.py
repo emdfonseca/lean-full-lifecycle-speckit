@@ -216,13 +216,18 @@ def release_ladder(ctx: Ctx) -> Iterator[Finding]:
     for req in reqs:
         release = str(req.get("release") or "").strip()
         if release and parts(release) > shipped:
-            by_release.setdefault(release, []).append(str(req.get("status") or ""))
+            by_release.setdefault(release, []).append(
+                bool(req.get("verified_by")))
     if not by_release:
         return
 
     nxt = min(by_release, key=parts)
-    statuses = by_release[nxt]
-    if any(status != "verified" for status in statuses):
+    # "Every requirement for the next rung cites a test." This read a `status`
+    # field, which every requirement set to `verified` -- one value of four, so
+    # it distinguished nothing and the rung was "fully verified" by assertion.
+    # Citing a test is a claim the traceability check tests against collected
+    # pytest nodes, so it can be false.
+    if not all(by_release[nxt]):
         return
 
     # `gates:` declares what a rung needs beyond its requirements -- 0.9.0 asks
@@ -239,13 +244,14 @@ def release_ladder(ctx: Ctx) -> Iterator[Finding]:
                and str(gate.get("status") or "").strip() != "met"]
     if pending:
         return
-    # A warning, not an error. What this knows is requirement status, and a
+    # A warning, not an error. What this knows is which requirements cite a
+    # test, and a
     # roadmap exit condition can require more -- 0.9.0 asks for four completed
     # pilots, which no `status` field records. Refusing the build would force a
     # release decision on evidence this check does not have.
     yield ctx.finding(
         "INV-RELEASE-LADDER", "tooling/bundle-meta.yml",
-        f"ships {ctx.inv.version} while all {len(statuses)} requirements for "
+        f"ships {ctx.inv.version} while all {len(by_release[nxt])} requirements for "
         f"{nxt} are verified. Cut it, or record what its exit condition still "
         f"needs", severity="warning")
 
