@@ -3302,3 +3302,42 @@ requirements:
       - "tests/test_constitution_guidance.py::test_the_hand_written_half_still_names_the_subjects"
       - "tests/test_constitution_guidance.py::test_the_generator_refuses_a_policy_with_no_contract"
       - "tests/test_constitution_guidance.py::test_generate_check_runs_in_the_makefile"
+
+  - id: REQ-PRODUCT-PROVENANCE-001
+    statement: >-
+      Every claim-bearing entry of an architecture document declares whether it
+      describes the code or proposes a change to it, and an entry declaring
+      neither is reported -- unmarked reads as observed, and a reader who takes
+      a proposal for a description acts on a false statement about the code.
+      Provenance is per entry rather than per section, because one section
+      holds both, and it is the author's own classification of the entry, so a
+      checker reads it without reaching outside the repository. Which sections
+      carry it is declared in `bootstrap-policy.yml`; a prose section states no
+      per-entry claim and so carries none. An intended entry under the
+      decisions heading, in a document that observes anything at all, is a fix
+      rather than a decision and is reported as belonging under risks and
+      technical debt -- while a document that observes nothing has nothing to
+      remediate, so a project with no code passes with every entry intended.
+      There is no required evidence field: evidence is a claim about foreign
+      code, and a check able only to confirm a string is citation-shaped would
+      manufacture confidence.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:bundle/components/extensions/github-lifecycle/scripts/documents.py
+      - command:speckit.github-lifecycle.documents
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_documents.py::test_an_unmarked_entry_is_reported"
+      - "tests/test_documents.py::test_the_report_says_why_unmarked_is_not_neutral"
+      - "tests/test_documents.py::test_a_marked_entry_passes"
+      - "tests/test_documents.py::test_every_claim_bearing_section_is_checked"
+      - "tests/test_documents.py::test_prose_carries_no_per_entry_claim"
+      - "tests/test_documents.py::test_a_marker_must_open_the_entry_not_merely_appear_in_it"
+      - "tests/test_documents.py::test_a_remediation_under_solution_strategy_is_reported"
+      - "tests/test_documents.py::test_an_observed_decision_under_solution_strategy_passes"
+      - "tests/test_documents.py::test_an_intended_entry_elsewhere_is_not_a_remediation"
+      - "tests/test_documents.py::test_a_document_observing_nothing_passes_with_everything_intended"
+      - "tests/test_documents.py::test_one_observed_entry_anywhere_makes_the_document_answerable"
+      - "tests/test_documents.py::test_the_policy_states_the_form_an_author_writes"
+      - "tests/test_documents.py::test_solution_strategy_no_longer_answers_two_questions"

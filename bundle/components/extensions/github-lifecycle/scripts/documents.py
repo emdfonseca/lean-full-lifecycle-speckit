@@ -294,6 +294,90 @@ def _holds_records(path: Path) -> bool:
     return path.is_dir() and any(path.glob("*.md"))
 
 
+def entries_of(form: str, body: str) -> list[str]:
+    """The claim-bearing entries of a section, by its declared form.
+
+    A table row's claim is its first cell; a list item's is its text. Prose
+    holds no per-entry claim and yields none, which is why `Context and scope`
+    carries no provenance rather than being exempted by name.
+    """
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
+    if form == "table":
+        rows = [ln for ln in lines if ln.startswith("|")]
+        out = []
+        for row in rows[2:]:                     # header and separator first
+            cells = [c.strip() for c in row.strip("|").split("|")]
+            if cells:
+                out.append(cells[0])
+        return out
+    if form == "list":
+        return [re.sub(r"^([-*]|\d+\.)\s*", "", ln) for ln in lines
+                if re.match(r"^([-*]|\d+\.)\s", ln)]
+    return []
+
+
+def provenance_of(entry: str, markers: dict) -> str | None:
+    """Which marker an entry opens with, or None.
+
+    Opens with, not contains. An entry that mentions what was observed
+    elsewhere in its own sentence has not classified itself, and accepting that
+    would make the marker decorative.
+    """
+    text = entry.lstrip("*_ ").lstrip()
+    for key, word in markers.items():
+        if text.lower().startswith(str(word).lower()):
+            return key
+    return None
+
+
+def provenance_problems(name: str, spec: dict, found: dict) -> list[str]:
+    """Entries that do not say whether they describe the code or propose a change.
+
+    Two findings, and the second is the one that only shows up in a project
+    with code: a proposed change filed under the decisions heading is a fix,
+    and a fix belongs where fixes are tracked. A project that observes nothing
+    has nothing to remediate, so everything there is legitimately intended.
+    """
+    rules = spec.get("provenance") or {}
+    markers = rules.get("markers") or {}
+    if not markers:
+        return []
+
+    problems: list[str] = []
+    forms = {s["name"]: s.get("form", "") for s in spec.get("sections") or []}
+    classified: dict[str, list[tuple[str, str]]] = {}
+
+    for title in rules.get("applies_to") or []:
+        body = found.get(title.lower())
+        if body is None:
+            continue                      # a missing section is already reported
+        for entry in entries_of(forms.get(title, ""), body):
+            kind = provenance_of(entry, markers)
+            if kind is None:
+                problems.append(
+                    f"{name}: {title!r} entry {entry[:60]!r} declares neither "
+                    f"{' nor '.join(str(w) for w in markers.values())}. "
+                    f"Unmarked reads as observed, and a reader who takes a "
+                    f"proposal for a description acts on a false statement "
+                    f"about the code.")
+                continue
+            classified.setdefault(title, []).append((kind, entry))
+
+    remediation = rules.get("remediation") or {}
+    section = remediation.get("section")
+    if section and any(kind == "observed"
+                       for entries in classified.values()
+                       for kind, _ in entries):
+        for kind, entry in classified.get(section, []):
+            if kind == "intended":
+                problems.append(
+                    f"{name}: {section!r} entry {entry[:60]!r} is "
+                    f"{markers['intended']}, which in a document that observes "
+                    f"anything is a fix rather than a decision. It belongs "
+                    f"under {remediation.get('belongs')!r}.")
+    return problems
+
+
 def check(root: Path, contract: dict, today: date | None = None) -> list[str]:
     problems: list[str] = []
     ambiguity = decision_records(root, contract)["problem"]
@@ -327,6 +411,7 @@ def check(root: Path, contract: dict, today: date | None = None) -> list[str]:
             issue = form_problem(f"{name}: {title}", section.get("form", ""), body)
             if issue:
                 problems.append(issue)
+        problems.extend(provenance_problems(name, spec, found))
     return problems
 
 

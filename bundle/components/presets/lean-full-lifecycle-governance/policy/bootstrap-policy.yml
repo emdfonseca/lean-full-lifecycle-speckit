@@ -533,8 +533,10 @@ product_documents:
         - name: Solution strategy
           form: list
           answers: >-
-            arc42 section 4. Numbered decisions about structure, each with an
-            owner. A decision with no owner is a suggestion.
+            arc42 section 4. Numbered decisions about structure. A decision the
+            code already reflects is observed; one it does not is intended, and
+            in a project that has code that is a fix rather than a decision --
+            see `provenance.remediation`.
         - name: Risks and technical debt
           form: table
           answers: >-
@@ -546,6 +548,43 @@ product_documents:
             Not an arc42 section, and kept because arc42 has no equivalent.
             Where a change can be made and observed without restructuring.
             Seam, location, what it enables.
+      # Whether an entry describes the code or proposes a change to it.
+      #
+      # Both pilots wrote the same five sections carrying different kinds of
+      # claim, and each invented its own disclaimer to compensate. Neither
+      # disclaimer was required, so a document that omitted one read as
+      # observed when it was not -- and a reader who takes a proposal for a
+      # description acts on a false statement about the codebase.
+      #
+      # Per entry rather than per section, because one section holds both. It
+      # is the author's own classification, made when the document is written
+      # and true of the entry itself, so a checker can read it without
+      # reaching outside the repository. That is also why there is no evidence
+      # field: evidence is a claim about foreign code, and a check that could
+      # only confirm a string is citation-shaped would manufacture confidence.
+      provenance:
+        markers:
+          observed: Observed
+          intended: Intended
+        # Sections whose entries make claims. `Context and scope` is prose
+        # about the boundary and states no per-entry claim, so it carries none.
+        applies_to:
+          - Building blocks
+          - Solution strategy
+          - Risks and technical debt
+          - Seams
+        form: >-
+          Each entry opens with **Observed.** or **Intended.** -- a table row
+          begins its first cell with it, a list item begins its text with it.
+          An entry that declares neither is reported: unmarked reads as
+          observed, and that is the reading that does harm.
+        # An intended entry under a decisions heading, in a document that
+        # observes anything at all, is a remediation wearing a decision's
+        # clothes. A project with nothing observed has nothing to remediate,
+        # so every entry there is legitimately intended.
+        remediation:
+          section: Solution strategy
+          belongs: Risks and technical debt
       delegates:
         - >-
           arc42 section 9, Architectural Decisions, to the decision-record

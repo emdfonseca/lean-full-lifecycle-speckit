@@ -37,9 +37,18 @@ SAMPLE = {
     "prose": "One sentence. Another one.\n",
 }
 
+# The same bodies with each entry classified. A section the contract requires
+# provenance on is not complete without it, so a "complete project" fixture
+# that omitted the marker would be asserting the check away.
+MARKED = {
+    "table": "| a | b |\n|---|---|\n| **Observed.** x | y |\n",
+    "list": "- **Observed.** one\n- **Observed.** two\n",
+    "prose": "One sentence. Another one.\n",
+}
 
-def body_for(form: str) -> str:
-    return SAMPLE.get(form, "text\n")
+
+def body_for(form: str, marked: bool = False) -> str:
+    return (MARKED if marked else SAMPLE).get(form, "text\n")
 
 
 # The contract requires a freshness line on every declared document, so a
@@ -51,8 +60,11 @@ def complete(**over):
     out = {}
     for spec in CONTRACT["required"]:
         parts = [f"# {spec['path']}\n{FRESH}\n"]
+        classified = set((spec.get("provenance") or {}).get("applies_to") or [])
         for section in spec.get("sections") or []:
-            parts.append(f"## {section['name']}\n{body_for(section.get('form',''))}")
+            parts.append(f"## {section['name']}\n"
+                         + body_for(section.get("form", ""),
+                                    section["name"] in classified))
         if spec.get("per_principle"):
             # A conforming principle: one line stating the rule, then bullets.
             parts.append("## Principles\n### I. A rule\n"
@@ -173,7 +185,9 @@ def test_architecture_separates_observation_from_decision():
     names = {s["name"] for s in spec["sections"]}
     assert {"Building blocks", "Solution strategy"} <= names
     strategy = next(s for s in spec["sections"] if s["name"] == "Solution strategy")
-    assert "owner" in strategy["answers"].lower()
+    # Not ownership: who owns an entry is orthogonal to whether it is true yet.
+    # The section now says which of its two kinds of content an entry is.
+    assert "provenance.remediation" in strategy["answers"]
     blocks = next(s for s in spec["sections"] if s["name"] == "Building blocks")
     assert "observed" in blocks["answers"].lower()
 
@@ -542,3 +556,156 @@ def test_deliberately_untested_is_a_section_not_a_document():
         "the rest of a testing document restates quality-gates.yml")
     product = next(s for s in CONTRACT["required"] if s["path"] == "PRODUCT.md")
     assert "Deliberately untested" in {s["name"] for s in product["sections"]}
+
+
+# --- architecture provenance: describing the code, or proposing a change ------
+
+ARCH_SPEC = next(
+    e for e in yaml.safe_load(
+        (ROOT / "policy/bootstrap-policy.yml").read_text(encoding="utf-8")
+    )["product_documents"]["required"]
+    if e["path"].endswith("architecture.md")
+)
+MARKERS = ARCH_SPEC["provenance"]["markers"]
+
+
+def architecture(building="", strategy="", risks="", seams=""):
+    """A document carrying only the sections a provenance test needs."""
+    def table(rows):
+        return "| What | Note |\n|---|---|\n" + "".join(
+            f"| {r} | x |\n" for r in rows)
+
+    return docs.sections_of(
+        "## Context and scope\n\nIt talks to a disk.\n\n"
+        f"## Building blocks\n\n{table(building)}\n"
+        "## Solution strategy\n\n"
+        + "".join(f"{i}. {s}\n" for i, s in enumerate(strategy, 1))
+        + f"\n## Risks and technical debt\n\n{table(risks)}\n"
+        f"## Seams\n\n{table(seams)}\n")
+
+
+def problems(**kwargs):
+    return docs.provenance_problems("arch.md", ARCH_SPEC,
+                                         architecture(**kwargs))
+
+
+# AC1 -- an entry that declares neither is reported.
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_an_unmarked_entry_is_reported():
+    found = problems(building=["`Database` holds a connection"])
+    assert len(found) == 1
+    assert "declares neither Observed nor Intended" in found[0]
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_the_report_says_why_unmarked_is_not_neutral():
+    # Unmarked reads as observed, which is the reading that does harm.
+    found = problems(seams=["A seam nobody classified"])
+    assert "Unmarked reads as observed" in found[0]
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_a_marked_entry_passes():
+    assert problems(building=["**Observed.** `Database` holds a connection"]) == []
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_every_claim_bearing_section_is_checked():
+    found = problems(building=["a"], strategy=["b"], risks=["c"], seams=["d"])
+    assert len(found) == 4
+    for title in ARCH_SPEC["provenance"]["applies_to"]:
+        assert any(f"{title!r}" in p for p in found)
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_prose_carries_no_per_entry_claim():
+    # `Context and scope` is about the boundary and states no per-entry claim,
+    # so it is absent from applies_to rather than exempted by name.
+    assert "Context and scope" not in ARCH_SPEC["provenance"]["applies_to"]
+    assert docs.entries_of("prose", "It talks to a disk.") == []
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_a_marker_must_open_the_entry_not_merely_appear_in_it():
+    # "As observed elsewhere, the walker..." has classified nothing. Accepting
+    # it would make the marker decorative.
+    found = problems(building=["The walker, as Observed in the audit, is new"])
+    assert len(found) == 1
+
+
+# AC4 -- a fix under the decisions heading belongs with the fixes.
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_a_remediation_under_solution_strategy_is_reported():
+    found = problems(
+        building=["**Observed.** `Database` holds a connection"],
+        strategy=["**Intended.** A logging seam exists. There is none."])
+    assert len(found) == 1
+    assert "is a fix rather than a decision" in found[0]
+    assert "'Risks and technical debt'" in found[0]
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_an_observed_decision_under_solution_strategy_passes():
+    assert problems(
+        building=["**Observed.** `Database` holds a connection"],
+        strategy=["**Observed.** Exceptions propagate out of the transaction"],
+    ) == []
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_an_intended_entry_elsewhere_is_not_a_remediation():
+    # Only the decisions heading. An intended risk or seam is ordinary.
+    assert problems(
+        building=["**Observed.** `Database` holds a connection"],
+        risks=["**Intended.** Retire the second backend"],
+        seams=["**Intended.** A logging seam"],
+    ) == []
+
+
+# AC5 -- a project with no code is not a project with a gap.
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_a_document_observing_nothing_passes_with_everything_intended():
+    """An empty as-built is the correct state for a project with no code.
+
+    This is why the rule is "intended alongside something observed" rather
+    than "intended under Solution strategy": greenfield has nothing to
+    remediate, and reporting it would refuse the correct document.
+    """
+    assert problems(
+        building=["**Intended.** Walker"],
+        strategy=["**Intended.** The walker never opens a file for writing"],
+        risks=["**Intended.** Nothing measured yet"],
+        seams=["**Intended.** The reporter"],
+    ) == []
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_one_observed_entry_anywhere_makes_the_document_answerable():
+    # The discriminator is the document, not the section: a single observed
+    # row is what says this project has code to remediate.
+    assert problems(
+        seams=["**Observed.** The reporter"],
+        strategy=["**Intended.** A logging seam exists. There is none."],
+    ) != []
+
+
+# --- the contract states it, and the mirror carries it ------------------------
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_the_policy_states_the_form_an_author_writes():
+    form = ARCH_SPEC["provenance"]["form"]
+    for word in MARKERS.values():
+        assert word in form
+    assert "table row" in form and "list item" in form
+
+
+@pytest.mark.req("REQ-PRODUCT-PROVENANCE-001")
+def test_solution_strategy_no_longer_answers_two_questions():
+    # One heading held arc42 decisions in one stream and a fix list in the
+    # other. The contract now says which is which.
+    strategy = next(s for s in ARCH_SPEC["sections"]
+                    if s["name"] == "Solution strategy")
+    assert "provenance.remediation" in strategy["answers"]
