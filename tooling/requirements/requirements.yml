@@ -3264,3 +3264,41 @@ requirements:
       - "tests/test_capture.py::test_searching_without_create_writes_to_no_issue"
       - "tests/test_capture.py::test_invalidating_without_a_reason_is_refused"
       - "tests/test_capture.py::test_the_command_documents_that_it_marks_and_stops"
+
+  - id: REQ-PRODUCT-CONSTITUTION-001
+    statement: >-
+      The shape a constitution principle must take is described once, in
+      `product_documents.per_principle`, and rendered into both generator
+      surfaces -- the constitution command and the constitution addendum -- from
+      that policy, in the policy's own words rather than a paraphrase. Neither
+      surface describes the shape outside the generated region, because a
+      weaker restatement is the copy that drifts: the generator followed prose
+      that named neither the rule-first ordering nor the per-principle keyword
+      requirement, so a freshly authored constitution failed the contract its
+      own bundle enforces. Every RFC 2119 keyword `documents.py` accepts is
+      offered by the contract, so the checker cannot accept a form the contract
+      never stated. The rendered guidance directs an author to `SHOULD` when the
+      source material states a preference: that satisfies the check without
+      turning an expectation into an obligation, and only whoever governs the
+      project may decide an obligation -- never a generator, and never a
+      validator reacting to a missing keyword. `--check` fails when either
+      surface is stale, and runs in the Makefile beside the other generators.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:scripts/generate_constitution_guidance.py
+      - preset:lean-full-lifecycle-governance
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - "tests/test_constitution_guidance.py::test_both_surfaces_are_current"
+      - "tests/test_constitution_guidance.py::test_a_hand_edit_is_caught"
+      - "tests/test_constitution_guidance.py::test_the_region_says_it_is_generated"
+      - "tests/test_constitution_guidance.py::test_the_rendered_contract_is_the_policy_text"
+      - "tests/test_constitution_guidance.py::test_the_rule_first_ordering_reaches_the_generator"
+      - "tests/test_constitution_guidance.py::test_every_keyword_the_checker_accepts_is_named"
+      - "tests/test_constitution_guidance.py::test_a_preference_is_written_as_should"
+      - "tests/test_constitution_guidance.py::test_should_actually_satisfies_the_checker"
+      - "tests/test_constitution_guidance.py::test_the_hand_written_half_does_not_describe_the_shape"
+      - "tests/test_constitution_guidance.py::test_the_hand_written_half_still_names_the_subjects"
+      - "tests/test_constitution_guidance.py::test_the_generator_refuses_a_policy_with_no_contract"
+      - "tests/test_constitution_guidance.py::test_generate_check_runs_in_the_makefile"

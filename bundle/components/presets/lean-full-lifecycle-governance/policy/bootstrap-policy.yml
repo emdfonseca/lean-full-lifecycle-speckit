@@ -507,9 +507,9 @@ product_documents:
       per_principle:
         form: >-
           A name, one line stating the rule, then bullets using the RFC 2119
-          keywords MUST, MUST NOT, SHOULD, MAY. No explanatory paragraph before
-          the rule: if the rule needs one to be understood, it is not yet
-          written.
+          keywords MUST, MUST NOT, SHOULD, SHOULD NOT, MAY. No explanatory
+          paragraph before the rule: if the rule needs one to be understood, it
+          is not yet written.
         excludes: >-
           Anything a policy file already holds. Reference the path instead --
           the constitution's own first principle requires it, and a constitution
