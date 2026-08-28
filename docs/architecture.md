@@ -8,7 +8,7 @@ flowchart TD
     B --> L["official lean preset"]
     B --> G["governance preset<br/>append-only"]
     B --> E["github-lifecycle extension"]
-    B --> W["7 workflows"]
+    B --> W["14 workflows"]
 
     L --> C["core Spec Kit commands"]
     G --> C

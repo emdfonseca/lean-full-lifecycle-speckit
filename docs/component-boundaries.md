@@ -11,7 +11,7 @@ This bundle therefore uses:
 ```text
 1 official Lean preset
 1 additive governance preset
-7 workflows
+14 workflows
 1 GitHub extension
 0 custom runtime step types
 ```

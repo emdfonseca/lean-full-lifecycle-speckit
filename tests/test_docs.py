@@ -164,3 +164,57 @@ def test_an_optional_dependency_says_what_its_absence_costs():
         if not pkg.get("required"):
             assert "without it" in pkg["why"].lower(), (
                 f"{pkg['name']} is optional and does not say what is lost")
+
+
+# --- a stated count is a claim about the tree ---------------------------------
+
+# The documents that describe what the bundle ships today. A count here is a
+# claim about the inventory and can therefore be wrong.
+DESCRIBE_WHAT_SHIPS = (
+    "README.md",
+    "CLAUDE.md",
+    "docs/architecture.md",
+    "docs/component-boundaries.md",
+)
+
+WORKFLOW_COUNT = re.compile(
+    r"\b(?:(\d+)|(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"thirteen|fourteen|fifteen|sixteen))\s+(?:lifecycle\s+)?workflows\b",
+    re.I)
+WORDS = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve "
+    "thirteen fourteen fifteen sixteen".split())}
+
+
+def _stated_counts(text):
+    for m in WORKFLOW_COUNT.finditer(text):
+        digit, word = m.group(1), m.group(2)
+        yield int(digit) if digit else WORDS[word.lower()], m.group(0)
+
+
+@pytest.mark.req("REQ-DOCS-TRUTH-001")
+def test_no_document_states_a_workflow_count_the_tree_contradicts():
+    """A doc that miscounts what ships is drift, and it is checkable.
+
+    Not a prose assertion: the two sides change independently. The number is
+    written by a person, the inventory is what is on disk, and the check fails
+    without anybody touching the file it reads.
+
+    Scoped to the documents that describe the shipped bundle. Two kinds are
+    deliberately out. `docs/evidence/` records what was true when a run
+    happened, and editing a dated measurement to match today falsifies it. The
+    roadmap and plan-corrections describe an intended inventory -- "scaling to
+    15 workflows" is a plan, not a claim about the tree -- and holding a plan
+    to today's count would forbid planning.
+    """
+    shipped = len([d for d in (ROOT / "bundle/components/workflows").iterdir()
+                   if (d / "workflow.yml").is_file()])
+    wrong = []
+    for rel in DESCRIBE_WHAT_SHIPS:
+        doc = ROOT / rel
+        for count, phrase in _stated_counts(doc.read_text(encoding="utf-8")):
+            if count != shipped:
+                wrong.append(f"{rel}: {phrase!r}")
+    assert not wrong, (
+        f"the tree ships {shipped} workflows; these say otherwise: {wrong}")
+

@@ -242,7 +242,7 @@ script is exactly `make <target>`.
 
 Note the two senses of Devbox are separate concerns. As *source tooling* it is
 optional and competes with Make. As a *target-project* dependency it is not
-optional: five of the seven workflows run `devbox run verify` or
+optional: five of the fourteen workflows run `devbox run verify` or
 `devbox run release-verify`, and the product repository must provide them.
 
 ## Official validation

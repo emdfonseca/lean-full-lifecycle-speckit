@@ -7,7 +7,7 @@ It preserves Spec Kit's core SDD loop and installs:
 
 - the official Lean preset;
 - an additive Engineering/Lifecycle Governance preset;
-- seven lifecycle workflows;
+- fourteen lifecycle workflows;
 - one narrowly scoped GitHub lifecycle extension.
 
 ```mermaid
@@ -92,7 +92,7 @@ devbox services up catalog    # serve the local catalog for install testing
 ```
 
 Do not confuse this with the *target project's* Devbox requirement: five of the
-seven workflows run `devbox run verify` or `devbox run release-verify`, and the
+fourteen workflows run `devbox run verify` or `devbox run release-verify`, and the
 product repository must provide those.
 
 ## Prerequisite

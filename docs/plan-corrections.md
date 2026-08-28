@@ -400,7 +400,7 @@ defence.
 Pick **one**. `devbox run validate/test/build/smoke` (roadmap:203-207) duplicates
 `Makefile:1-13` one-for-one and the roadmap never says whether Make survives. Recommend devbox
 delegating to make, or delete the Makefile. Note Devbox is already assumed as a *target-product*
-dependency (`README.md:77`, `policy/framework.yml:5`, and 5 of 7 workflows' shell steps run
+dependency (`README.md:77`, `policy/framework.yml:5`, and 5 of 14 workflows' shell steps run
 `devbox run verify`) — that is a separate concern from source-repo tooling and both must be stated.
 
 ---

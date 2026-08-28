@@ -2738,15 +2738,17 @@ requirements:
   - id: REQ-DOCS-TRUTH-001
     statement: >-
       Published documentation states what has been verified and on what
-      platform, and names what has not. A claim no test backs is not made.
+      platform, and names what has not. A claim no test backs is not made, and
+      a count of what ships is checked against what ships rather than restated.
     priority: should
     release: "0.1.1"
     components:
+      - script:README.md
       - script:VALIDATION.md
     verified_by:
       - "tests/test_docs.py::test_validation_states_unverified_areas"
       - "tests/test_docs.py::test_validation_names_the_platform_it_was_run_on"
-
+      - "tests/test_docs.py::test_no_document_states_a_workflow_count_the_tree_contradicts"
   - id: REQ-TOOLING-TASKS-001
     statement: >-
       Each build task is defined exactly once. Make owns the definitions;
