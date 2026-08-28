@@ -85,10 +85,15 @@ def main() -> int:
     zip_dir(preset, preset_zip)
     artifacts.append(preset_zip)
 
-    extension = BUNDLE / "components/extensions/github-lifecycle"
-    extension_zip = DIST / f"github-lifecycle-{VERSION}.zip"
-    zip_dir(extension, extension_zip)
-    artifacts.append(extension_zip)
+    # Every extension, discovered the way the workflows below are. Naming one
+    # meant the second shipped in the catalog and not in dist/, so every
+    # sandbox install 404'd on an archive the catalog promised.
+    for extension in sorted((BUNDLE / "components/extensions").iterdir()):
+        if not (extension / "extension.yml").exists():
+            continue
+        destination = DIST / f"{extension.name}-{VERSION}.zip"
+        zip_dir(extension, destination)
+        artifacts.append(destination)
 
     for workflow in sorted((BUNDLE / "components/workflows").iterdir()):
         if not (workflow / "workflow.yml").exists():

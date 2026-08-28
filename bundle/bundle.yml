@@ -28,6 +28,8 @@ provides:
   extensions:
   - id: github-lifecycle
     version: 0.1.0
+  - id: work
+    version: 0.1.0
   workflows:
   - id: lifecycle-brownfield-adoption
     version: 0.1.0

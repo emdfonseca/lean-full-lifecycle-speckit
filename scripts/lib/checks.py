@@ -821,29 +821,29 @@ def command_script_invocation(ctx: Ctx) -> Iterator[Finding]:
     """
     import re
 
-    ext = ctx.inv.extension
     literal = re.compile(r"\b(python3?|py)\s+\.specify/")
-    for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
-        path = ext.path / str(entry.get("file", ""))
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8")
-        subject = f"{ext.ref}:{path.name}"
+    for ext in ctx.inv.extensions:
+        for entry in (ext.manifest.get("provides", {}) or {}).get("commands", []) or []:
+            path = ext.path / str(entry.get("file", ""))
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8")
+            subject = f"{ext.ref}:{path.name}"
 
-        found = literal.search(text)
-        if found:
-            yield ctx.finding(
-                "INV-COMMAND-SCRIPT-INVOCATION", subject,
-                f"prescribes {found.group(0).strip()!r}; write {{SCRIPT}} and "
-                f"let the CLI resolve an interpreter")
+            found = literal.search(text)
+            if found:
+                yield ctx.finding(
+                    "INV-COMMAND-SCRIPT-INVOCATION", subject,
+                    f"prescribes {found.group(0).strip()!r}; write {{SCRIPT}} and "
+                    f"let the CLI resolve an interpreter")
 
-        front = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
-        declares = bool(front) and "scripts:" in front.group(1)
-        if "{SCRIPT}" in text and not declares:
-            yield ctx.finding(
-                "INV-COMMAND-SCRIPT-INVOCATION", subject,
-                "uses {SCRIPT} but declares no scripts: front matter, so "
-                "nothing resolves it")
+            front = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+            declares = bool(front) and "scripts:" in front.group(1)
+            if "{SCRIPT}" in text and not declares:
+                yield ctx.finding(
+                    "INV-COMMAND-SCRIPT-INVOCATION", subject,
+                    "uses {SCRIPT} but declares no scripts: front matter, so "
+                    "nothing resolves it")
 
 
 def _role_candidates(root: Path) -> set[str]:
@@ -1098,6 +1098,45 @@ def command_resolves(ctx: Ctx) -> Iterator[Finding]:
                                   f"command {cmd!r} is provided by no component")
 
 
+@check("INV-STATE-WORKFLOW-RESOLVES",
+       "Every workflow item-types.yml routes to exists, for a state that exists",
+       scope="policy")
+def state_workflow_resolves(ctx: Ctx) -> Iterator[Finding]:
+    """The router's map, held to the things it names.
+
+    `state_workflows` is what keeps `speckit.work.continue` from carrying its
+    own state-to-workflow table. That only helps while the map is true: a
+    workflow renamed out from under it, or a state that no longer exists, turns
+    the router from "reads policy" into "reads a stale copy of policy", which
+    is the failure the map was introduced to prevent.
+    """
+    item_types = load_yaml(ctx.root / "policy/item-types.yml")
+    machine = load_yaml(ctx.root / "policy/state-machine.yml")
+    declared_states = set((machine.get("delivery_status") or {}).get("values") or [])
+    declared_types = set(item_types.get("types") or {})
+    installed = {comp.id for comp in ctx.inv.by_kind("workflow")}
+
+    for state, block in (item_types.get("state_workflows") or {}).items():
+        if state not in declared_states:
+            yield ctx.finding(
+                "INV-STATE-WORKFLOW-RESOLVES", f"state_workflows:{state}",
+                f"{state!r} is not a delivery state in state-machine.yml")
+        if not isinstance(block, dict):
+            yield ctx.finding(
+                "INV-STATE-WORKFLOW-RESOLVES", f"state_workflows:{state}",
+                "must map an item type (or 'default') to a workflow id")
+            continue
+        for key, workflow_id in block.items():
+            if key != "default" and key not in declared_types:
+                yield ctx.finding(
+                    "INV-STATE-WORKFLOW-RESOLVES", f"state_workflows:{state}:{key}",
+                    f"{key!r} is not an item type in item-types.yml")
+            if workflow_id not in installed:
+                yield ctx.finding(
+                    "INV-STATE-WORKFLOW-RESOLVES", f"state_workflows:{state}:{key}",
+                    f"workflow {workflow_id!r} is shipped by no component")
+
+
 # A step's own instruction to write nothing. An exemption is honoured only when
 # the step it names says this, so an exemption cannot cover a step that asks for
 # a write. Prose, not proof -- but a stale or false exemption stops being silent.
@@ -1238,7 +1277,6 @@ def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
     """
     import re
 
-    ext = ctx.inv.extension
     # A write is a non-GET method aimed at the organization issue-fields
     # collection. Matched on the same line, because these calls are written as
     # one `gh.rest(method, url)` expression throughout the extension.
@@ -1248,15 +1286,16 @@ def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
         .*?
         orgs/ [^"'\s]* /? issue[-_]fields
         """)
-    for script in sorted((ext.path / "scripts").glob("*.py")):
-        for number, line in enumerate(
-                script.read_text(encoding="utf-8").splitlines(), 1):
-            if write.search(line):
-                yield ctx.finding(
-                    "SEC-NO-ORG-SCHEMA-MUTATION",
-                    f"{script.name}:{number}",
-                    "writes to an organization Issue Field schema; "
-                    "docs/security.md says the bundle performs none")
+    for ext in ctx.inv.extensions:
+        for script in sorted((ext.path / "scripts").glob("*.py")):
+            for number, line in enumerate(
+                    script.read_text(encoding="utf-8").splitlines(), 1):
+                if write.search(line):
+                    yield ctx.finding(
+                        "SEC-NO-ORG-SCHEMA-MUTATION",
+                        f"{ext.id}/{script.name}:{number}",
+                        "writes to an organization Issue Field schema; "
+                        "docs/security.md says the bundle performs none")
 
 
 @check("INV-EXTENSION-CONFIG-NAME", "Extension config targets a name Spec Kit preserves",
@@ -1264,14 +1303,14 @@ def no_org_schema_mutation(ctx: Ctx) -> Iterator[Finding]:
 def extension_config_name(ctx: Ctx) -> Iterator[Finding]:
     # Spec Kit only scaffolds, backs up, and restores top-level *-config.yml or
     # *-config.local.yml. Any other target is silently never created.
-    ext = ctx.inv.extension
-    for entry in (ext.manifest.get("provides", {}) or {}).get("config", []) or []:
-        name = str(entry.get("name", ""))
-        if "/" in name or "\\" in name or not name.endswith(
-            ("-config.yml", "-config.local.yml")
-        ):
-            yield ctx.finding("INV-EXTENSION-CONFIG-NAME", f"{ext.ref}:{name}",
-                              "config target must be a top-level *-config.yml file")
+    for ext in ctx.inv.extensions:
+        for entry in (ext.manifest.get("provides", {}) or {}).get("config", []) or []:
+            name = str(entry.get("name", ""))
+            if "/" in name or "\\" in name or not name.endswith(
+                ("-config.yml", "-config.local.yml")
+            ):
+                yield ctx.finding("INV-EXTENSION-CONFIG-NAME", f"{ext.ref}:{name}",
+                                  "config target must be a top-level *-config.yml file")
 
 
 # --------------------------------------------------------------------------

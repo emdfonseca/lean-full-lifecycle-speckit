@@ -100,6 +100,7 @@ steps:
     args: 'Apply approved transition for {{ inputs.issue_ref }}: Delivery Status → In Progress; read back.
       --expect "Ready".'
 - id: specify
+  produces: spec.md
   timeout: 1800
   command: speckit.specify
   integration: '{{ inputs.integration }}'
@@ -301,18 +302,21 @@ Begin the file with a "What you are approving" block: one line per decision that
       always learned. Reconcile it or record it as unconfirmed; skipping silently is how
       a guess becomes a requirement.'
 - id: plan
+  produces: plan.md
   timeout: 1800
   command: speckit.plan
   integration: '{{ inputs.integration }}'
   input:
     args: '{{ inputs.intent }}'
 - id: checklist
+  produces: checklists/
   timeout: 1800
   command: speckit.checklist
   integration: '{{ inputs.integration }}'
   input:
     args: Create only risk-appropriate product, security, migration, operability, and accessibility checks.
 - id: tasks
+  produces: tasks.md
   timeout: 1800
   command: speckit.tasks
   integration: '{{ inputs.integration }}'

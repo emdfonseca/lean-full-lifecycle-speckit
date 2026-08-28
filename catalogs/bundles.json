@@ -19,7 +19,7 @@
         "mcp": []
       },
       "provides": {
-        "extensions": 1,
+        "extensions": 2,
         "presets": 2,
         "steps": 0,
         "workflows": 14

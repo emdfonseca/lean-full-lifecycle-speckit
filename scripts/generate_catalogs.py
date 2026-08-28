@@ -115,10 +115,10 @@ def build_catalogs(
         }
     }
 
-    ext = inv.extension
-    ext_provides = ext.manifest.get("provides", {}) or {}
-    extensions = {
-        ext.id: {
+    extensions = {}
+    for ext in inv.extensions:
+        ext_provides = ext.manifest.get("provides", {}) or {}
+        extensions[ext.id] = {
             **common(ext),
             "category": ext.meta.get("category", "integration"),
             "effect": ext.meta.get("effect", "read-write"),
@@ -128,7 +128,6 @@ def build_catalogs(
                 "hooks": len(ext_provides.get("hooks", []) or []),
             },
         }
-    }
 
     workflows = {}
     for comp in inv.by_kind("workflow"):

@@ -34,9 +34,14 @@ def test_ref_shape_is_stable(inv):
         assert c.kind in {"preset", "extension", "workflow"}
 
 
-def test_exactly_one_owned_preset_and_extension(inv):
+def test_exactly_one_owned_preset_and_every_extension_is_named(inv):
     assert inv.preset.id
-    assert inv.extension.id
+    # The bundle ships more than one extension. What must hold is that each is
+    # identified, not that there is exactly one -- the singular accessor that
+    # asserted the second was the assumption, not the requirement.
+    assert inv.extensions
+    assert all(ext.id for ext in inv.extensions)
+    assert len({ext.id for ext in inv.extensions}) == len(inv.extensions)
 
 
 @pytest.mark.req("REQ-CORE-COMMANDS-001")

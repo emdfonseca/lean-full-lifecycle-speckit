@@ -3082,3 +3082,63 @@ requirements:
       - "tests/test_status.py::test_the_command_line_emits_json_on_request"
       - "tests/test_status.py::test_the_command_documents_that_it_never_transitions"
       - "tests/test_status.py::test_the_command_documents_the_exit_status_that_means_unread"
+
+  - id: REQ-WORKFLOW-ROUTER-001
+    statement: >-
+      Five commands under the `work` namespace drive one item through the
+      lifecycle from inside the session, over one router that decides the next
+      step from policy alone. The router names no delivery state: the entry
+      state, the terminal states, the retirement target and the forward
+      transition are derived from state-machine.yml, and the workflow that
+      carries an item at a state comes from item-types.yml's state_workflows
+      map, so renaming a state in the policy moves the answer instead of
+      leaving a stale copy answering the old name. It reads no board -- board
+      facts are arguments, because a second GitHub client here would be that
+      second copy in another disguise -- and it persists nothing: a step is
+      finished when the artifact its workflow declares it `produces` is in the
+      feature directory, and a step that produces nothing nameable is reported
+      unverifiable rather than guessed at. It refuses what the policy refuses:
+      the transition `refuses_transition_to` names while a blocker is open,
+      refinement to the startable state under `refine_ahead_requires`, and a
+      decomposable item reaching a terminal state with a live child. Retirement
+      is never offered as the forward step. A refusal is an answer and exits
+      zero; an unroutable item exits non-zero.
+    priority: must
+    release: "0.3.0"
+    components:
+      - extension:work
+      - script:bundle/components/extensions/work/scripts/router.py
+      - command:speckit.work.status
+      - command:speckit.work.start
+      - command:speckit.work.continue
+      - command:speckit.work.change
+      - command:speckit.work.finish
+      - policy:item-types.yml
+      - policy:state-machine.yml
+      - check:INV-STATE-WORKFLOW-RESOLVES
+    verified_by:
+      - "tests/test_work_router.py::test_the_forward_transition_carries_the_evidence_the_policy_declares"
+      - "tests/test_work_router.py::test_retirement_is_never_the_forward_transition"
+      - "tests/test_work_router.py::test_each_type_routes_to_the_workflow_item_types_names"
+      - "tests/test_work_router.py::test_a_blocked_item_is_refused_the_transition_the_policy_refuses"
+      - "tests/test_work_router.py::test_refine_ahead_refuses_only_the_step_that_produces_the_startable_state"
+      - "tests/test_work_router.py::test_the_entry_state_is_not_refused_for_a_blocker"
+      - "tests/test_work_router.py::test_a_decomposable_item_with_a_live_child_cannot_finish"
+      - "tests/test_work_router.py::test_a_decomposable_item_whose_children_are_all_terminal_is_not_refused"
+      - "tests/test_work_router.py::test_an_unknown_state_or_type_is_refused_rather_than_routed"
+      - "tests/test_work_router.py::test_no_delivery_state_is_named_in_the_router_source"
+      - "tests/test_work_router.py::test_renaming_a_state_in_the_policy_moves_the_answer"
+      - "tests/test_work_router.py::test_retyping_the_workflow_map_moves_the_workflow"
+      - "tests/test_work_router.py::test_the_next_step_is_the_first_whose_artifact_is_absent"
+      - "tests/test_work_router.py::test_an_empty_directory_artifact_does_not_count_as_produced"
+      - "tests/test_work_router.py::test_a_step_producing_nothing_nameable_is_reported_unverifiable"
+      - "tests/test_work_router.py::test_an_uninstalled_workflow_is_reported_not_invented"
+      - "tests/test_work_router.py::test_a_type_with_no_outcome_gets_no_outcome_axis"
+      - "tests/test_work_router.py::test_the_reopen_edge_is_left_to_a_person"
+      - "tests/test_work_router.py::test_a_refusal_is_an_answer_not_a_failure"
+      - "tests/test_work_router.py::test_an_unroutable_item_exits_non_zero"
+      - "tests/test_work_router.py::test_status_declares_that_it_writes_nothing"
+      - "tests/test_work_router.py::test_every_command_refuses_the_git_branch_as_a_source"
+      - "tests/test_work_router.py::test_continue_performs_one_step_and_says_so"
+      - "tests/test_work_router.py::test_change_leaves_the_item_where_it_is"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-STATE-WORKFLOW-RESOLVES]"

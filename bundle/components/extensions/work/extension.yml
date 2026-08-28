@@ -1,0 +1,59 @@
+schema_version: '1.0'
+extension:
+  id: work
+  name: Work
+  version: 0.1.0
+  description: Drive one work item through the lifecycle from inside the session.
+  author: Lean Full-Lifecycle Contributors
+  repository: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
+  license: MIT
+  homepage: https://github.com/YOUR-ORG/lean-full-lifecycle-speckit
+  category: process
+  effect: read-write
+requires:
+  speckit_version: '>=1.0.1,<2.0.0'
+  # The id is `work` because specify enforces `speckit.{extension}.{command}`
+  # and refuses a namespace that is not the extension id
+  # (EXTENSION_COMMAND_NAME_PATTERN, _collect_manifest_command_names). The five
+  # verbs are only reachable under this namespace from an extension called
+  # this, which is why they are not commands of github-lifecycle.
+  tools:
+  - name: gh
+    required: true
+  - name: python3
+    required: true
+  - name: git
+    required: false
+    why: >-
+      The board audit this surface reports compares the board to the working
+      tree. Without git that one comparison is skipped; nothing else changes.
+  python_min: '3.9'
+  python_packages:
+  - name: PyYAML
+    import_name: yaml
+    required: true
+    why: >-
+      The router reads state-machine.yml, item-types.yml and the workflow
+      manifests. All of them are YAML.
+provides:
+  commands:
+  - name: speckit.work.status
+    file: commands/status.md
+    description: Report one item's state, blockers, children and next step. Writes nothing.
+  - name: speckit.work.start
+    file: commands/start.md
+    description: Report an item's type, state, parent, blockers and recorded readiness verdict.
+  - name: speckit.work.continue
+    file: commands/continue.md
+    description: Perform exactly one next lifecycle step, then stop.
+  - name: speckit.work.change
+    file: commands/change.md
+    description: Route a discovery to capture, invalidate, retire or exception without leaving
+      the item.
+  - name: speckit.work.finish
+    file: commands/finish.md
+    description: Take a delivered item to Output Done and close it.
+tags:
+- lifecycle
+- backlog
+- workflow

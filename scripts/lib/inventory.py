@@ -84,11 +84,17 @@ class Inventory:
         return presets[0]
 
     @property
-    def extension(self) -> Component:
-        extensions = self.by_kind("extension")
-        if len(extensions) != 1:
-            raise ValueError(f"expected exactly one extension, found {len(extensions)}")
-        return extensions[0]
+    def extensions(self) -> list[Component]:
+        """Every extension this bundle ships, in manifest order.
+
+        There was a singular `extension` property that raised on anything but
+        one, and three checks read it. That was true of the bundle and not of
+        the checks: each of them is about a property of *an* extension --
+        how its commands invoke scripts, what its scripts may write, what its
+        config is named -- and none of them wanted the bundle to have exactly
+        one. Adding the `work` extension made the difference visible.
+        """
+        return self.by_kind("extension")
 
     def preset_commands(self) -> frozenset[str]:
         """Core command names the governance preset contributes to."""

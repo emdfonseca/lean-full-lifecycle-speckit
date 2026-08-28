@@ -59,6 +59,55 @@
         "commands": 27,
         "hooks": 0
       }
+    },
+    "work": {
+      "name": "Work",
+      "id": "work",
+      "version": "0.1.0",
+      "description": "Drive one work item through the lifecycle from inside the session.",
+      "author": "Lean Full-Lifecycle Contributors",
+      "license": "MIT",
+      "repository": "UNSET",
+      "requires": {
+        "speckit_version": ">=1.0.1,<2.0.0",
+        "tools": [
+          {
+            "name": "gh",
+            "required": true
+          },
+          {
+            "name": "python3",
+            "required": true
+          },
+          {
+            "name": "git",
+            "required": false,
+            "why": "The board audit this surface reports compares the board to the working tree. Without git that one comparison is skipped; nothing else changes."
+          }
+        ],
+        "python_min": "3.9",
+        "python_packages": [
+          {
+            "name": "PyYAML",
+            "import_name": "yaml",
+            "required": true,
+            "why": "The router reads state-machine.yml, item-types.yml and the workflow manifests. All of them are YAML."
+          }
+        ]
+      },
+      "tags": [
+        "lifecycle",
+        "backlog",
+        "workflow"
+      ],
+      "verified": false,
+      "category": "process",
+      "effect": "read-write",
+      "download_url": "UNSET",
+      "provides": {
+        "commands": 5,
+        "hooks": 0
+      }
     }
   }
 }

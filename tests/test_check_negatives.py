@@ -146,6 +146,22 @@ def break_command_resolves(tmp):
     _edit_yaml(_workflow_with(tmp, lambda s: bool(s.get("command"))), mutate)
 
 
+def break_state_workflow_resolves(tmp):
+    # Point the map at a workflow nothing ships. The router would then name a
+    # workflow that cannot be read, which is the state the check exists to
+    # catch: a map that has stopped being true reads exactly like one that is.
+    def mutate(d):
+        state = next(iter(d["state_workflows"]))
+        block = d["state_workflows"][state]
+        block[next(iter(block))] = "lifecycle-does-not-exist"
+    _edit_yaml(tmp / "policy/item-types.yml", mutate)
+    # The preset mirrors policy byte for byte; leaving it stale would trip
+    # INV-POLICY-MIRROR instead and prove nothing about this check.
+    (tmp / PRESET / "policy/item-types.yml").write_text(
+        (tmp / "policy/item-types.yml").read_text(encoding="utf-8"),
+        encoding="utf-8")
+
+
 def break_write_behind_gate(tmp):
     writes = set(yaml.safe_load(
         (ROOT / "tooling/invariants.yml").read_text(encoding="utf-8")
@@ -462,6 +478,7 @@ MUTATORS = {
     "PUB-COMPAT-CLAIM": break_compat_claim,
     "INV-SCRIPT-FLAVOUR": break_script_flavour,
     "INV-COMMAND-RESOLVES": break_command_resolves,
+    "INV-STATE-WORKFLOW-RESOLVES": break_state_workflow_resolves,
     "SEC-WRITE-BEHIND-GATE": break_write_behind_gate,
     "SEC-TRANSITION-CONTRACT": break_transition_contract,
     "SEC-NO-ORG-SCHEMA-MUTATION": break_no_org_schema_mutation,
@@ -544,6 +561,7 @@ def test_every_check_has_a_negative_case():
 @pytest.mark.req("REQ-SECURITY-EXEMPTION-001")
 @pytest.mark.req("REQ-WORKFLOW-GATEART-001")
 @pytest.mark.req("REQ-SECURITY-IDENTITY-001")
+@pytest.mark.req("REQ-WORKFLOW-ROUTER-001")
 def test_check_detects_its_own_violation(check_id, bundle_copy):
     MUTATORS[check_id](bundle_copy)
     r = subprocess.run(

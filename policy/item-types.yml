@@ -144,6 +144,39 @@ types:
         required: true
         prompt: How long before stopping and reporting whatever is known.
 
+# Which workflow carries an item at each delivery state, so a router can name
+# the next step instead of holding its own map. A router that hardcodes a state
+# name is the failure #182 named, and this is what makes it avoidable.
+#
+# Keyed by the `delivery_status` values `state-machine.yml` declares. A state
+# absent here has no workflow, and that is a fact about the state rather than
+# an omission: nothing carries a Retired item.
+#
+# `default` applies to every type. Inbox and Refining use it because what a
+# triager or a refiner does is the same whatever the item turns out to be. The
+# delivery states are per type, because that is exactly where the types stop
+# resembling each other -- an Epic is decomposed, a Spike is bounded and
+# disposed of.
+#
+# Ready and In Progress share one map on purpose: the delivery workflow opens
+# with the Ready -> In Progress transition, so starting an item and continuing
+# it enter the same workflow at different steps.
+state_workflows:
+  Inbox:
+    default: lifecycle-triage
+  Refining:
+    default: lifecycle-refine
+  Ready: &delivery_workflows
+    epic: lifecycle-decompose
+    story: lifecycle-story-delivery
+    bug: lifecycle-bugfix
+    spike: lifecycle-spike
+  In Progress: *delivery_workflows
+  Output Done:
+    # Reached only by a type whose `carries_outcome` is true. The router reads
+    # that field rather than this block listing the types a second time.
+    default: lifecycle-outcome-review
+
 # What makes an acceptance criterion acceptable.
 #
 # "Checkable statements" was the whole guidance before, and it produced bullet
