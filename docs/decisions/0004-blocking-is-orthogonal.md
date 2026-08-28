@@ -9,9 +9,9 @@ Date: 2026-08-23
 Output Done. None describes an item that is understood, agreed, and waiting on
 something outside this project.
 
-Two such items exist. #28 and #29 are fully specified, worked around, and
-waiting on the maintainers of `github/spec-kit`. They sat in Inbox, which reads
-as untriaged and misrepresents them.
+Such items exist. #28, #29 and #123 are specified, worked around, and waiting on
+the maintainers of `github/spec-kit`. They sat in Inbox, which reads as
+untriaged and misrepresents them.
 
 The obvious fix — add a `Blocked` value — is wrong.
 

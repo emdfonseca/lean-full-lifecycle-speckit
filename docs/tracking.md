@@ -265,9 +265,11 @@ adapter.
 
 ## Upstream defects
 
-D8 and D9 are Spec Kit defects, filed and tracked locally:
+Spec Kit defects, tracked locally. A row with no upstream number is one
+nobody has filed yet, which is a different state from one nobody has fixed.
 
 | Defect | Upstream | Local |
 |---|---|---|
 | `bundle install` cannot install workflows from a catalog | github/spec-kit#4282 | #28 |
 | `bundle install` does not scaffold extension config | github/spec-kit#4283 | #29 |
+| a run killed without a catchable signal cannot be resumed | not yet filed | #123 |
