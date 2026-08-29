@@ -132,7 +132,7 @@ remains separate from the product repository.
 Inside the target project:
 
 ```bash
-specify workflow run lifecycle-greenfield-bootstrap   -i mode=product   -i product_context="Build ..."
+specify workflow run lifecycle-greenfield-bootstrap   -i product_context="Build ..."
 
 specify workflow run lifecycle-story-delivery   -i issue_ref="#142"   -i intent="Allow users to pause subscriptions"
 ```

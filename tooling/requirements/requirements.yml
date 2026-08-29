@@ -1129,6 +1129,35 @@ requirements:
       - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths0]"
       - "tests/test_mismatch.py::test_no_verdict_states_a_count[paths1]"
 
+  - id: REQ-CORE-GREENFIELD-002
+    statement: >-
+      Greenfield bootstrap runs one way, because that is the only way it had a
+      contract for. It declared a `framework-only` mode alongside the product
+      one and `product_documents.required` declared seven documents with no
+      condition on any of them, so that mode was asked for a PRODUCT.md and a
+      stack decision its own apply step forbade, and the document step is told
+      not to proceed while the check reports a problem. The mode is removed
+      rather than given a document set: what it produced is what the inspect,
+      mismatch, constitution, doctor and claude-config commands already produce
+      one at a time, and none of them needs a mode. Removing it keeps one
+      document contract for both bootstrap routes and keeps the interview
+      unconditional, where a per-mode set would have put a mode concept into
+      the document checker, the elicitation contract, and the verification
+      gate. The input is gone rather than reduced to one legal value, since an
+      enum offering one choice is the same claim that a shape is available
+      when it is not.
+    priority: must
+    release: "0.3.0"
+    components:
+      - workflow:lifecycle-greenfield-bootstrap
+      - policy:bootstrap-policy.yml
+    verified_by:
+      - tests/test_greenfield_mode.py::test_the_bootstrap_declares_no_mode
+      - tests/test_greenfield_mode.py::test_no_step_branches_on_a_mode
+      - tests/test_greenfield_mode.py::test_the_apply_step_asks_for_the_product_artifacts_unconditionally
+      - tests/test_greenfield_mode.py::test_no_shipped_surface_offers_a_framework_only_bootstrap
+      - tests/test_greenfield_mode.py::test_every_declared_document_is_required_of_every_run
+
   - id: REQ-CORE-VERIFYCMD-002
     statement: >-
       A stack decision is recognised by what a document records, not by the

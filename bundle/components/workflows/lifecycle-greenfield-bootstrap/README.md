@@ -1,6 +1,6 @@
 # lifecycle-greenfield-bootstrap
 
-Bootstraps the reusable framework first and, optionally, product intent and a first Ready queue.
+Bootstraps the reusable framework, product intent, and a first Ready queue.
 
 Run:
 

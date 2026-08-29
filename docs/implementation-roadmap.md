@@ -159,7 +159,7 @@ At minimum:
 | Family | Scope |
 |---|---|
 | `REQ-CORE-*` | preserve Spec Kit and official Lean behavior |
-| `REQ-GREEN-*` | framework-only and product greenfield bootstrap |
+| `REQ-GREEN-*` | product greenfield bootstrap |
 | `REQ-BROWN-*` | scoped discovery, reconciliation, quality ratchet |
 | `REQ-BACKLOG-*` | triage, refine, decompose, capture |
 | `REQ-UNCERTAINTY-*` | discovery, prototype, spike, threat-analysis paths |
