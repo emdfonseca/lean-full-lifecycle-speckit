@@ -23,7 +23,7 @@ def run(args, cwd):
 
 
 @pytest.fixture(scope="module")
-def installed(tmp_path_factory):
+def installed(tmp_path_factory, dist_dir):
     """A scratch project with the bundle installed from a local catalog."""
     import local_catalog
 
@@ -33,7 +33,7 @@ def installed(tmp_path_factory):
              "--integration", "opencode", "--script", "py"], project)
     assert r.returncode == 0, r.stderr
 
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         local_catalog.register(project, base)
         local_catalog.install_workflows(project)
         r = run(["specify", "bundle", "install", "lean-full-lifecycle"], project)

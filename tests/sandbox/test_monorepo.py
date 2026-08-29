@@ -47,7 +47,7 @@ def run(args, cwd):
 
 
 @pytest.fixture(scope="module")
-def monorepo(tmp_path_factory):
+def monorepo(tmp_path_factory, dist_dir):
     """One git root, two initialized members, one worktree each.
 
     The catalog server stays up for the whole module so a later `bundle remove`
@@ -59,7 +59,7 @@ def monorepo(tmp_path_factory):
     from sandbox.monorepo import build
 
     root = tmp_path_factory.mktemp("monorepo")
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         yield build(root, base, FEATURES), base
 
 

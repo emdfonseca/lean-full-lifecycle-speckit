@@ -63,7 +63,7 @@ def overlay_present(project) -> bool:
 
 
 @pytest.fixture(scope="module")
-def project_with_overlay(tmp_path_factory):
+def project_with_overlay(tmp_path_factory, dist_dir):
     """A project with the bundle installed and a project overlay applied.
 
     The catalog server stays up for the whole module: `bundle update` re-resolves
@@ -78,7 +78,7 @@ def project_with_overlay(tmp_path_factory):
              "--integration", "opencode", "--script", "py"], project)
     assert r.returncode == 0, r.stderr
 
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         local_catalog.register(project, base)
         local_catalog.install_workflows(project)
         assert run(["specify", "bundle", "install", "lean-full-lifecycle"],

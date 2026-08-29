@@ -65,7 +65,7 @@ def overlay_ids(project) -> str:
 
 
 @pytest.fixture(scope="module")
-def members(tmp_path_factory):
+def members(tmp_path_factory, dist_dir):
     """A fresh monorepo with a different overlay in each member.
 
     Its own instance, not the contamination suite's: that one ends by removing
@@ -77,7 +77,7 @@ def members(tmp_path_factory):
     from sandbox.monorepo import build
 
     root = tmp_path_factory.mktemp("overlay-monorepo")
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         build(root, base, FEATURES)
         for member in MEMBERS:
             overlay_id, command = OVERLAYS[member]

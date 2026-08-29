@@ -13,7 +13,13 @@ requires-python = ">=3.11"
 # directly rather than shelling out to them.
 pythonpath = [".", "scripts"]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+# `-n auto --dist loadscope` runs the suite across one worker per core.
+# `loadscope` rather than the default `load`: six sandbox modules hold a
+# module-scoped catalog server open for their whole run, and splitting a module
+# across workers would build one server per worker and cost more than the
+# parallelism saves. Serially the suite takes 2:16; this brings it to ~30s.
+# Use `-n0` to debug a failure with uninterleaved output.
+addopts = "-ra --strict-markers -n auto --dist loadscope"
 markers = [
     "requires_specify: needs the specify CLI on PATH",
     "requires_opencode: needs the opencode CLI on PATH",

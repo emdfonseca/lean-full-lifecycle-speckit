@@ -56,15 +56,23 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def serve(port: int | None = None, build: bool = True):
-    """Build artifacts, point catalogs at localhost, and serve dist/."""
+def serve(port: int | None = None, build: bool = True, dist: Path | None = None):
+    """Build artifacts, point catalogs at localhost, and serve them.
+
+    `dist` defaults to the published `dist/`, which is what the CLI and
+    `make build` publish from. A caller that will run beside another passes its
+    own: building empties the directory first, so two servers over one
+    directory delete each other's archives and bake conflicting ports into one
+    `catalogs/` (#191). The port was already per-server; the directory was not.
+    """
     port = port or _free_port()
     base = f"http://localhost:{port}"
+    dist = dist or DIST
 
     if build:
-        build_artifacts(base)
+        build_artifacts(base, dist)
 
-    handler = functools.partial(_QuietHandler, directory=str(DIST))
+    handler = functools.partial(_QuietHandler, directory=str(dist))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -76,18 +84,19 @@ def serve(port: int | None = None, build: bool = True):
         thread.join(timeout=5)
 
 
-def build_artifacts(base_url: str) -> None:
+def build_artifacts(base_url: str, dist: Path | None = None) -> None:
     """Produce the per-component archives, the bundle zip, and matching catalogs."""
     import build_release
     from generate_catalogs import write_catalogs
 
-    build_release.main()
+    dist = dist or DIST
+    build_release.main(dist)
     subprocess.run(
-        ["specify", "bundle", "build", "--path", str(BUNDLE), "--output", str(DIST)],
+        ["specify", "bundle", "build", "--path", str(BUNDLE), "--output", str(dist)],
         check=True,
         capture_output=True,
     )
-    write_catalogs(DIST / "catalogs", catalog_root=base_url)
+    write_catalogs(dist / "catalogs", catalog_root=base_url)
 
 
 def register(project: Path, base_url: str, name: str = "local-dev") -> None:

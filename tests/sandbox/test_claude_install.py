@@ -82,7 +82,7 @@ def build_project(root, base, integration: str):
 
 
 @pytest.fixture(scope="module")
-def projects(tmp_path_factory):
+def projects(tmp_path_factory, dist_dir):
     """One project per integration, plus one holding both.
 
     The catalog server stays up for the module so a later removal is a real
@@ -91,7 +91,7 @@ def projects(tmp_path_factory):
     import local_catalog
 
     base_dir = tmp_path_factory.mktemp("claude-install")
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         out = {name: build_project(base_dir / name, base, name)
                for name in ("claude", "opencode")}
         both = build_project(base_dir / "both", base, "claude")

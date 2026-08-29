@@ -43,10 +43,10 @@ def fresh(tmp_path, base):
 
 
 @pytest.fixture(scope="module")
-def served():
+def served(dist_dir):
     import local_catalog
 
-    with local_catalog.serve() as base:
+    with local_catalog.serve(dist=dist_dir) as base:
         yield base
 
 

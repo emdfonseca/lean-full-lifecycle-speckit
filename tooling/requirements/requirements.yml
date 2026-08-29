@@ -69,6 +69,35 @@ requirements:
 
   # --- packaging -------------------------------------------------------------
 
+  - id: REQ-PACKAGE-CATALOG-002
+    statement: >-
+      A catalog server serves its own build. `build_release.main()` empties its
+      output directory before refilling it, and every caller shared
+      `ROOT/dist`, so two servers running at once deleted each other's archives
+      and each rewrote `catalogs/` with its own port -- a server then handed out
+      download URLs pointing at another server. The port was already per-server
+      via `_free_port()`; the directory was the one thing shared, and shared by
+      construction rather than by accident. `serve`, `build_artifacts` and
+      `build_release.main` take an output directory defaulting to the published
+      `dist/`, so `make build`, `make smoke` and the `local_catalog serve` CLI
+      publish from the path they always did, and only the six sandbox fixtures
+      ask for a private one. A sandbox module calling `serve()` bare is
+      reported, because serially it still works and the defect would return
+      invisibly. This is what lets the suite run under `pytest -n auto --dist
+      loadscope`: 2:16 serial to about 32s, with the sandbox modules -- 52 tests
+      and 85s of the serial time -- running concurrently instead of one after
+      another.
+    priority: must
+    release: "0.3.0"
+    components:
+      - script:scripts/local_catalog.py
+      - script:scripts/build_release.py
+    verified_by:
+      - "tests/test_catalog_isolation.py::test_a_second_build_does_not_empty_the_first_servers_directory"
+      - "tests/test_catalog_isolation.py::test_each_server_serves_its_own_catalog_urls"
+      - "tests/test_catalog_isolation.py::test_the_published_directory_is_still_the_default"
+      - "tests/test_catalog_isolation.py::test_every_sandbox_server_asks_for_its_own_directory"
+
   - id: REQ-PACKAGE-CATALOG-001
     statement: >-
       The bundle installs into a clean Spec Kit project from a catalog, which is

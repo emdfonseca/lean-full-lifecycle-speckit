@@ -60,7 +60,16 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def main() -> int:
+def main(dist: Path | None = None) -> int:
+    """Build every artifact into `dist`, which defaults to the published one.
+
+    The parameter exists because this function empties its output directory
+    before refilling it, and one shared directory is fine for a build and wrong
+    for concurrent callers. Six test fixtures hold a catalog server open over
+    this output at once under `pytest -n`, and each rebuild deleted archives the
+    others were still serving (#191).
+    """
+    dist = dist or DIST
     result = subprocess.run(
         [sys.executable, str(ROOT / "scripts/validate_source.py")],
         cwd=ROOT,
@@ -69,8 +78,8 @@ def main() -> int:
     if result.returncode:
         return result.returncode
 
-    DIST.mkdir(exist_ok=True)
-    for path in DIST.iterdir():
+    dist.mkdir(parents=True, exist_ok=True)
+    for path in dist.iterdir():
         if path.name != ".gitkeep":
             if path.is_dir():
                 shutil.rmtree(path)
@@ -81,7 +90,7 @@ def main() -> int:
     VERSION = bundle_version()
 
     preset = BUNDLE / "components/presets/lean-full-lifecycle-governance"
-    preset_zip = DIST / f"lean-full-lifecycle-governance-{VERSION}.zip"
+    preset_zip = dist / f"lean-full-lifecycle-governance-{VERSION}.zip"
     zip_dir(preset, preset_zip)
     artifacts.append(preset_zip)
 
@@ -91,25 +100,25 @@ def main() -> int:
     for extension in sorted((BUNDLE / "components/extensions").iterdir()):
         if not (extension / "extension.yml").exists():
             continue
-        destination = DIST / f"{extension.name}-{VERSION}.zip"
+        destination = dist / f"{extension.name}-{VERSION}.zip"
         zip_dir(extension, destination)
         artifacts.append(destination)
 
     for workflow in sorted((BUNDLE / "components/workflows").iterdir()):
         if not (workflow / "workflow.yml").exists():
             continue
-        destination = DIST / f"{workflow.name}-{VERSION}.zip"
+        destination = dist / f"{workflow.name}-{VERSION}.zip"
         zip_dir(workflow, destination)
         artifacts.append(destination)
 
     from generate_catalogs import write_catalogs
 
-    write_catalogs(DIST / "catalogs", catalog_root=None)
+    write_catalogs(dist / "catalogs", catalog_root=None)
 
     checksum_lines = [f"{sha256(path)}  {path.name}" for path in artifacts]
-    (DIST / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
+    (dist / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
 
-    print(f"Built {len(artifacts)} local artifacts in {DIST}")
+    print(f"Built {len(artifacts)} local artifacts in {dist}")
     print("Run `specify bundle build --path bundle/ --output dist/` for the canonical bundle ZIP.")
     print("Component archives above are what a catalog serves; the bundle ZIP is not installable on its own.")
     return 0

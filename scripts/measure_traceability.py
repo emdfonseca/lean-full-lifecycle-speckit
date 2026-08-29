@@ -248,8 +248,15 @@ def main() -> int:
             + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
         for stale in ROOT.glob(".coverage*"):
             stale.unlink()
+        # `-n0` overrides the `-n auto` in addopts. The measurement depends on
+        # per-test coverage contexts, and those do not survive xdist: the
+        # controller process runs no tests, so the parent's
+        # `dynamic_context = test_function` records nothing, and every
+        # requirement reads as having no test that executed its component. The
+        # suite is parallel; measuring it is not, which is why this target has
+        # always been the slow one.
         result = subprocess.run(
-            [sys.executable, "-m", "coverage", "run", "-m", "pytest", "-q"],
+            [sys.executable, "-m", "coverage", "run", "-m", "pytest", "-q", "-n0"],
             cwd=ROOT, env=env)
         if result.returncode:
             print("the suite failed; measuring a failed run would report "
