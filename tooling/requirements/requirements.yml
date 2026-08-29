@@ -247,17 +247,27 @@ requirements:
 
   - id: REQ-SECURITY-SHELL-001
     statement: >-
-      Workflow shell steps run only allowlisted commands and interpolate
-      nothing. Neither workflow inputs nor agent output can decide what
-      executes.
+      Workflow shell steps run only a verification entry point the policy
+      declares, and interpolate nothing. Neither workflow inputs nor agent
+      output can decide what executes. The allowed set is derived from
+      `bootstrap-policy.yml` rather than listed as literals: it was two strings
+      in `tooling/invariants.yml`, `devbox run verify` and `devbox run
+      release-verify`, which guarded the right five steps and named a vendor to
+      do it. A derived allowlist is worth nothing if what it derives from names
+      a binary, so a second check holds the declaration to naming a path the
+      framework owns and refuses a discovery order that would privilege one
+      vendor over another (#166).
     priority: must
     release: "0.1.1"
     components:
-      - check:SEC-SHELL-ALLOWLIST
+      - check:SEC-SHELL-ENTRY-POINT
+      - check:SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR
       - check:SEC-SHELL-NO-INTERPOLATION
       - policy:agent-policy.yml
+      - policy:bootstrap-policy.yml
     verified_by:
-      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ALLOWLIST]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ENTRY-POINT]"
+      - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR]"
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[SEC-SHELL-NO-INTERPOLATION]"
       - "tests/test_check_negatives.py::test_check_detects_a_violation_nested_in_a_switch_case"
 
@@ -1184,11 +1194,18 @@ requirements:
       - "tests/test_verify_bootstrap.py::test_a_gate_with_no_outcome_keeps_the_command_from_passing"
   - id: REQ-CORE-VERIFYCMD-001
     statement: >-
-      Bootstrap must establish that the project defines the verification
-      commands the workflows run, reporting present, overlaid, and missing
-      separately. Generating a script requires a recorded stack decision; an
-      overlay may satisfy only a command the workflows actually run; and
-      nothing is written before a human gate.
+      Bootstrap must establish that the project provides the verification entry
+      points the workflows run, reporting present and missing separately, and
+      reporting one that exists but cannot be executed as a problem rather than
+      as missing -- the step runs the path directly, so a non-executable file
+      fails at the shell with a permission error, and calling it missing sends
+      someone to write a file that is already there. An entry point is a path
+      the framework declares under `.specify/` and the project fills; it is
+      never a command naming a binary the project must install, and there is no
+      discovery order, because reading `devbox.json` for a `verify` script is
+      what named a vendor and adding `package.json` beside it would reproduce
+      that for every project using make, just, or cargo. Generating one requires
+      a recorded stack decision, and nothing is written before a human gate.
     priority: must
     release: "0.3.0"
     components:
@@ -1197,20 +1214,20 @@ requirements:
       - command:speckit.github-lifecycle.verify-bootstrap
       - policy:bootstrap-policy.yml
     verified_by:
-      - "tests/test_verify_bootstrap.py::test_both_commands_present_is_resolved"
+      - "tests/test_verify_bootstrap.py::test_both_entry_points_present_is_resolved"
       - "tests/test_verify_bootstrap.py::test_detection_writes_nothing"
-      - "tests/test_verify_bootstrap.py::test_a_partial_project_reports_each_command_separately"
-      - "tests/test_verify_bootstrap.py::test_neither_command_defined_names_both"
-      - "tests/test_verify_bootstrap.py::test_a_missing_devbox_file_is_not_an_error"
-      - "tests/test_verify_bootstrap.py::test_an_unreadable_devbox_file_resolves_nothing"
+      - "tests/test_verify_bootstrap.py::test_a_partial_project_reports_each_entry_point_separately"
+      - "tests/test_verify_bootstrap.py::test_neither_entry_point_present_names_both"
+      - "tests/test_verify_bootstrap.py::test_a_project_that_provides_neither_is_a_finding_not_a_failure"
+      - "tests/test_verify_bootstrap.py::test_a_present_but_unrunnable_entry_point_resolves_nothing"
       - "tests/test_verify_bootstrap.py::test_generation_without_a_stack_decision_is_refused"
       - "tests/test_verify_bootstrap.py::test_the_refusal_names_the_missing_input"
       - "tests/test_verify_bootstrap.py::test_an_empty_stack_decision_does_not_count"
       - "tests/test_verify_bootstrap.py::test_generation_is_permitted_once_a_stack_is_decided"
-      - "tests/test_verify_bootstrap.py::test_an_overlay_to_a_framework_command_is_accepted"
-      - "tests/test_verify_bootstrap.py::test_an_overlay_to_any_other_command_is_refused"
-      - "tests/test_verify_bootstrap.py::test_an_overlay_naming_no_project_command_is_refused"
-      - "tests/test_verify_bootstrap.py::test_the_allowed_targets_match_the_source_repo_allowed_shell"
+      - "tests/test_verify_bootstrap.py::test_no_declared_entry_point_names_a_binary"
+      - "tests/test_verify_bootstrap.py::test_the_policy_offers_no_discovery_to_privilege_a_vendor"
+      - "tests/test_verify_bootstrap.py::test_the_shell_surface_is_exactly_the_declared_entry_points"
+      - "tests/test_verify_bootstrap.py::test_the_overlay_is_gone_rather_than_carried"
       - "tests/test_verify_bootstrap.py::test_both_bootstrap_workflows_check_verification_commands[lifecycle-brownfield-adoption]"
       - "tests/test_verify_bootstrap.py::test_both_bootstrap_workflows_check_verification_commands[lifecycle-greenfield-bootstrap]"
       - "tests/test_verify_bootstrap.py::test_the_resolution_gate_aborts_on_reject[lifecycle-brownfield-adoption]"

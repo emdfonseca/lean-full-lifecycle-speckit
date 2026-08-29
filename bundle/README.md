@@ -23,8 +23,10 @@ Where Lean contributes no template, the core Spec Kit template is the base inste
   project was initialized with; they do not name an agent. `opencode` is
   the reference target, meaning the one under test, not the one required.
 - `gh` for the GitHub extension
-- `devbox run verify` / `devbox run release-verify` in the target project, used by
-  the workflows' verification steps
+- `.specify/lifecycle/verify` and `.specify/lifecycle/release-verify` in the
+  target project, run by the workflows' verification steps. These are paths the
+  framework declares and the project fills, generated at bootstrap from the
+  gates the project resolved — not a binary it has to install.
 
 ## Install
 

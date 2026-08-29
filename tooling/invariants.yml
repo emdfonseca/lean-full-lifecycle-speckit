@@ -2,12 +2,17 @@
 # in the validator. Adding a workflow must not mean editing Python.
 schema_version: "1.0"
 
-# The only shell commands a workflow step may run. Workflows call fixed
-# verification entry points in the target project; anything else would let a
-# workflow define arbitrary execution.
-allowed_shell:
-  - devbox run verify
-  - devbox run release-verify
+# `allowed_shell` was here, holding the two literals `devbox run verify` and
+# `devbox run release-verify`. It guarded the right five steps and named a
+# vendor to do it, so a project without devbox could not run five of the
+# fourteen workflows (#166).
+#
+# Its replacement is not a list. `SEC-SHELL-ENTRY-POINT` derives the allowed
+# set from `bootstrap-policy.yml`'s `verification_commands`, which now declares
+# framework-owned paths rather than commands, and
+# `SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR` holds that declaration to naming no
+# binary. Two checks rather than one, because a derived allowlist is worth
+# nothing if what it derives from names a vendor.
 
 # Commands that mutate GitHub state. Each must be preceded by a plan step and a
 # human gate, and must name the approved plan it is applying.

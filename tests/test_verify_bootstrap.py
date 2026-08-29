@@ -1,14 +1,20 @@
 """Whether the project can run the workflows, asked at bootstrap.
 
-Five workflows shell out to `devbox run verify` and one to
-`devbox run release-verify`, and nothing has ever checked the target project
-defines them. The roadmap states the requirement as a user-experience one: do
-not let the user discover this only after the first workflow failure.
+Five workflow steps run `.specify/lifecycle/verify` and one runs
+`.specify/lifecycle/release-verify`, and nothing had ever checked the target
+project provides them. The roadmap states the requirement as a
+user-experience one: do not let the user discover this only after the first
+workflow failure.
+
+They used to read `devbox run verify`, and detection parsed `devbox.json` for a
+`scripts` key. That named a vendor and asked a question about a manifest rather
+than about the project: #104's pilot target has a devbox.json whose every script
+shims to pnpm, and its real gate -- `pnpm verify` -- was invisible, so a project
+with working verification was reported as having none (#156, #166).
 """
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 
 import pytest
@@ -23,24 +29,26 @@ sys.modules["verify_bootstrap"] = vb
 spec.loader.exec_module(vb)
 
 POLICY = vb.load_policy(ROOT)
-VERIFY = "devbox run verify"
-RELEASE = "devbox run release-verify"
+VERIFY, RELEASE = vb.declared_commands(POLICY)
 WORKFLOWS = {
     n: load_yaml(ROOT / f"bundle/components/workflows/{n}/workflow.yml")
     for n in ("lifecycle-greenfield-bootstrap", "lifecycle-brownfield-adoption")
 }
 
 
-def project(tmp_path, scripts=None, overlay=None, stack=None, devbox="valid"):
-    if devbox == "valid":
-        (tmp_path / "devbox.json").write_text(
-            json.dumps({"shell": {"scripts": scripts or {}}}), encoding="utf-8")
-    elif devbox == "broken":
-        (tmp_path / "devbox.json").write_text("not json", encoding="utf-8")
-    if overlay is not None:
-        path = tmp_path / POLICY["overlay"]["file"]
+def project(tmp_path, entry_points=(), executable=True, stack=None):
+    """A project providing the named entry points.
+
+    `executable` is a parameter because present-and-not-runnable is its own
+    finding: the workflow step runs the path directly, so a file without the
+    bit fails at the shell with a permission error rather than a verification
+    failure.
+    """
+    for command in entry_points:
+        path = tmp_path / command
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(vb.yaml.safe_dump({"mappings": overlay}), encoding="utf-8")
+        path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        path.chmod(0o755 if executable else 0o644)
     if stack:
         source = POLICY["generation"]["stack_decision_sources"][0]
         path = tmp_path / source["path"]
@@ -56,8 +64,8 @@ def project(tmp_path, scripts=None, overlay=None, stack=None, devbox="valid"):
 # --- AC1: both present, nothing written ---------------------------------------
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_both_commands_present_is_resolved(tmp_path):
-    root = project(tmp_path, {"verify": ["pytest"], "release-verify": ["pytest"]})
+def test_both_entry_points_present_is_resolved(tmp_path):
+    root = project(tmp_path, [VERIFY, RELEASE])
     report = vb.detect(root, POLICY)
     assert report.present == [VERIFY, RELEASE]
     assert report.missing == []
@@ -66,50 +74,51 @@ def test_both_commands_present_is_resolved(tmp_path):
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
 def test_detection_writes_nothing(tmp_path):
-    root = project(tmp_path, {"verify": ["pytest"]})
+    root = project(tmp_path, [VERIFY])
     before = {p.name for p in root.rglob("*")}
     vb.detect(root, POLICY)
-    vb.check_overlay(root, POLICY)
     assert {p.name for p in root.rglob("*")} == before
 
 
 # --- AC2: missing is named, and distinguished from present --------------------
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_a_partial_project_reports_each_command_separately(tmp_path):
-    root = project(tmp_path, {"verify": ["pytest"]})
+def test_a_partial_project_reports_each_entry_point_separately(tmp_path):
+    root = project(tmp_path, [VERIFY])
     report = vb.detect(root, POLICY)
-    # The point of the story: not one verdict for both commands.
+    # The point of the story: not one verdict for both.
     assert report.present == [VERIFY]
     assert report.missing == [RELEASE]
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_neither_command_defined_names_both(tmp_path):
+def test_neither_entry_point_present_names_both(tmp_path):
     report = vb.detect(project(tmp_path), POLICY)
     assert report.missing == [VERIFY, RELEASE]
     assert report.present == []
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_a_missing_devbox_file_is_not_an_error(tmp_path):
-    # A project with no devbox.json defines neither command. That is a finding,
-    # not a failure to look.
+def test_a_project_that_provides_neither_is_a_finding_not_a_failure(tmp_path):
+    # An empty project provides neither. That is a finding, not a failure to
+    # look, and there is no manifest whose absence could confuse the two.
     report = vb.detect(tmp_path, POLICY)
     assert report.missing == [VERIFY, RELEASE]
     assert report.problems == []
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_an_unreadable_devbox_file_resolves_nothing(tmp_path):
-    root = project(tmp_path, devbox="broken")
+def test_a_present_but_unrunnable_entry_point_resolves_nothing(tmp_path):
+    root = project(tmp_path, [VERIFY, RELEASE], executable=False)
     report = vb.detect(root, POLICY)
     assert report.problems
     assert not report.resolved, (
-        "an unreadable file reporting nothing missing would read as success")
+        "a file the step cannot execute reporting nothing missing would read "
+        "as success")
     assert report.missing == [], (
-        "reporting every command missing would send the user to add what is "
+        "reporting it missing would send the user to write a file that is "
         "already there")
+    assert all("not executable" in p for p in report.problems)
 
 
 # --- AC3: generation requires a stack decision --------------------------------
@@ -141,41 +150,59 @@ def test_generation_is_permitted_once_a_stack_is_decided(tmp_path):
     assert vb.refuse_generation_without_a_stack(root, POLICY) == []
 
 
-# --- AC4: an overlay may satisfy only a declared framework command ------------
+# --- AC4: what a workflow may execute, and where that is decided -------------
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_an_overlay_to_a_framework_command_is_accepted(tmp_path):
-    root = project(tmp_path, overlay=[
-        {"framework_command": VERIFY, "project_command": "make check"}])
-    assert vb.check_overlay(root, POLICY) == []
-    assert vb.detect(root, POLICY).overlaid == [VERIFY]
-
-
-@pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_an_overlay_to_any_other_command_is_refused(tmp_path):
-    root = project(tmp_path, overlay=[
-        {"framework_command": "devbox run deploy",
-         "project_command": "kubectl apply -f prod/"}])
-    problems = vb.check_overlay(root, POLICY)
-    assert problems
-    assert "not a framework command" in problems[0]
+def test_no_declared_entry_point_names_a_binary():
+    # The whole item. A path under .specify/ is something the project fills; a
+    # command is something the project must have installed, which is what made
+    # five of the fourteen workflows unrunnable without devbox.
+    for command in vb.declared_commands(POLICY):
+        assert command.startswith(".specify/"), command
+        assert " " not in command, (
+            f"{command!r} has arguments, so it is a command line rather than a "
+            f"path, and something has to supply the program that runs it")
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_an_overlay_naming_no_project_command_is_refused(tmp_path):
-    root = project(tmp_path, overlay=[{"framework_command": VERIFY}])
-    assert any("names no project command" in p
-               for p in vb.check_overlay(root, POLICY))
+def test_the_policy_offers_no_discovery_to_privilege_a_vendor():
+    # The failure mode #156 named: adding package.json beside devbox.json
+    # reproduces the defect for every project using make, just, or cargo. A
+    # longer list of files to sniff is still a list of vendors.
+    assert "definition_source" not in POLICY
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
-def test_the_allowed_targets_match_the_source_repo_allowed_shell():
-    # Two copies of the same fact: the shipped policy and the source-tree
-    # invariant. They must agree, or an overlay could satisfy a command the
-    # validator would reject in a workflow.
-    invariants = load_yaml(ROOT / "tooling/invariants.yml")
-    assert sorted(vb.declared_commands(POLICY)) == sorted(
-        invariants["allowed_shell"])
+def test_the_shell_surface_is_exactly_the_declared_entry_points():
+    # This replaced `allowed_shell` in tooling/invariants.yml, two literals the
+    # validator compared each step's run: against. The list is now derived from
+    # the policy, so the two cannot disagree -- but every shell step in every
+    # shipped workflow must still resolve to one, which is the property the
+    # literals were holding.
+    declared = set(vb.declared_commands(POLICY))
+    seen = set()
+    for path in sorted((ROOT / "bundle/components/workflows").glob("*/workflow.yml")):
+        for step in load_yaml(path).get("steps") or []:
+            if step.get("type") != "shell":
+                continue
+            run = str(step.get("run", "")).strip()
+            assert run in declared, f"{path.parent.name}:{step.get('id')} runs {run!r}"
+            seen.add(run)
+    assert seen == declared, (
+        f"declared but never run: {sorted(declared - seen)}. An entry point no "
+        f"workflow runs is one a project is asked to provide for nothing")
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-001")
+def test_the_overlay_is_gone_rather_than_carried():
+    # #144 established it was inert: `load_overlay` needed a `mappings` list the
+    # proposed shape never produced, and Spec Kit's ShellStep runs
+    # `config["run"]` verbatim. Keeping an inert mechanism is how it comes back.
+    assert "overlay" not in POLICY
+    assert not hasattr(vb, "load_overlay")
+    assert not hasattr(vb, "check_overlay")
+    resolutions = POLICY["resolution"]
+    assert not any("overlay" in r for r in resolutions), resolutions
 
 
 # --- AC5: nothing is written without a gate -----------------------------------
@@ -442,9 +469,7 @@ def test_a_gate_with_no_outcome_keeps_the_command_from_passing(
         tmp_path, monkeypatch):
     # Decision 5, enforced where it can be: a record with a gate missing is
     # impossible to pass, rather than impossible to hold.
-    (tmp_path / "devbox.json").write_text(json.dumps({"shell": {"scripts": {
-        "verify": ["pytest"], "release-verify": ["pytest"]}}}),
-        encoding="utf-8")
+    project(tmp_path, [VERIFY, RELEASE])
     settled = {name: {"outcome": "declined", "reason": "not for this project"}
                for name in GATES}
     one_short = dict(settled)

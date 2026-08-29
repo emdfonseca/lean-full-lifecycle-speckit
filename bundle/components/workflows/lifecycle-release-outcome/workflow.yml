@@ -72,7 +72,7 @@ Begin the file with a "What you are approving" block: one line per decision that
   show_file: .specify/lifecycle/release-readiness.md
 - id: release-verify
   type: shell
-  run: devbox run release-verify
+  run: .specify/lifecycle/release-verify
 - id: prepare-rollout
   timeout: 300
   type: prompt

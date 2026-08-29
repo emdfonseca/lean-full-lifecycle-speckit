@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Find out at bootstrap whether the project can run the framework's workflows.
 
-Five workflows shell out to `devbox run verify` and one to
-`devbox run release-verify`. These are the only two shell commands the framework
-permits anywhere, and nothing has ever checked that the target project defines
-them. Today a user finds out at their first delivery, several steps into real
-work, from a shell error that reports a failed command rather than a missing
-prerequisite.
+Five workflow steps run `.specify/lifecycle/verify` and one runs
+`.specify/lifecycle/release-verify`. These are the whole shell surface of the
+bundle, and nothing had ever checked that the target project provides them. A
+user found out at their first delivery, several steps into real work, from a
+shell error reporting a failed command rather than a missing prerequisite.
+
+They used to read `devbox run verify`, which made a third-party binary a
+prerequisite for five of the fourteen workflows (#166).
 
 Three judgements, all in `bootstrap-policy.yml`:
 
@@ -17,11 +19,11 @@ Generation requires a stack decision. A minimal verification script has to run
 something, and what to run is a stack decision. Generating one without it means
 inventing the project's toolchain and calling it a default.
 
-An overlay may only satisfy a declared framework command. The project side is
-arbitrary by nature -- it is whatever the project already runs -- so it reaches a
-human gate. The framework side is a fixed list, because an overlay that could
-name any command would route around the only restriction on what a workflow may
-execute.
+An entry point exists or it does not. It is a path the framework declares and
+the project fills, so the question is about the project rather than about
+anybody's manifest format. The overlay that used to map a framework command
+onto a project one is gone: #144 established it was inert, and the entry point
+does its job directly.
 
 A fourth judgement, over the quality gates rather than the two shell commands.
 Every gate `quality-gates.yml` declares is resolved, declined, or filed on a
@@ -36,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -104,104 +107,71 @@ def declared_gates(gate_policy: dict) -> dict[str, list[str] | None]:
 
 
 def declared_commands(policy: dict) -> list[str]:
-    """Every framework command an overlay is allowed to satisfy."""
+    """Every verification entry point a workflow step may run."""
     return list(policy["required"]) + list(policy["release"])
 
 
-def script_name(command: str) -> str:
-    """`devbox run verify` -> `verify`."""
-    return command.rsplit(" ", 1)[-1]
+def entry_point_spec(policy: dict) -> dict:
+    """How the file behind an entry point is expected to come about."""
+    return policy.get("entry_point") or {}
 
 
 @dataclass
 class Report:
     present: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
-    overlaid: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
     wrote: list[str] = field(default_factory=list)
 
     @property
     def resolved(self) -> bool:
         # A report that could not be produced is not a clean one. Without the
-        # problems clause an unreadable devbox.json reports nothing missing and
-        # therefore resolved, which is the "absent evidence reads as success"
-        # mistake in a second place.
+        # problems clause an entry point that exists and is not executable
+        # reports nothing missing and therefore resolved, which is the "absent
+        # evidence reads as success" mistake in a second place.
         return not self.missing and not self.problems
 
     def to_dict(self) -> dict:
         return {
             "present": self.present,
             "missing": self.missing,
-            "overlaid": self.overlaid,
             "problems": self.problems,
             "wrote": self.wrote,
             "resolved": self.resolved,
         }
 
 
-def defined_scripts(root: Path, policy: dict) -> set[str]:
-    source = policy["definition_source"]
-    path = root / source["file"]
-    if not path.is_file():
-        return set()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        # An unparseable devbox.json is not a project without scripts. Say so
-        # rather than reporting every command missing and sending the user to
-        # add what is already there.
-        raise
-    for key in source["scripts_at"]:
-        data = (data or {}).get(key, {})
-    return set(data) if isinstance(data, dict) else set()
-
-
-def load_overlay(root: Path, policy: dict) -> list[dict]:
-    path = root / policy["overlay"]["file"]
-    if not path.is_file():
-        return []
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return data.get("mappings") or []
-
-
 def detect(root: Path, policy: dict) -> Report:
+    """Whether each declared entry point exists and can be executed.
+
+    This used to parse `devbox.json` for a `scripts` key and ask whether it
+    declared `verify`. Two things were wrong with that and only the first was
+    obvious: it named a vendor, and it asked a question about a file rather
+    than about the project. #104's pilot target has a devbox.json whose every
+    script shims to pnpm, and its real gate -- `pnpm verify`, named in its own
+    CLAUDE.md and running in CI -- was invisible, so the framework reported a
+    project with working verification as having none (#156).
+
+    An entry point is a path. It exists or it does not, which is a fact about
+    the project rather than about anybody's manifest format, and there is no
+    discovery step to privilege a vendor with.
+    """
     report = Report()
-    try:
-        scripts = defined_scripts(root, policy)
-    except (OSError, json.JSONDecodeError) as exc:
-        report.problems.append(
-            f"{policy['definition_source']['file']} could not be read "
-            f"({exc.__class__.__name__}); no command can be reported present or "
-            f"missing from it")
-        return report
-
-    satisfied = {m.get("framework_command") for m in load_overlay(root, policy)}
     for command in declared_commands(policy):
-        if script_name(command) in scripts:
-            report.present.append(command)
-        elif command in satisfied:
-            report.overlaid.append(command)
-        else:
+        path = root / command
+        if not path.is_file():
             report.missing.append(command)
+            continue
+        if not os.access(path, os.X_OK):
+            # Present and not runnable is its own finding. Reporting it missing
+            # would send someone to write a file that is already there.
+            report.problems.append(
+                f"{command} exists and is not executable. The workflow step "
+                f"runs it directly, so it fails at the shell with a permission "
+                f"error rather than a verification failure. `chmod +x` it.")
+            continue
+        report.present.append(command)
     return report
-
-
-def check_overlay(root: Path, policy: dict) -> list[str]:
-    """Refuse an overlay that satisfies a command the framework never runs."""
-    declared = set(declared_commands(policy))
-    problems = []
-    for mapping in load_overlay(root, policy):
-        target = mapping.get("framework_command")
-        if target not in declared:
-            problems.append(
-                f"overlay maps {target!r}, which is not a framework command. "
-                f"An overlay may satisfy only {sorted(declared)}; naming any "
-                f"other command would add to what a workflow may execute.")
-        if not mapping.get("project_command"):
-            problems.append(
-                f"overlay for {target!r} names no project command to run.")
-    return problems
 
 
 def load_item_types(root: Path) -> dict:
@@ -502,14 +472,14 @@ def main() -> int:
     project = args.path or args.policy_root
 
     report = detect(project, policy)
-    report.problems.extend(check_overlay(project, policy))
     if args.propose_generation and report.missing:
         report.problems.extend(
             refuse_generation_without_a_stack(project, policy))
 
-    # The gate half runs separately from the command half, so an unreadable
-    # devbox.json -- which stops detection early -- cannot suppress the gate
-    # report as well.
+    # The gate half runs separately from the entry-point half, so a project
+    # missing both entry points still gets a full gate report. They answer
+    # different questions and one being empty is not a reason to withhold the
+    # other.
     try:
         gates = declared_gates(load_gate_policy(args.policy_root))
         item_types = load_item_types(args.policy_root)
@@ -541,8 +511,6 @@ def main() -> int:
     else:
         for command in report.present:
             print(f"present  {command}")
-        for command in report.overlaid:
-            print(f"overlaid {command}")
         for command in report.missing:
             print(f"MISSING  {command}")
         for problem in report.problems:

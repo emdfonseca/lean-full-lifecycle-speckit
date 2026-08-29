@@ -207,14 +207,15 @@ Begin the file with a "What you are approving" block: one line per decision that
       or an overlay, and stop at the gate before writing either.'
 - id: approve-verification-resolution
   type: gate
-  message: 'Record which resolution the missing verification commands should get. Approving
-    records that choice and applies nothing: no step in this run writes an overlay or
-    generates a script, and every workflow still shells out to the literal command. So
-    the commands stay missing whichever option you pick, and the first delivery will fail
-    at a shell step until somebody adds them to this project by hand. A generated script
-    requires a recorded stack decision; an overlay may satisfy only a command the workflows
-    actually run, and its project side is whatever this project already runs. Rejecting
-    stops the run here instead of carrying the choice forward.'
+  message: 'Record that the missing verification entry points should be generated
+    from this project''s resolved gates. Approving records that choice and applies
+    nothing: no step in this run writes .specify/lifecycle/verify or
+    .specify/lifecycle/release-verify. So they stay missing, and the first delivery
+    will fail at a shell step until somebody writes them. What a workflow runs is a
+    path the framework declares and this project fills -- it is no longer a command
+    naming a tool you must install -- and generating one needs a recorded stack
+    decision, because the file has to run something and what to run is that decision.
+    Rejecting stops the run here instead of carrying the choice forward.'
   options:
   - approve
   - reject

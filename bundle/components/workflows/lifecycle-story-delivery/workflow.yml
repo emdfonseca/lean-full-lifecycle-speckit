@@ -350,7 +350,7 @@ Begin the file with a "What you are approving" block: one line per decision that
     args: '{{ inputs.intent }}'
 - id: verify
   type: shell
-  run: devbox run verify
+  run: .specify/lifecycle/verify
 - id: check-quality-ratchet
   command: speckit.github-lifecycle.ratchet
   integration: '{{ inputs.integration }}'

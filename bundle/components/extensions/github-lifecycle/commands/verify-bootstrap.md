@@ -1,14 +1,20 @@
 ---
-description: Bootstrap, once — check that the project defines the verification commands the workflows run.
+description: Bootstrap, once — check that the project provides the verification entry points the workflows run.
 scripts:
   py: scripts/verify_bootstrap.py
 ---
 
 # GitHub Lifecycle Verify Bootstrap
 
-Five workflows shell out to `devbox run verify` and one to
-`devbox run release-verify`. These are the only two shell commands the framework
-permits anywhere. Nothing has ever checked that the target project defines them.
+Five workflow steps run `.specify/lifecycle/verify` and one runs
+`.specify/lifecycle/release-verify`. These are the whole shell surface of the
+bundle, and nothing had ever checked that the target project provides them.
+
+They are paths, not commands: the framework owns the path and the project owns
+what is behind it. They used to read `devbox run verify`, which made a
+third-party binary a prerequisite for five of the fourteen workflows — #104's
+pilot target is a pnpm monorepo whose verification works, is documented and
+runs in CI, and the framework reported it as having none (#166).
 
 ```bash
 {SCRIPT} \
@@ -23,28 +29,36 @@ who discovers this at their first delivery is several steps into real work,
 reading a shell error that reports a failed command rather than a missing
 prerequisite.
 
-## Report each command separately
+## Report each entry point separately
 
-`present`, `overlaid`, and `missing` are three different states and a user acts
-differently on each. "Verification is not set up" tells them nothing about which
-command to add.
+`present` and `missing` are different states and a user acts differently on
+each. "Verification is not set up" tells them nothing about which one to add.
 
-A report that could not be produced is not a clean one. If `devbox.json` is
-unreadable the command reports that and resolves nothing — it does not report
-every command missing and send the user to add what is already there.
+An entry point that exists and is not executable is a third state, reported
+under `problems` rather than as missing. The workflow step runs the path
+directly, so a non-executable file fails at the shell with a permission error
+rather than a verification failure — and reporting it missing would send
+someone to write a file that is already there.
 
-## Two ways to resolve a missing command
+## One way to resolve a missing entry point
 
-**Generate a minimal script.** Only when a stack decision is recorded. The
-script has to run something, and what to run is that decision; generating one
-without it invents the project's toolchain and calls it a default. The refusal
-names the missing input rather than failing generically.
+**Generate it from the resolved gates.** One line per gate whose outcome is
+`resolved`, each naming the gate it runs, in the order `quality-gates.yml`
+declares them. Only when a stack decision is recorded: the file has to run
+something, and what to run is that decision; generating one without it invents
+the project's toolchain and calls it a default. The refusal names the missing
+input rather than failing generically.
 
-**Map an existing command.** Write `.specify/lifecycle/verification-overlay.yml`
-with the framework command being satisfied and the project command that
-satisfies it. The framework side must be one the workflows actually run. The
-project side is whatever the project already runs — arbitrary by nature, which
-is why it goes to a person at a gate rather than onto a list.
+There is no second way, and no discovery. Reading `devbox.json` for a `verify`
+script is what named the vendor, and adding `package.json` beside it would
+reproduce the defect for every project using make, just, or cargo. A longer list
+of files to sniff is still a list of vendors.
+
+The overlay that used to map a framework command onto a project one is gone.
+#144 established it was inert — `load_overlay` needed a `mappings` list the
+proposed shape never produced, and Spec Kit's ShellStep runs `config["run"]`
+verbatim with no reference to an overlay. The entry point does its job
+directly.
 
 ## Resolve every declared gate
 
@@ -79,9 +93,9 @@ evaluates that condition: it is a property of a change, not of a project.
 
 ## Never
 
-- Write a script or an overlay before the gate. Propose, then wait. The
-  resolution record is not one of those: it is what the gate reads, and a gate
-  over a file nobody wrote approves nothing.
+- Write the entry point before the gate. Propose, then wait. The resolution
+  record is not one of those: it is what the gate reads, and a gate over a file
+  nobody wrote approves nothing.
 - Record an outcome for a gate nobody examined. `declined` means a person
   decided against it, not that the run reached the end of the list.
 - File a gate one at a time. Batch them behind the one gate, so a person sees
@@ -89,7 +103,12 @@ evaluates that condition: it is a property of a change, not of a project.
   established.
 - Report a gate resolved because an item was filed for it. A filed gate names
   work that has not been done.
-- Add a framework command the workflows do not run. An overlay that can name any
-  command routes around the only restriction on what a workflow may execute.
-- Report a command resolved because an overlay mentions it. Check the mapping
-  names a project command to run.
+- Name a binary in an entry point declaration. It is a path under `.specify/`
+  that the project fills; anything else is a prerequisite the project must
+  install, which is what this replaced.
+- Report an entry point present because the file exists. Check it is executable:
+  the step runs it directly.
+- Generate an entry point from gates that are `declined` or `filed`. Filing work
+  is not doing it, and a declined gate is a decision — neither contributes a
+  line, and a project whose gates are all declined gets a file that verifies
+  nothing, reported as such.

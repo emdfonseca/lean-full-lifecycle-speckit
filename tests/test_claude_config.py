@@ -66,7 +66,7 @@ def test_each_permission_rule_lands_in_some_list(proposal, rule):
 PINNED = {
     "deny": ["Bash(git push:*)", "Bash(rm -rf:*)"],
     "ask": ["WebFetch", "Bash(kubectl apply:*)"],
-    "allow": ["Bash(devbox run verify)"],
+    "allow": ["Bash(.specify/lifecycle/verify)"],
 }
 
 

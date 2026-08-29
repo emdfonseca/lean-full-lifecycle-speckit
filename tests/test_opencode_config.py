@@ -117,8 +117,8 @@ def test_each_pattern_rule_reaches_the_bash_map(proposal, rule):
 # `allow` and a self-referential test still passes.
 PINNED = {
     "*": "ask",
-    "devbox run verify": "allow",
-    "devbox run release-verify": "allow",
+    ".specify/lifecycle/verify": "allow",
+    ".specify/lifecycle/release-verify": "allow",
     "git push --force*": "deny",
     "kubectl apply*": "ask",
     "rm -rf*": "deny",

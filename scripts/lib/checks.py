@@ -297,18 +297,90 @@ def policy_mirror(ctx: Ctx) -> Iterator[Finding]:
 # Workflow safety
 # --------------------------------------------------------------------------
 
-@check("SEC-SHELL-ALLOWLIST", "Workflow shell steps run only allowlisted commands",
+@check("SEC-SHELL-ENTRY-POINT",
+       "Workflow shell steps run only a declared verification entry point",
        scope="workflow")
-def shell_allowlist(ctx: Ctx) -> Iterator[Finding]:
-    allowed = set(ctx.invariants.get("allowed_shell", []))
+def shell_entry_point(ctx: Ctx) -> Iterator[Finding]:
+    """What a workflow may execute, by provenance rather than by spelling.
+
+    This replaced a two-line allowlist in `tooling/invariants.yml` holding the
+    literal strings `devbox run verify` and `devbox run release-verify`. Those
+    guarded the right five steps and named a vendor to do it, so a project
+    without devbox could not run five of the fourteen workflows and
+    `verify-bootstrap` reported its working verification as missing (#156,
+    #166).
+
+    The allowlist is now derived: a shell step may run only an entry point
+    `bootstrap-policy.yml` declares under `verification_commands`. The file
+    behind that path is the project's, generated from its resolved gates, so
+    what actually executes is the project's decision and what a workflow may
+    reach is still a fixed, reviewable set.
+
+    Refuses on an empty declaration rather than passing. A check that no-ops
+    when its input goes missing reports a coverage it does not have, and this
+    one guards the whole shell surface of the bundle.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    commands = policy.get("verification_commands") or {}
+    declared = {str(c).strip()
+                for c in list(commands.get("required") or [])
+                + list(commands.get("release") or [])}
+    if not declared:
+        yield ctx.finding(
+            "SEC-SHELL-ENTRY-POINT", "policy/bootstrap-policy.yml",
+            "verification_commands declares no entry point, so every shell "
+            "step would pass against an empty set")
+        return
+
     for comp in ctx.inv.by_kind("workflow"):
         for step in _steps(comp):
             if step.get("type") != "shell":
                 continue
             run = str(step.get("run", "")).strip()
-            if run not in allowed:
-                yield ctx.finding("SEC-SHELL-ALLOWLIST", f"{comp.id}:{step.get('id')}",
-                                  f"shell command {run!r} is not allowlisted")
+            if run not in declared:
+                yield ctx.finding(
+                    "SEC-SHELL-ENTRY-POINT", f"{comp.id}:{step.get('id')}",
+                    f"runs {run!r}, which is not a verification entry point "
+                    f"bootstrap-policy declares. Declared: {sorted(declared)}")
+
+
+@check("SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR",
+       "No declared entry point names a third-party binary",
+       scope="policy")
+def shell_entry_point_names_no_vendor(ctx: Ctx) -> Iterator[Finding]:
+    """The half that the provenance check cannot state on its own.
+
+    Deriving the allowlist from policy is worth nothing if the policy names
+    `devbox run verify`: the check would pass and every project without devbox
+    would still be locked out. So the declaration itself is held to naming a
+    path the framework owns, which the project fills, rather than a command
+    some vendor supplies.
+
+    A discovery order is refused for the same reason and is the subtler half:
+    listing `package.json` beside `devbox.json` reproduces the defect for every
+    project using make, just, or cargo. The project states its commands; it is
+    not sniffed for them (#156).
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    commands = policy.get("verification_commands") or {}
+
+    if "definition_source" in commands:
+        yield ctx.finding(
+            "SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR", "policy/bootstrap-policy.yml",
+            "verification_commands still declares a definition_source. A file "
+            "the framework reads to discover commands privileges whichever "
+            "vendor writes that file; the project declares its gates instead")
+
+    for command in (list(commands.get("required") or [])
+                    + list(commands.get("release") or [])):
+        text = str(command).strip()
+        if not text.startswith(".specify/"):
+            yield ctx.finding(
+                "SEC-SHELL-ENTRY-POINT-NAMES-NO-VENDOR",
+                "policy/bootstrap-policy.yml",
+                f"{text!r} is not a framework-owned path. An entry point is a "
+                f"path under .specify/ that the project fills; anything else "
+                f"names a binary the project must have installed")
 
 
 @check("SEC-SHELL-NO-INTERPOLATION", "Workflow shell steps interpolate nothing",

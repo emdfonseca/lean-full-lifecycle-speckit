@@ -81,7 +81,7 @@ steps:
     args: '{{ inputs.retirement_intent }}'
 - id: verify
   type: shell
-  run: devbox run verify
+  run: .specify/lifecycle/verify
 - id: converge
   timeout: 600
   command: speckit.converge

@@ -40,8 +40,8 @@ across — it understates what this agent enforces.
 
 ## The default mode is the shell
 
-Allowing `Bash(devbox run verify)` is not opening the shell; `defaultMode`
-still asks. `bypassPermissions` and `acceptEdits` both open it, and neither is
+Allowing `Bash(.specify/lifecycle/verify)` is not opening the shell;
+`defaultMode` still asks. `bypassPermissions` and `acceptEdits` both open it, and neither is
 a way to get a blocked command through.
 
 ## Never

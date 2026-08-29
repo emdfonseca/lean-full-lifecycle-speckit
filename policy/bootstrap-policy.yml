@@ -106,17 +106,56 @@ mismatch:
     requires_human_gate: true
 
 verification_commands:
-  # The only two shell commands the framework permits. A project that defines
-  # neither will fail at its first delivery, several steps into real work.
+  # The only two shell commands the framework permits, and the whole shell
+  # surface of the bundle: five workflow steps run the first and one runs the
+  # second.
+  #
+  # These are paths, not commands. The framework owns the path; the project
+  # owns what is behind it. Until #166 they read `devbox run verify` and
+  # `devbox run release-verify`, which made a third-party binary a prerequisite
+  # for running five of the fourteen workflows. #104's pilot target is a pnpm
+  # monorepo whose verification works, is documented and runs in CI, and the
+  # framework reported it as missing verification because the name did not
+  # match.
+  #
+  # The conflation that caused it: an environment manager and a task runner are
+  # not the same role. Devbox provisions a toolchain; pnpm, make, just, cargo
+  # and plain shell scripts run tasks, and a project can use one for each.
+  # `framework.yml`'s `manager: devbox` stays, because that describes this
+  # repository, which does use devbox. The defect was imposing it on adopted
+  # projects.
   required:
-    - devbox run verify
+    - .specify/lifecycle/verify
   release:
-    - devbox run release-verify
-  # Where a command is defined. `devbox run verify` exists when devbox.json
-  # declares a `verify` script; nothing else makes it exist.
-  definition_source:
-    file: devbox.json
-    scripts_at: [shell, scripts]
+    - .specify/lifecycle/release-verify
+
+  # How the file behind an entry point comes to exist.
+  #
+  # There is no `definition_source` and deliberately no discovery. Reading
+  # devbox.json to find a `verify` script is what named the vendor, and adding
+  # package.json beside it would reproduce the defect for every project using
+  # make, just or cargo. A longer list of files to sniff is still a list of
+  # vendors; the project states its gates instead, and this is generated from
+  # what it stated.
+  entry_point:
+    generated_from: gate_resolution
+    # One line per gate whose outcome is `resolved`, in the order
+    # quality-gates.yml declares them, each naming the gate it runs so a
+    # failure can be read back to a gate by a person.
+    #
+    # The step is one step, not one per gate: `specify` has a `fan-out` step
+    # type that would run a nested template per gate, and it was not chosen.
+    # The cost is recorded rather than hidden -- a failure names the set, and
+    # the runner cannot tell you which gate failed. The comments in the
+    # generated file are what a person reads instead.
+    one_line_per: resolved_gate
+    names_the_gate: true
+    # A gate that is `declined` or `filed` contributes no line. Filing work is
+    # not doing it, and a declined gate is a decision, so neither is a hole in
+    # the file -- but a project whose gates are all declined generates an entry
+    # point that verifies nothing, and verify-bootstrap reports that rather
+    # than reporting the file present.
+    excludes: [declined, filed]
 
   # Where each declared gate's outcome is recorded on a project. One entry per
   # gate quality-gates.yml declares. A gate with no entry is reported
@@ -147,13 +186,21 @@ verification_commands:
     # until that person acts, which is what lets a refused creation resume.
     pending_filings_are: story
 
+  # One resolution, where there were two. The overlay is gone: #144 established
+  # it was inert -- `load_overlay` needed a `mappings` list the proposed shape
+  # never produced, and Spec Kit's ShellStep runs `config["run"]` verbatim with
+  # no reference to an overlay anywhere. Nothing was ever promoted because there
+  # was nothing to promote.
+  #
+  # It also no longer has a job. An overlay existed to map a framework command
+  # onto whatever the project actually ran, and the entry point does that
+  # directly: the path is the framework's and the contents are the project's.
   resolution:
-    - generate_minimal_script_when_stack_decided
-    - overlay_to_an_allowed_command
+    - generate_entry_point_when_stack_decided
 
   generation:
-    # A minimal verification script has to run something, and what to run is a
-    # stack decision. Generating one without it means inventing the project's
+    # The entry point has to run something, and what to run is a stack
+    # decision. Generating one without it means inventing the project's
     # toolchain and calling it a default.
     requires_stack_decision: true
     # Each source names the section that records the decision, because a file
@@ -169,16 +216,6 @@ verification_commands:
         records_decision_in: Decision
       - path: .specify/memory/constitution.md
         records_decision_in: Recorded stack decisions
-
-  overlay:
-    # The overlay names which framework command it satisfies. Letting it name
-    # any command would route around allowed_shell, which is the framework's
-    # only restriction on what a workflow may execute.
-    file: .specify/lifecycle/verification-overlay.yml
-    framework_command_must_be_declared: true
-    # The project side is whatever the project already runs. It is arbitrary by
-    # nature, which is why it reaches a human gate rather than a list.
-    project_command_requires_gate: true
 
 # Where an agent integration keeps its project files. Declared rather than
 # hardcoded, because these are somebody else's paths and they move.

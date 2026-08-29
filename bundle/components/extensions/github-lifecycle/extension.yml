@@ -147,7 +147,7 @@ provides:
   - name: speckit.github-lifecycle.verify-bootstrap
     file: commands/verify-bootstrap.md
     tier: project-setup
-    description: Bootstrap, once — check that the project defines the verification commands the workflows run.
+    description: Bootstrap, once — check that the project provides the verification entry points the workflows run.
   - name: speckit.github-lifecycle.mismatch
     file: commands/mismatch.md
     tier: project-setup
