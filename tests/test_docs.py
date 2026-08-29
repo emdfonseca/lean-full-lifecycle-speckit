@@ -175,6 +175,10 @@ DESCRIBE_WHAT_SHIPS = (
     "CLAUDE.md",
     "docs/architecture.md",
     "docs/component-boundaries.md",
+    # The install guide describes what a reader is about to install, and said
+    # "seven lifecycle workflows" while fourteen shipped. A guide is the worst
+    # place for a stale count: it is read while following it.
+    "INSTALL-LOCAL.md",
 )
 
 WORKFLOW_COUNT = re.compile(

@@ -74,8 +74,14 @@ iterate, never to verify installation.
 cd /absolute/path/to/my-product
 specify preset list                       # governance at 10, lean at 20
 specify preset resolve speckit.specify    # [base] lean -> [append] governance
-specify workflow list                     # seven lifecycle workflows
+specify workflow list                     # fourteen lifecycle workflows
+specify extension list                    # github-lifecycle and work
 ```
+
+The front door is `speckit.work.*` — five commands that drive one item through
+the lifecycle from inside a session. `speckit.github-lifecycle.status` reports
+the board you pick work from. Every other command is grouped by who runs it in
+each extension's README.
 
 ## Known limitations
 
@@ -87,4 +93,12 @@ specify workflow list                     # seven lifecycle workflows
   (github/spec-kit#4283). Run `specify extension add github-lifecycle` or copy
   `config-template.yml` to `github-lifecycle-config.yml` yourself.
 - The workflows call `devbox run verify` and `devbox run release-verify`. The
-  product repository must provide those.
+  product repository must provide those. #166 replaces the literal with a
+  resolved gate command; until it lands, devbox is a hard prerequisite.
+- No integration has run a workflow end to end in the suite. Installation,
+  command layout and workflow resolution are covered on both agents;
+  `docs/compatibility.md` says exactly which. One greenfield bootstrap has
+  completed under claude outside the suite, recorded in
+  `docs/evidence/pilot-greenfield.md`. Drive the lifecycle with the
+  `speckit.work.*` commands rather than `specify workflow run` until that gap
+  closes.
