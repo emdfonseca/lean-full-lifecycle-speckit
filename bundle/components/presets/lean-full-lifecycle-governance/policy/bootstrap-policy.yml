@@ -157,6 +157,40 @@ verification_commands:
     # than reporting the file present.
     excludes: [declined, filed]
 
+    # Both declared entry points are generated, from the same resolved set.
+    #
+    # Generating only `required` leaves `release` missing, so `detect` still
+    # reports an entry point absent, the bootstrap report still names an
+    # unresolved blocker, and the run cannot reach `completed` -- which is what
+    # generation was added to fix (#192).
+    #
+    # They share one set because nothing here marks a gate release-only.
+    # `sbom_provenance_signing` looks like the exception and is not: its
+    # `when:` names properties of a change, not of a release, and a `when:` is
+    # never evaluated at bootstrap because there is no change to evaluate it
+    # against. Splitting the set would mean inventing a release policy. Each
+    # generated file says so in its header, so a project adding release-only
+    # gates knows what it is adding them to.
+    covers: [required, release]
+
+    # Every resolved gate contributes a line, conditional ones included, and
+    # the condition goes in that line's comment. A conditional gate whose
+    # command was recorded is a gate the project resolved; dropping it here
+    # would silently narrow verification to the `always` set, and the comment
+    # is what lets a person reading a slow verify see which lines are
+    # conditional.
+    conditional_gates: comment_the_condition
+
+    # What the generated file does when no gate resolved to a command.
+    #
+    # A file that exits 0 having run nothing is a green verification step over
+    # no gates. That is worse than a missing file: a missing one fails the
+    # shell step loudly, and this one passes and is read downstream as
+    # verified.
+    when_empty:
+      exit_nonzero: true
+      says_why: true
+
   # Where each declared gate's outcome is recorded on a project. One entry per
   # gate quality-gates.yml declares. A gate with no entry is reported
   # unexamined, which is a finding rather than a silence.

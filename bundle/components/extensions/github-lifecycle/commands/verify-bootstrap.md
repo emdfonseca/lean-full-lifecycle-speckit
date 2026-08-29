@@ -22,9 +22,15 @@ runs in CI, and the framework reported it as having none (#166).
 
 {SCRIPT} \
   --path . --resolve <outcomes path> --write
+
+{SCRIPT} \
+  --path . --generate
 ```
 
-Writes nothing without `--write`. Run it at bootstrap, not at first use: a user
+Writes nothing without `--write` or `--generate`, which write different files
+and answer different questions: `--write` persists the gate outcomes a person
+decided, `--generate` turns those outcomes into the entry points the workflows
+run. Run it at bootstrap, not at first use: a user
 who discovers this at their first delivery is several steps into real work,
 reading a shell error that reports a failed command rather than a missing
 prerequisite.
@@ -47,7 +53,26 @@ someone to write a file that is already there.
 declares them. Only when a stack decision is recorded: the file has to run
 something, and what to run is that decision; generating one without it invents
 the project's toolchain and calls it a default. The refusal names the missing
-input rather than failing generically.
+input rather than failing generically, and nothing is written when it fires.
+
+Both declared entry points are generated, from the same resolved set.
+Generating only `.specify/lifecycle/verify` leaves `release-verify` absent, so
+the run still reports a missing entry point and the bootstrap report still
+names an unresolved blocker — which is what generating was for. They share one
+set because nothing in `quality-gates.yml` marks a gate release-only: a
+conditional gate's `when:` names properties of a change, not of a release, and
+splitting the set would mean inventing a release policy. Each generated file
+says this in its header.
+
+A conditional gate that resolved contributes its line like any other, with the
+condition in that line's comment. There is no change at bootstrap to evaluate
+a `when:` against, and dropping those lines would silently narrow verification
+to the `always` set.
+
+A file with no lines exits non-zero and says why. One that exits `0` having run
+nothing is a green verification step over no gates, which is worse than a
+missing file: the missing one fails the shell step loudly, and this one passes
+and is read downstream as verified.
 
 There is no second way, and no discovery. Reading `devbox.json` for a `verify`
 script is what named the vendor, and adding `package.json` beside it would
@@ -93,9 +118,10 @@ evaluates that condition: it is a property of a change, not of a project.
 
 ## Never
 
-- Write the entry point before the gate. Propose, then wait. The resolution
-  record is not one of those: it is what the gate reads, and a gate over a file
-  nobody wrote approves nothing.
+- Write the entry point before the gate. Propose, then wait. The generating
+  step sits after `approve-verification-resolution`, which aborts on reject, so
+  a rejected run writes nothing. The resolution record is not one of those: it
+  is what the gate reads, and a gate over a file nobody wrote approves nothing.
 - Record an outcome for a gate nobody examined. `declined` means a person
   decided against it, not that the run reached the end of the list.
 - File a gate one at a time. Batch them behind the one gate, so a person sees

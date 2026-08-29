@@ -442,6 +442,116 @@ def refuse_generation_without_a_stack(root: Path, policy: dict) -> list[str]:
         "toolchain and call it a default."]
 
 
+SHEBANG = "#!/bin/sh"
+
+
+def _header(command: str, spec: dict, policy: dict, shared: bool) -> list[str]:
+    """What a person opening the generated file reads first.
+
+    It says where the lines came from and what is missing from them, because
+    the file is the only artifact of this transform a person ever sees. The
+    runner reports a failure of the whole set, which `one_line_per` records as
+    the accepted cost of one step rather than one per gate.
+    """
+    record = policy["gate_resolution"]["file"]
+    lines = [
+        SHEBANG,
+        f"# {command}",
+        f"# Generated from {record}. Edit that and regenerate, or edit",
+        "# here and accept that the next generation overwrites you.",
+        "#",
+        "# One line per gate whose outcome is `resolved`, in the order",
+        "# quality-gates.yml declares them. A "
+        + " or ".join(f"`{o}`" for o in spec.get("excludes") or [])
+        + " gate contributes",
+        "# nothing: filing work is not doing it, and a declined gate is a",
+        "# decision.",
+    ]
+    if shared:
+        lines += [
+            "#",
+            "# This runs the same gates as the other entry point. Nothing in",
+            "# quality-gates.yml marks a gate release-only -- a conditional",
+            "# gate's `when:` names properties of a change, not of a release --",
+            "# so splitting the set would mean inventing a release policy here.",
+            "# Add release-only gates below knowing that is what they are.",
+        ]
+    return lines
+
+
+def entry_point_body(command: str, resolved: list[dict], spec: dict,
+                     policy: dict, shared: bool) -> str:
+    """The generated file's text.
+
+    Empty is the case worth reading twice. A file that exits 0 having run
+    nothing is a green verification step over no gates, which is worse than a
+    missing file: the missing one fails the shell step loudly and this one
+    passes, and everything downstream reads the pass as verified.
+    """
+    lines = _header(command, spec, policy, shared)
+    empty = spec.get("when_empty") or {}
+    if not resolved:
+        if empty.get("says_why"):
+            lines += [
+                "",
+                f"echo \"{command}: no gate in "
+                f"{policy['gate_resolution']['file']} resolved to a command, so\" >&2",
+                "echo \"this verifies nothing. Resolve a gate and regenerate.\" >&2",
+            ]
+        lines.append(f"exit {1 if empty.get('exit_nonzero') else 0}")
+        return "\n".join(lines) + "\n"
+
+    lines += ["", "set -e"]
+    field = policy["gate_resolution"]["outcomes"]["resolved"]["field"]
+    for row in resolved:
+        note = ""
+        if spec.get("conditional_gates") == "comment_the_condition" and row.get("applies_when"):
+            note = " -- applies when: " + ", ".join(row["applies_when"])
+        lines += ["", f"# {row['gate']}{note}", str(row[field])]
+    return "\n".join(lines) + "\n"
+
+
+def generate_entry_points(root: Path, policy: dict,
+                          gate_report: "GateReport") -> tuple[list[str], list[str]]:
+    """Write the entry points the workflows run, from the gates the project resolved.
+
+    The refusal comes first and is checked here rather than only under
+    `--propose-generation`. A precondition enforced where the decision is
+    described and not where the file is written is a precondition that holds
+    until somebody adds a second caller (#192).
+
+    Both declared entry points are written. Generating only the required one
+    leaves the release one absent, so `detect` still reports a missing entry
+    point and the bootstrap's own report still names an unresolved blocker --
+    the run would not reach completed, which is the whole reason to generate.
+    """
+    problems = refuse_generation_without_a_stack(root, policy)
+    if problems:
+        return [], problems
+
+    spec = entry_point_spec(policy)
+    wrote: list[str] = []
+    covers = list(spec.get("covers") or ["required"])
+    shared = len(covers) > 1
+    for key in covers:
+        for command in policy.get(key) or []:
+            path = root / command
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                entry_point_body(command, gate_report.resolved, spec, policy,
+                                 shared),
+                encoding="utf-8")
+            path.chmod(0o755)
+            wrote.append(command)
+    if not gate_report.resolved:
+        problems.append(
+            "generated " + ", ".join(wrote) + " with no gate to run. Every "
+            "declared gate is declined, filed, or unexamined, so verification "
+            "verifies nothing and the file exits non-zero rather than passing "
+            "over an empty set.")
+    return wrote, problems
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--path", type=Path, default=None,
@@ -454,6 +564,8 @@ def main() -> int:
                     help="A YAML file of gate outcomes and proposed filings to fold into the resolution record. Writes nothing without --write.")
     ap.add_argument("--write", action="store_true",
                     help="Persist the merged resolution record. Absent, the merge is reported and nothing is written.")
+    ap.add_argument("--generate", action="store_true",
+                    help="Write the declared entry points from the gates this project resolved. Separate from --write, which persists the resolution record: two files answering two questions.")
     ap.add_argument("--format", choices=["text", "json"], default="text")
     args = ap.parse_args()
     try:
@@ -505,6 +617,19 @@ def main() -> int:
     if args.write and args.resolve is not None and not merge_problems:
         gate_report.wrote.append(str(write_record(project, policy, record)))
 
+    # Generation runs after the merge, so a run that records outcomes and
+    # generates in one pass generates from what it just recorded rather than
+    # from what was on disk when it started.
+    if args.generate:
+        wrote, problems = generate_entry_points(project, policy, gate_report)
+        # Re-detect: the report above was taken before these files existed, and
+        # reporting the state a run started in is how a command claims to have
+        # written something and reports it missing in the same breath.
+        if wrote:
+            report = detect(project, policy)
+        report.wrote.extend(wrote)
+        report.problems.extend(problems)
+
     if args.format == "json":
         print(json.dumps({"commands": report.to_dict(),
                           "gates": gate_report.to_dict()}, indent=2))
@@ -527,11 +652,13 @@ def main() -> int:
             print(f"\n{problem}")
         for path in gate_report.wrote:
             print(f"\nwrote {path}")
+        for command in report.wrote:
+            print(f"\ngenerated {command}")
         print(f"\n{'Resolved' if report.resolved else 'Not resolved'}. "
               f"{len(gate_report.unexamined)} of {len(gates)} gates "
               f"unexamined, {len(gate_report.filed)} filed and so still "
               f"unresolved.")
-        if not gate_report.wrote:
+        if not gate_report.wrote and not report.wrote:
             print("This run wrote nothing.")
     return 0 if report.resolved and gate_report.settled else 1
 

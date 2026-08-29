@@ -15,9 +15,11 @@ with working verification was reported as having none (#156, #166).
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 
 import pytest
+import yaml
 
 from lib.inventory import ROOT, load_yaml
 
@@ -228,19 +230,28 @@ def test_the_resolution_gate_aborts_on_reject(name):
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
 @pytest.mark.parametrize("name", sorted(WORKFLOWS))
 def test_the_check_step_says_it_writes_nothing_before_the_gate(name):
+    # Two claims, and the second is not "writes nothing". The resolution record
+    # is written here, because it is what the gate reads and what the step after
+    # it generates from; a gate over a file nobody wrote approves nothing. What
+    # must not be written before the gate is an entry point (#192).
     step = [s for s in WORKFLOWS[name]["steps"]
             if s["id"] == "check-verification-commands"][0]
     args = step["input"]["args"]
-    assert "stop at the gate before writing" in args
+    assert "Write no entry point here" in args
+    assert "Propose, then wait" in args
     assert "separately" in args
+    assert "Persist that record" in args
 
 
 @pytest.mark.req("REQ-CORE-VERIFYCMD-001")
 @pytest.mark.parametrize("name", sorted(WORKFLOWS))
 def test_the_gate_says_what_rejecting_costs(name):
+    # It used to be "the first delivery will fail", because approving wrote
+    # nothing either way and the cost was the same on both sides. Now the two
+    # sides differ, so the message has to say what the reject side loses (#192).
     gate = [s for s in WORKFLOWS[name]["steps"]
             if s["id"] == "approve-verification-resolution"][0]
-    assert "first delivery will fail" in gate["message"]
+    assert "Rejecting stops the run here and writes neither." in gate["message"]
 
 
 # --- gate resolution: resolved, declined, or filed -----------------------------
@@ -558,6 +569,151 @@ def test_every_source_declares_where_its_decision_is_recorded():
 #: Phrases by which a gate message tells the reader that approving *applies*
 #: something, rather than that it lets the run proceed. A message using one of
 #: these is making a promise a later step has to keep.
+# --- generation: the entry points the workflows run ----------------------------
+#
+# #166 declared the paths and #192 is what writes the files behind them. Until
+# it, `resolution: [generate_entry_point_when_stack_decided]` named a resolution
+# no step performed, so every bootstrapped project had two entry points named by
+# six workflow steps and no file behind either.
+
+SPEC = vb.entry_point_spec(POLICY)
+STACK = "# S\n\n## Decision\n\n| Chose | Rejected | Why |\n|---|---|---|\n| py | go | team |\n"
+
+
+def resolved_project(tmp_path, gates, stack=STACK):
+    """A project with a gate-resolution record and, by default, a stack decision."""
+    root = project(tmp_path, stack=stack)
+    (root / ".specify/lifecycle").mkdir(parents=True, exist_ok=True)
+    (root / POLICY["gate_resolution"]["file"]).write_text(
+        yaml.safe_dump({"gates": gates, "pending_filings": {}}),
+        encoding="utf-8")
+    return root
+
+
+def generate(root):
+    record = vb.load_record(root, POLICY)
+    report = vb.report_gates(record, GATES, POLICY)
+    return vb.generate_entry_points(root, POLICY, report)
+
+
+THREE = {
+    "format_or_style_validation": {"outcome": "resolved", "command": "make fmt"},
+    "lint_or_static_analysis": {"outcome": "resolved", "command": "make lint"},
+    "secret_detection": {"outcome": "resolved", "command": "make secrets"},
+}
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_a_resolved_project_gets_an_executable_entry_point(tmp_path):
+    root = resolved_project(tmp_path, THREE)
+    wrote, problems = generate(root)
+    assert problems == []
+    path = root / VERIFY
+    assert path.is_file() and os.access(path, os.X_OK)
+    assert VERIFY in wrote
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_the_lines_run_the_recorded_commands_in_declared_order(tmp_path):
+    root = resolved_project(tmp_path, THREE)
+    generate(root)
+    body = (root / VERIFY).read_text(encoding="utf-8")
+    commands = [ln for ln in body.splitlines()
+                if ln and not ln.startswith(("#", "set "))]
+    # quality-gates.yml order, not the record's: the record is a mapping and
+    # the policy is the thing that declares a sequence.
+    assert commands == ["make fmt", "make lint", "make secrets"]
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_every_line_names_the_gate_it_runs(tmp_path):
+    # The step reports a failure of the whole set, so the file's comments are
+    # the only way back from a failed line to a gate.
+    root = resolved_project(tmp_path, THREE)
+    generate(root)
+    body = (root / VERIFY).read_text(encoding="utf-8")
+    for gate in THREE:
+        assert f"# {gate}" in body
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_a_declined_or_filed_gate_contributes_no_line(tmp_path):
+    root = resolved_project(tmp_path, dict(
+        THREE,
+        dependency_hygiene={"outcome": "declined", "reason": "vendored"},
+        build_or_package_validation={"outcome": "filed", "item": 7}))
+    generate(root)
+    body = (root / VERIFY).read_text(encoding="utf-8")
+    assert "dependency_hygiene" not in body
+    assert "build_or_package_validation" not in body
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_a_resolved_conditional_gate_carries_its_condition(tmp_path):
+    # `when:` is a property of a change and there is none at bootstrap, so the
+    # line runs and the condition is a comment rather than a filter.
+    root = resolved_project(tmp_path, dict(
+        THREE, end_to_end_tests={"outcome": "resolved", "command": "pnpm e2e"}))
+    generate(root)
+    body = (root / VERIFY).read_text(encoding="utf-8")
+    assert "pnpm e2e" in body
+    assert "critical_user_journey_changed" in body
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_both_declared_entry_points_are_written(tmp_path):
+    # Generating only `verify` leaves `release-verify` missing, so detect still
+    # reports one absent and the run still cannot reach completed.
+    root = resolved_project(tmp_path, THREE)
+    wrote, _ = generate(root)
+    assert sorted(wrote) == sorted([VERIFY, RELEASE])
+    assert vb.detect(root, POLICY).resolved
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_each_file_says_it_shares_the_release_set(tmp_path):
+    root = resolved_project(tmp_path, THREE)
+    generate(root)
+    for command in (VERIFY, RELEASE):
+        body = (root / command).read_text(encoding="utf-8")
+        assert "release-only" in body, command
+        assert command in body.splitlines()[1], command
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_a_file_with_no_gate_to_run_exits_nonzero(tmp_path):
+    # An entry point that exits 0 having run nothing is a green verification
+    # step over no gates, which is worse than a missing file: the missing one
+    # fails the shell step loudly and this one passes.
+    root = resolved_project(tmp_path, {
+        "format_or_style_validation": {"outcome": "declined", "reason": "none yet"}})
+    wrote, problems = generate(root)
+    assert wrote
+    body = (root / VERIFY).read_text(encoding="utf-8")
+    assert "exit 1" in body
+    assert any("verifies nothing" in p for p in problems)
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_generation_without_a_stack_decision_writes_nothing(tmp_path):
+    # The refusal existed and was reachable only from --propose-generation, so
+    # it guarded the proposal and not the write.
+    root = resolved_project(tmp_path, THREE, stack=None)
+    wrote, problems = generate(root)
+    assert wrote == []
+    assert not (root / VERIFY).exists()
+    assert any("no stack decision is recorded" in p for p in problems)
+
+
+@pytest.mark.req("REQ-CORE-VERIFYCMD-003")
+def test_generation_is_idempotent(tmp_path):
+    root = resolved_project(tmp_path, THREE)
+    generate(root)
+    first = (root / VERIFY).read_text(encoding="utf-8")
+    generate(root)
+    assert (root / VERIFY).read_text(encoding="utf-8") == first
+
+
 APPLICATION_PHRASES = (
     "are resolved", "is resolved", "are applied", "is applied",
     "applies the", "will be applied", "will apply",
@@ -599,10 +755,27 @@ def test_a_gate_promising_application_has_a_step_reading_its_verdict(name):
 @pytest.mark.wording
 @pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
 @pytest.mark.parametrize("name", sorted(WORKFLOWS))
-def test_the_resolution_gate_says_approving_applies_nothing(name):
+def test_the_resolution_gate_says_approving_writes_the_entry_points(name):
+    # The inverse of what this asserted until #192, and it is the same
+    # requirement: the message must match what the run does. It said "applies
+    # nothing" while nothing applied it, and says it writes them now that a
+    # step does.
     gate = [s for s in WORKFLOWS[name]["steps"]
             if s["id"] == "approve-verification-resolution"][0]
-    assert "applies nothing" in gate["message"]
+    assert "applies nothing" not in gate["message"]
+    assert "Approving writes" in gate["message"]
+
+
+@pytest.mark.req("REQ-WORKFLOW-VERDICT-001")
+@pytest.mark.parametrize("name", sorted(WORKFLOWS))
+def test_the_gate_that_promises_generation_is_followed_by_the_step_that_does_it(name):
+    # The promise and the step that keeps it are in two files, and #144 is what
+    # happens when they drift: a gate approving a mechanism nothing performed.
+    ids = [s["id"] for s in WORKFLOWS[name]["steps"]]
+    i = ids.index("approve-verification-resolution")
+    assert ids[i + 1] == "generate-verification-entry-points", ids
+    step = WORKFLOWS[name]["steps"][i + 1]
+    assert step["command"] == "speckit.github-lifecycle.verify-bootstrap"
 
 
 @pytest.mark.req("REQ-WORKFLOW-VERDICT-001")

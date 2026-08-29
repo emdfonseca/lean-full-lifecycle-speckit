@@ -199,29 +199,52 @@ Begin the file with a "What you are approving" block: one line per decision that
   command: speckit.github-lifecycle.verify-bootstrap
   integration: '{{ inputs.integration }}'
   input:
-    args: 'Check whether this project defines the verification commands the workflows
-      run. Write the result to .specify/lifecycle/verification-commands-{{ context.run_id
-      }}.md, reporting present, overlaid, and missing separately: a user acts differently
-      on each, and "verification is not set up" tells them which command to add. Writes
-      nothing else. If a command is missing, propose either a generated minimal script
-      or an overlay, and stop at the gate before writing either.'
+    args: 'Check whether this project defines the verification entry points the
+      workflows run, and resolve every gate quality-gates.yml declares. Write the
+      result to .specify/lifecycle/verification-commands-{{ context.run_id }}.md,
+      reporting present, missing, and present-but-not-executable separately: a user
+      acts differently on each, and "verification is not set up" tells them which
+      one to write. Record each gate as resolved with the command that satisfies it,
+      declined with a reason, or filed with the item it became -- an outcome word
+      with no content is indistinguishable from a gate nobody looked at, and a gate
+      in none of the three is reported unexamined, which is a finding. Persist that
+      record: it is what the gate reads and what the step after it generates from.
+      Write no entry point here. Propose, then wait.'
 - id: approve-verification-resolution
   type: gate
-  message: 'Record that the missing verification entry points should be generated
-    from this project''s resolved gates. Approving records that choice and applies
-    nothing: no step in this run writes .specify/lifecycle/verify or
-    .specify/lifecycle/release-verify. So they stay missing, and the first delivery
-    will fail at a shell step until somebody writes them. What a workflow runs is a
-    path the framework declares and this project fills -- it is no longer a command
-    naming a tool you must install -- and generating one needs a recorded stack
-    decision, because the file has to run something and what to run is that decision.
-    Rejecting stops the run here instead of carrying the choice forward.'
+  message: 'Approve generating the missing verification entry points from this
+    project''s resolved gates. Approving writes .specify/lifecycle/verify and
+    .specify/lifecycle/release-verify at the next step: one line per gate whose
+    outcome is `resolved`, in the order quality-gates.yml declares them, each
+    naming the gate it runs. A declined or filed gate contributes nothing --
+    filing work is not doing it, and a declined gate is a decision. What a
+    workflow runs is a path the framework declares and this project fills, and
+    generating one needs a recorded stack decision, because the file has to run
+    something and what to run is that decision; without one the step refuses and
+    writes nothing. Where every gate is declined or filed the files are still
+    written and exit non-zero, because a verification step that passes over no
+    gates is worse than a missing one. Rejecting stops the run here and writes
+    neither.'
   options:
   - approve
   - reject
   on_reject: abort
   verdict_input: verification_verdict
   show_file: .specify/lifecycle/verification-commands-{{ context.run_id }}.md
+- id: generate-verification-entry-points
+  command: speckit.github-lifecycle.verify-bootstrap
+  integration: '{{ inputs.integration }}'
+  input:
+    args: 'Generate the declared verification entry points from this project''s
+      resolved gates, which the gate above approved. One line per gate whose outcome
+      is `resolved`, in the order quality-gates.yml declares them, each naming its
+      gate; a declined or filed gate contributes nothing. Both declared entry points
+      are written from the same set: nothing in quality-gates.yml marks a gate
+      release-only, and generating only one of them leaves the other missing, which
+      is the blocker this step exists to clear. Refuse and write nothing where no
+      stack decision is recorded -- the file has to run something and what to run is
+      that decision. Report what was written, and report a file with no gate to run
+      as verifying nothing rather than as present.'
 - id: github-doctor
   command: speckit.github-lifecycle.doctor
   integration: '{{ inputs.integration }}'
@@ -264,11 +287,13 @@ Begin the file with a "What you are approving" block: one line per decision that
 
     if anything is unresolved, "Unresolved blockers:" followed by one line per
 
-    blocker. A verification command this project still does not define is such a
+    blocker. A verification entry point this project still does not define is such
 
-    blocker: the gate above records which resolution it should get and no step
+    a blocker: generation refuses without a recorded stack decision, so a run that
 
-    applies it, so approving there did not clear it.
+    reached the gate and got no file is one this line must name. So is an entry
+
+    point that was generated with no gate to run, which verifies nothing.
 
     
 

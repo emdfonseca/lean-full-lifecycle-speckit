@@ -1442,19 +1442,68 @@ requirements:
       - "tests/test_check_negatives.py::test_check_detects_its_own_violation[INV-STEP-TIMEOUT-TIER]"
       - "tests/test_check_negatives.py::test_check_passes_on_clean_source[INV-STEP-TIMEOUT-TIER]"
 
+  - id: REQ-CORE-VERIFYCMD-003
+    statement: >-
+      Something writes the entry points the workflows run. `resolution:
+      [generate_entry_point_when_stack_decided]` named a resolution no step
+      performed, so every bootstrapped project had two entry points named by
+      six workflow steps and no file behind either, and its first delivery
+      failed at a shell step. Generation is a deterministic transform of the
+      gate outcomes a person already approved: one line per gate whose outcome
+      is `resolved`, in the order quality-gates.yml declares them, each naming
+      its gate, because the runner reports a failure of the whole set and the
+      file's comments are the only way back from a failed line to a gate. A
+      declined or filed gate contributes nothing. A resolved conditional gate
+      contributes its line with the condition as a comment: `when:` is a
+      property of a change and there is none at bootstrap, so filtering on it
+      would silently narrow verification to the always set. Both declared entry
+      points are written from the same set, since generating only the required
+      one leaves the release one absent and the run still cannot reach
+      completed, and nothing in quality-gates.yml marks a gate release-only. A
+      file with no gate to run exits non-zero and says why, because one that
+      exits zero having run nothing is a green verification step over no gates,
+      which is worse than a missing file: the missing one fails the shell step
+      loudly and this one passes. The refusal without a recorded stack decision
+      is enforced where the file is written rather than only where generation
+      is proposed, and writes nothing when it fires.
+    priority: must
+    release: "0.3.0"
+    components:
+      - command:speckit.github-lifecycle.verify-bootstrap
+      - policy:bootstrap-policy.yml
+      - script:bundle/components/extensions/github-lifecycle/scripts/verify_bootstrap.py
+      - workflow:lifecycle-greenfield-bootstrap
+      - workflow:lifecycle-brownfield-adoption
+    verified_by:
+      - tests/test_verify_bootstrap.py::test_a_resolved_project_gets_an_executable_entry_point
+      - tests/test_verify_bootstrap.py::test_the_lines_run_the_recorded_commands_in_declared_order
+      - tests/test_verify_bootstrap.py::test_every_line_names_the_gate_it_runs
+      - tests/test_verify_bootstrap.py::test_a_declined_or_filed_gate_contributes_no_line
+      - tests/test_verify_bootstrap.py::test_a_resolved_conditional_gate_carries_its_condition
+      - tests/test_verify_bootstrap.py::test_both_declared_entry_points_are_written
+      - tests/test_verify_bootstrap.py::test_each_file_says_it_shares_the_release_set
+      - tests/test_verify_bootstrap.py::test_a_file_with_no_gate_to_run_exits_nonzero
+      - tests/test_verify_bootstrap.py::test_generation_without_a_stack_decision_writes_nothing
+      - tests/test_verify_bootstrap.py::test_generation_is_idempotent
+
   - id: REQ-WORKFLOW-VERDICT-001
     statement: >-
       A bootstrap run must not claim more than it did. A gate message that says
       approving *applies* a resolution requires a step reading that verdict;
       where nothing reads it, the message says so instead. Approving
       `approve-verification-resolution` promised the missing verification
-      commands were resolved, and no step in either bootstrap workflow reads
-      `verification_verdict` -- the one step that ever wrote an overlay sits in
-      the scope switch, ahead of the gate -- so the message now states that
-      approving records the choice and applies nothing. The blanket rule, that
-      every gate's verdict is read by a later step, is deliberately not the
-      requirement: for `adoption_verdict` and `discovery_verdict` approve means
-      proceed and `on_reject: abort` is the whole consumption. Ending the run
+      commands were resolved while nothing wrote them, so the message was made
+      to state that approving records the choice and applies nothing. Both
+      halves have since moved: a step now generates the entry points, and the
+      message states that instead. The requirement is the match between the
+      two, not either wording, so the gate is held to promising exactly what
+      the step after it does and to naming what rejecting costs, which stopped
+      being the same on both sides once approving wrote something. The blanket
+      rule, that every gate's verdict is read by a later step, is deliberately
+      not the requirement: for `adoption_verdict`, `discovery_verdict` and now
+      `verification_verdict`, approve means proceed, `on_reject: abort` is the
+      whole consumption, and the step that follows is what keeps the promise --
+      so that step being adjacent to its gate is what is checked. Ending the run
       is the second claim. The engine marks a run `completed` whenever no step
       raised, so a validation prompt writing a blocker into its report cannot
       stop it, and a run reported `completed` while its own report named the
@@ -1469,8 +1518,10 @@ requirements:
     verified_by:
       - "tests/test_verify_bootstrap.py::test_a_gate_promising_application_has_a_step_reading_its_verdict[lifecycle-brownfield-adoption]"
       - "tests/test_verify_bootstrap.py::test_a_gate_promising_application_has_a_step_reading_its_verdict[lifecycle-greenfield-bootstrap]"
-      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_applies_nothing[lifecycle-brownfield-adoption]"
-      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_applies_nothing[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_writes_the_entry_points[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_resolution_gate_says_approving_writes_the_entry_points[lifecycle-greenfield-bootstrap]"
+      - "tests/test_verify_bootstrap.py::test_the_gate_that_promises_generation_is_followed_by_the_step_that_does_it[lifecycle-brownfield-adoption]"
+      - "tests/test_verify_bootstrap.py::test_the_gate_that_promises_generation_is_followed_by_the_step_that_does_it[lifecycle-greenfield-bootstrap]"
       - "tests/test_verify_bootstrap.py::test_the_run_cannot_reach_its_end_without_a_verdict_on_the_report[lifecycle-brownfield-adoption]"
       - "tests/test_verify_bootstrap.py::test_the_run_cannot_reach_its_end_without_a_verdict_on_the_report[lifecycle-greenfield-bootstrap]"
       - "tests/test_verify_bootstrap.py::test_the_final_gate_shows_the_report_the_step_before_it_writes[lifecycle-brownfield-adoption]"
