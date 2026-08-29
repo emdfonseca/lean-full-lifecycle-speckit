@@ -1467,6 +1467,72 @@ requirements:
       - "tests/test_opencode_models.py::test_an_older_flat_policy_still_works"
       - "tests/test_opencode_models.py::test_every_claimed_integration_is_declared"
 
+  - id: REQ-PRODUCT-ELICITATION-001
+    statement: >-
+      A bootstrap that writes the documents defining a project's direction has
+      asked the person the questions those documents encode. Greenfield wrote
+      all seven from `product_context` -- one string, prompted as "Product idea
+      and constraints" -- and asked nothing; its four gates are approve/reject
+      on content already written, so a person who approved read it afterwards
+      as agreed and downstream work treated it as stated intent. The interview
+      is declared in `product_elicitation`, one question per document section
+      that needs a person, and runs before `apply-greenfield-bootstrap` rather
+      than before the document-writing step, because that step chooses the
+      stack, draws the product boundary and creates the Epic set -- an answer
+      arriving after it answers a question already decided. It is conducted as
+      an interview: ordered so each question is answerable given the ones
+      before it, one at a time with the queue never shown, closed with a named
+      recommendation wherever the answers can be listed, and open only for
+      intent and domain vocabulary, where offering options would mean inventing
+      the product. A derived answer never removes a question; it makes it
+      closed with the derived value recommended, so no path reaches a document
+      without passing a person. Nothing blocks: a decline is recorded with a
+      reason, listed under `Open`, named as unanswered in the section that
+      wanted it rather than filled, and carried to the report's `Unresolved
+      blockers:` line so the final gate shows the total. Answers carry stable
+      ids in a record keyed by project rather than by run, and each section
+      cites the id it encodes, so a later contradiction traces to the answer
+      rather than to the paragraph. `/speckit.clarify` is not the instrument
+      and the reason is recorded rather than left as an oversight: it is a
+      feature-spec command, aborting on `check-prerequisites.sh` with "Feature
+      directory not found" and writing into that spec's `## Clarifications`,
+      and bootstrap has no feature and no spec. `required_in` names the
+      workflows held to this rather than inferring them from which workflows
+      write documents, which would sweep in brownfield adoption, whose unknowns
+      are recovered from a codebase rather than asked.
+    priority: must
+    release: "0.3.0"
+    components:
+      - policy:bootstrap-policy.yml
+      - command:speckit.github-lifecycle.elicit
+      - workflow:lifecycle-greenfield-bootstrap
+      - check:INV-BOOTSTRAP-ELICITS-BEFORE-WRITING
+      - check:INV-ELICITED-SECTIONS-ARE-DECLARED
+    verified_by:
+      - "tests/test_elicitation.py::test_the_bootstrap_asks_before_it_writes"
+      - "tests/test_elicitation.py::test_the_interview_precedes_the_step_that_chooses"
+      - "tests/test_elicitation.py::test_every_question_names_the_section_its_answer_feeds"
+      - "tests/test_elicitation.py::test_the_plan_preserves_the_declared_order"
+      - "tests/test_elicitation.py::test_most_of_the_interview_is_answerable_by_choosing"
+      - "tests/test_elicitation.py::test_the_asker_is_given_the_rules_that_make_it_an_interview"
+      - "tests/test_elicitation.py::test_a_declared_question_missing_from_the_record_is_reported"
+      - "tests/test_elicitation.py::test_a_decline_without_a_reason_is_reported"
+      - "tests/test_elicitation.py::test_a_decline_with_a_reason_does_not_block"
+      - "tests/test_elicitation.py::test_every_decline_reaches_the_final_gate"
+      - "tests/test_elicitation.py::test_a_question_dropped_without_naming_what_dropped_it_is_reported"
+      - "tests/test_elicitation.py::test_a_question_settled_by_an_answer_nobody_gave_is_reported"
+      - "tests/test_elicitation.py::test_an_undated_record_is_reported"
+      - "tests/test_elicitation.py::test_a_future_dated_record_is_reported"
+      - "tests/test_elicitation.py::test_a_complete_record_passes"
+      - "tests/test_elicitation.py::test_every_fed_section_exists_in_the_document_contract"
+      - "tests/test_elicitation.py::test_a_document_section_cites_the_answer_it_encodes"
+      - "tests/test_elicitation.py::test_the_record_outlives_the_run_that_collected_it"
+      - "tests/test_elicitation.py::test_the_document_step_is_told_to_write_from_the_record"
+      - "tests/test_elicitation.py::test_the_apply_step_is_told_to_choose_from_the_record"
+      - "tests/test_elicitation.py::test_no_workflow_calls_clarify_and_the_reason_is_written_down"
+      - "tests/test_elicitation.py::test_the_plan_runs_and_asks_nothing"
+      - "tests/test_elicitation.py::test_an_absent_record_refuses_rather_than_passing"
+
   - id: REQ-PRODUCT-DOCUMENTS-003
     statement: >-
       No shipped surface instructs a document budget the policy does not

@@ -122,6 +122,23 @@ Begin the file with a "What you are approving" block: one line per decision that
   integration: '{{ inputs.integration }}'
   input:
     args: Create or update the project Constitution using the installed Lean Full-Lifecycle governance preset.
+- id: elicit-product-answers
+  command: speckit.github-lifecycle.elicit
+  integration: '{{ inputs.integration }}'
+  timeout: 600
+  input:
+    args: 'Run the interview product_elicitation declares, then check the record it
+      produced. Every document written after this step encodes an answer; until this
+      step existed all seven were written from the single product_context string and
+      the run asked nothing, which is what the four gates then approved. Ask one
+      question at a time and never show the queue: a person answering the second has
+      not seen the seventh. Offer options with a named recommendation wherever the
+      answers can be listed, and ask openly only where offering options would mean
+      inventing the product. Where the product context already implies an answer, that
+      makes the question closed with that value recommended and the span it came from
+      quoted -- it never removes the question. Record every declared question in the
+      record the contract names, a decline with its reason, and stop rather than
+      filling a section the person declined to answer. Nothing here blocks the run.'
 - id: apply-greenfield-bootstrap
   timeout: 1800
   type: prompt
@@ -134,6 +151,23 @@ Begin the file with a "What you are approving" block: one line per decision that
     Mode: {{ inputs.mode }}
 
     Product context: {{ inputs.product_context }}
+
+
+    Read .specify/lifecycle/product-answers.yml first and build every product
+
+    choice from it. The stack, the product boundary and the Epic set are chosen
+
+    here, which is why the interview runs before this step rather than at the
+
+    document-writing one. Cite the answer id for each: Q6 decides the stack, Q11
+
+    the first Epic, Q4 what the boundary excludes. Where an answer is `declined`,
+
+    say the question is unanswered and make no choice that depends on it --
+
+    an invented answer is worse than an absent one, because the approver at the
+
+    next gate believes it.
 
 
     Preserve Devbox as the system-tool environment. Validate Spec Kit
@@ -212,7 +246,11 @@ Begin the file with a "What you are approving" block: one line per decision that
   timeout: 600
   input:
     args: 'Write every document bootstrap-policy.yml declares under product_documents,
-      then run the command again to check them. Length is not budgeted; form is
+      then run the command again to check them. Each section a question feeds is
+      written from .specify/lifecycle/product-answers.yml and cites the answer id,
+      so a later contradiction traces to the answer rather than to the paragraph
+      that encoded it. A section whose question was declined says the question is
+      unanswered and names it; it does not carry a value. Length is not budgeted; form is
       what is checked, and a document that rambles is one whose facts are not in a
       table. Obey the style rules the contract states, in particular that a table beats a
       paragraph wherever the content is facts, and that a document does not summarise
@@ -249,7 +287,13 @@ Begin the file with a "What you are approving" block: one line per decision that
 
     blocker: the gate above records which resolution it should get and no step
 
-    applies it, so approving there did not clear it.
+    applies it, so approving there did not clear it. Every question the person
+
+    declined at elicit-product-answers is another: run the elicit command with
+
+    --unresolved and carry each one onto that line, so this gate shows the total
+
+    rather than one decline buried in one document.
 
     
 

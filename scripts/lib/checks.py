@@ -1606,3 +1606,135 @@ def script_flavour(ctx: Ctx) -> Iterator[Finding]:
                 "commands invoke Python scripts and requires.tools does not "
                 "declare python; a project learns the dependency when a "
                 "command fails")
+
+
+@check("INV-BOOTSTRAP-ELICITS-BEFORE-WRITING",
+       "A bootstrap that must elicit does so before it chooses or writes anything",
+       scope="workflow")
+def bootstrap_elicits_before_writing(ctx: Ctx) -> Iterator[Finding]:
+    """A bootstrap that asked nothing is reported here, not discovered later.
+
+    Greenfield bootstrap wrote seven documents defining a project's direction
+    from one input string and asked no question. Its four gates are all
+    approve/reject on content already written, so the failure is invisible at
+    every one of them: a person who approves an artifact reads it afterwards as
+    agreed. Nothing could have caught it (#186).
+
+    Two findings, and the second is the one that matters. Presence alone is
+    cheap to satisfy and would let the step sit after the choices it exists to
+    inform -- `apply-greenfield-bootstrap` selects the stack, draws the product
+    boundary, and creates the Epic set, so an interview after it answers
+    questions already decided.
+
+    `required_in` is read rather than inferred. Inferring "any workflow that
+    writes product documents" would sweep in `lifecycle-brownfield-adoption`,
+    whose unknowns are recovered from a codebase rather than asked, and would
+    settle by accident a question nobody has decided. Inferring a rule from a
+    step's name was tried in `step_timeouts` and did not hold.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    contract = policy.get("product_elicitation") or {}
+    required = set(contract.get("required_in") or [])
+    if not required:
+        yield ctx.finding(
+            "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING", "policy/bootstrap-policy.yml",
+            "product_elicitation names no workflow under required_in, so this "
+            "check holds nothing to anything. Refusing rather than passing "
+            "silently: a check that no-ops on a missing input reports a "
+            "coverage it does not have")
+        return
+
+    before = (contract.get("runs_before") or {}).get("step")
+    if not before:
+        yield ctx.finding(
+            "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING", "policy/bootstrap-policy.yml",
+            "product_elicitation declares no runs_before.step, so the "
+            "ordering this check exists to hold is unstated and presence "
+            "alone would pass")
+        return
+
+    seen = set()
+    for comp in ctx.inv.by_kind("workflow"):
+        name = comp.id.split(":")[-1]
+        if name not in required:
+            continue
+        seen.add(name)
+        steps = list(_steps(comp))
+        elicit_at = boundary_at = None
+        for index, step in enumerate(steps):
+            if str(step.get("command") or "").endswith(".elicit") and elicit_at is None:
+                elicit_at = index
+            if step.get("id") == before and boundary_at is None:
+                boundary_at = index
+        if elicit_at is None:
+            yield ctx.finding(
+                "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING", comp.id,
+                "is named in product_elicitation.required_in and invokes no "
+                "elicit command. It writes the documents that state a "
+                "project's direction from its inputs alone, and its gates "
+                "approve content already written")
+            continue
+        if boundary_at is None:
+            yield ctx.finding(
+                "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING", comp.id,
+                f"has no step {before!r}, which product_elicitation.runs_before "
+                f"names. Either the step was renamed and the contract not "
+                f"updated, or the ordering is no longer held")
+            continue
+        if elicit_at > boundary_at:
+            yield ctx.finding(
+                "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING",
+                f"{comp.id}:{steps[elicit_at].get('id')}",
+                f"elicits at step {elicit_at}, after {before!r} at step "
+                f"{boundary_at}. That step chooses the stack, the product "
+                f"boundary and the Epic set, so the answers arrive for "
+                f"questions already decided")
+
+    for missing in sorted(required - seen):
+        yield ctx.finding(
+            "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING", "policy/bootstrap-policy.yml",
+            f"required_in names {missing!r}, which is not a workflow in this "
+            f"bundle. A requirement on a component that does not exist is "
+            f"satisfied by nothing and reported by nothing")
+
+
+@check("INV-ELICITED-SECTIONS-ARE-DECLARED",
+       "Every question feeds a document section the document contract declares",
+       scope="policy")
+def elicited_sections_are_declared(ctx: Ctx) -> Iterator[Finding]:
+    """Two contracts naming each other's parts, held to agreeing.
+
+    `product_elicitation.questions` says which section each answer feeds and
+    `product_documents.required` says which sections exist. Renaming a section
+    in one would leave the other pointing at nothing, and the interview would
+    keep asking a question whose answer has nowhere to go -- which reads, from
+    the transcript, exactly like an interview that worked.
+    """
+    policy = load_yaml(ctx.root / "policy" / "bootstrap-policy.yml") or {}
+    contract = policy.get("product_elicitation") or {}
+    questions = contract.get("questions") or []
+    if not questions:
+        return
+
+    declared: dict[str, set[str]] = {}
+    for spec in (policy.get("product_documents") or {}).get("required") or []:
+        declared[spec["path"]] = {s["name"] for s in spec.get("sections") or []}
+
+    for question in questions:
+        for fed in question.get("feeds") or []:
+            document, section = fed.get("document"), fed.get("section")
+            if document not in declared:
+                yield ctx.finding(
+                    "INV-ELICITED-SECTIONS-ARE-DECLARED",
+                    f"product_elicitation:{question['id']}",
+                    f"feeds {document!r}, which product_documents does not "
+                    f"declare. The answer has nowhere to go and the question "
+                    f"would still be asked")
+                continue
+            if section not in declared[document]:
+                yield ctx.finding(
+                    "INV-ELICITED-SECTIONS-ARE-DECLARED",
+                    f"product_elicitation:{question['id']}",
+                    f"feeds {document} section {section!r}, which that "
+                    f"document does not declare. Declared: "
+                    f"{sorted(declared[document])}")

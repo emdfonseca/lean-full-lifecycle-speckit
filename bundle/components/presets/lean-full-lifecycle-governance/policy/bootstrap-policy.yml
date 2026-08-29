@@ -389,6 +389,283 @@ step_timeouts:
   # construction.
   statement: 300
 
+# What a bootstrap must ask before it writes the documents.
+#
+# `product_documents` below declares seven documents that state a project's
+# direction and constraints. Until this block existed, the only product input
+# to all seven was `product_context`: one string, prompted as "Product idea and
+# constraints". Four gates guarded the run and every one of them was
+# approve/reject on content already written, which is worse than no gate: a
+# person who approved an artifact reads it afterwards as agreed, and downstream
+# work treats it as the project's stated intent (#186).
+#
+# Recording an open question is not asking it. A real greenfield run produced a
+# constitution of eighteen principles, a domain of thirteen terms, and a
+# decision log holding three unrecovered product questions plus D1-D5 marked
+# `Open`. The generator correctly recorded what it did not know and had no
+# mechanism to ask.
+#
+# `/speckit.clarify` is not the instrument, and the reason is recorded here
+# because it is the question anyone reading this asks first. It is a
+# feature-spec command: its first step runs `check-prerequisites.sh`, which at
+# bootstrap time fails with "Feature directory not found", and its own
+# instructions say to abort there. It reads `FEATURE_SPEC`, scans that spec, and
+# writes answers back under `## Clarifications` in it. Bootstrap has no feature,
+# no branch and no spec. That is why none of the fourteen workflows call it, and
+# it is not an oversight in this one. Its question-quality rules are good and
+# are lifted into `form` below rather than re-derived.
+product_elicitation:
+
+  # The workflows that must elicit before they write. Named rather than
+  # inferred from whether a workflow calls the documents command: inferring
+  # would sweep in `lifecycle-brownfield-adoption`, whose unknowns are
+  # recovered from a codebase rather than asked, and would answer by accident a
+  # question nobody has decided. Inferring a rule from a name was tried in
+  # `step_timeouts` above and did not hold.
+  required_in:
+    - lifecycle-greenfield-bootstrap
+
+  # Elicitation runs before the step that chooses the stack, draws the product
+  # boundary, and creates the Epic set. Placing it at the document-writing step
+  # instead would be later, simpler, and would leave those three derived from
+  # the one paragraph this whole block exists to replace.
+  runs_before:
+    step: apply-greenfield-bootstrap
+    because: >-
+      That step selects a stack, draws a product boundary, and creates the Epic
+      set. An answer that arrives after it is an answer to a question already
+      decided.
+
+  # How the interview is conducted. These are rules about the asking, not about
+  # the answers, and they are what separates an interview from a form.
+  form:
+    ordered: >-
+      Questions run in the order declared, and the order is one where each
+      question is answerable given the ones before it. Intent before users,
+      users before constraints, constraints before done. A question asked out
+      of order is one the person cannot answer yet.
+    one_at_a_time: >-
+      Ask exactly one question, wait, then ask the next. Never show the queue
+      in advance: a person answering the second question has not seen the
+      seventh, and seeing it changes the second answer.
+    prefer_closed: >-
+      Where the plausible answers can be listed, ask a closed question -- two to
+      five mutually exclusive options as a table, with one named as the
+      recommendation and one line saying why. The common case is then a single
+      keystroke. This should be most of the interview.
+    open_only_when_options_would_invent: >-
+      Ask an open question only where offering options would mean inventing the
+      product. Intent and domain vocabulary are the two: a list of candidate
+      intents is a list of guesses about somebody else's product.
+    derivation_never_skips_a_question: >-
+      Where the product context already implies an answer, that does not remove
+      the question. It turns an open question into a closed one whose
+      recommended option is the derived value, quoting the span it came from.
+      Every question reaches the person; derivation only makes it cheaper to
+      answer. A question skipped because the answer seemed obvious is today's
+      behaviour with an extra step.
+    answers_condition_what_follows: >-
+      Later questions are built from earlier answers, and a question an earlier
+      answer has already settled is dropped -- visibly, recorded as settled by
+      the answer that settled it, not silently.
+    question_writing: >-
+      Each question is a full interrogative ending in `?`, answerable by
+      somebody who has never read this contract. Never a topic label or a
+      section name. Follow it with one plain sentence saying what the answer
+      changes.
+
+  # Nothing here blocks the run.
+  #
+  # Blocking on a question nobody can answer yet would make greenfield
+  # unusable, which is the failure this must not trade for. What is guaranteed
+  # is that the question was asked and that silence stays visible -- not that an
+  # answer exists.
+  decline:
+    allowed: true
+    blocks_the_run: false
+    records:
+      - >-
+        An entry in the answer record with `status: declined` and a reason. A
+        decline with no reason is indistinguishable from a question nobody
+        reached.
+      - >-
+        A line under `Open` in .specify/lifecycle/product-decisions.md, which
+        the document contract already requires.
+      - >-
+        In the section that would have used the answer: a sentence naming the
+        question as unanswered. Never a value. An invented answer is worse than
+        an absent one, because the next reader believes it.
+      - >-
+        A line in the bootstrap report's `Unresolved blockers:` list, so
+        `accept-the-bootstrap-report` shows a person the total rather than one
+        decline at a time.
+
+  # Where the answers live, and why they outlive the run that collected them.
+  #
+  # Keyed by project, not by run. A readiness verdict was keyed by run once and
+  # a second, unvalidated one got made because the first could not be named --
+  # the note under `## One judgement per item` in the readiness command records
+  # that. The same shape would fail the same way here.
+  record:
+    path: .specify/lifecycle/product-answers.yml
+    fields:
+      asked_on:
+        type: date
+        required: true
+        note: >-
+          When the interview ran. Evidence of when the answers were true, which
+          is what lets a later contradiction be dated.
+      answers:
+        type: list
+        required: true
+        note: One entry per declared question, in declared order, none omitted.
+    per_answer:
+      id:
+        type: string
+        required: true
+        note: The declared question id. Stable, and what a document cites.
+      status:
+        type: enum
+        values: [answered, declined, settled_by]
+        required: true
+      answer:
+        type: string
+        required_when: answered
+      reason:
+        type: string
+        required_when: declined
+        note: Why it could not be answered. Not what the answer might be.
+      settled_by:
+        type: string
+        required_when: settled_by
+        note: >-
+          The id of the earlier answer that already settled this one. Records
+          why a declared question was not asked.
+      basis:
+        type: enum
+        values: [typed, accepted_recommendation]
+        required_when: answered
+        note: >-
+          Whether the person wrote the answer or accepted the offered one. Both
+          are answers; the distinction is what tells a later reader how much
+          weight the recommendation carried.
+
+  # A document section that encodes an answer cites its id, so a later
+  # contradiction traces to the answer rather than to the paragraph that
+  # encoded it. `[Q3]` at the end of the sentence or the table row.
+  citation:
+    marker: '[<question id>]'
+    required_in_sections_fed_by_a_question: true
+
+  # The questions. Each names the document sections its answer feeds, so the
+  # set cannot drift from `product_documents` without one of them naming a
+  # section the other does not have.
+  #
+  # `form` is the default shape. `prefer_closed` above can still turn an open
+  # question closed once the product context implies an answer; it can never
+  # turn a closed question open.
+  questions:
+    - id: Q1
+      ask: What does this product do, and for whom?
+      form: open
+      changes: The one paragraph every other document is written against.
+      feeds:
+        - {document: PRODUCT.md, section: Intent}
+
+    - id: Q2
+      ask: Which kinds of people use it, and what does each use it for?
+      form: closed
+      changes: Who the acceptance criteria are written for.
+      feeds:
+        - {document: PRODUCT.md, section: Users}
+
+    - id: Q3
+      ask: What must be observably true for this to be correct?
+      form: closed
+      changes: >-
+        What Output Done is checked against. Without it the gate has nothing to
+        read.
+      feeds:
+        - {document: PRODUCT.md, section: Definition of done}
+
+    - id: Q4
+      ask: What would a reasonable reader expect this to do that it will not?
+      form: closed
+      changes: >-
+        What later work is refused without re-arguing it. An empty answer is a
+        claim that nothing is out of scope.
+      feeds:
+        - {document: PRODUCT.md, section: Non-goals}
+
+    - id: Q5
+      ask: What must this product hold to that is not your choice?
+      form: closed
+      changes: >-
+        Which constraints bind the architecture. A binding constraint found
+        after the stack is chosen is a rewrite.
+      feeds:
+        - {document: PRODUCT.md, section: Constraints}
+
+    - id: Q6
+      ask: What should this be built with?
+      form: closed
+      changes: >-
+        The stack, and everything it forecloses. Also whether a verification
+        command can be generated at all -- `verification_commands.generation`
+        above refuses to invent a toolchain without this decision.
+      feeds:
+        - {document: .specify/lifecycle/stack-decision.md, section: Decision}
+        - {document: .specify/lifecycle/stack-decision.md, section: Consequences}
+
+    - id: Q7
+      ask: Where does this run, and how is a release undone?
+      form: closed
+      changes: >-
+        The runbook, and whether a rollback exists. An irreversible step is
+        named here or it is discovered during an incident.
+      feeds:
+        - {document: .specify/lifecycle/runbook.md, section: Running it}
+        - {document: .specify/lifecycle/runbook.md, section: Rollback}
+
+    - id: Q8
+      ask: Where would you look first when it breaks?
+      form: closed
+      changes: >-
+        Whether the observability section is a list of URLs or a description of
+        what normal looks like.
+      feeds:
+        - {document: .specify/lifecycle/runbook.md, section: Observability}
+
+    - id: Q9
+      ask: >-
+        Which words does your product use that mean something different here
+        than they usually do?
+      form: open
+      changes: >-
+        Whether the next reader takes a term to mean what it means everywhere
+        else. Options cannot be offered: a list of candidate terms is a list of
+        guesses about somebody else's domain.
+      feeds:
+        - {document: .specify/lifecycle/domain.md, section: Vocabulary}
+
+    - id: Q10
+      ask: What will deliberately not be tested, and why not?
+      form: closed
+      changes: >-
+        Whether the same argument recurs every release. An empty answer is a
+        claim that everything is tested.
+      feeds:
+        - {document: PRODUCT.md, section: Deliberately untested}
+
+    - id: Q11
+      ask: Which single outcome should the first Epic deliver?
+      form: closed
+      changes: >-
+        The backlog `apply-greenfield-bootstrap` creates, and which Epic gets
+        decomposed into the first Ready queue.
+      feeds:
+        - {document: .specify/lifecycle/product-decisions.md, section: Open}
+
 # The documents a bootstrapped project must have, whichever route it took.
 #
 # Greenfield and brownfield produce the same set with the same sections. The

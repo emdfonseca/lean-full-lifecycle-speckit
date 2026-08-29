@@ -277,6 +277,36 @@ def break_bootstrap_documents(tmp):
     _edit_yaml(path, mutate)
 
 
+def break_bootstrap_elicits_before_writing(tmp):
+    # Move the interview after the step that chooses the stack, the product
+    # boundary and the Epic set. Presence alone still holds, which is exactly
+    # the way this check could look like it worked while the answers arrived
+    # for questions already decided.
+    path = tmp / "bundle/components/workflows/lifecycle-greenfield-bootstrap/workflow.yml"
+
+    def mutate(d):
+        steps = d["steps"]
+        elicit = next(s for s in steps
+                      if str(s.get("command") or "").endswith(".elicit"))
+        steps.remove(elicit)
+        at = next(i for i, s in enumerate(steps)
+                  if s.get("id") == "apply-greenfield-bootstrap")
+        steps.insert(at + 1, elicit)
+    _edit_yaml(path, mutate)
+
+
+def break_elicited_sections_are_declared(tmp):
+    # Rename a section the document contract declares and the interview feeds.
+    # The interview keeps asking; the answer has nowhere to go.
+    def mutate(d):
+        for spec in d["product_documents"]["required"]:
+            if spec["path"] == "PRODUCT.md":
+                for section in spec["sections"]:
+                    if section["name"] == "Intent":
+                        section["name"] = "Purpose"
+    _edit_yaml(tmp / "policy/bootstrap-policy.yml", mutate)
+
+
 def break_phantom_budget(tmp):
     # Put the instruction back. Both bootstrap routes carried this sentence in
     # the args of the step that writes the documents, telling the agent to obey
@@ -504,6 +534,8 @@ MUTATORS = {
     "INV-DECLARED-IMPORTS": break_declared_imports,
     "INV-RELEASE-LADDER": break_release_ladder,
     "PUB-CATALOG-ROOT": break_catalog_root,
+    "INV-BOOTSTRAP-ELICITS-BEFORE-WRITING": break_bootstrap_elicits_before_writing,
+    "INV-ELICITED-SECTIONS-ARE-DECLARED": break_elicited_sections_are_declared,
 }
 
 

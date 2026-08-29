@@ -60,6 +60,10 @@ provides:
     file: commands/board.md
     tier: project-setup
     description: Bootstrap, once — create the Projects v2 board a project-scoped deployment needs.
+  - name: speckit.github-lifecycle.elicit
+    file: commands/elicit.md
+    tier: project-setup
+    description: Bootstrap, once — interview the person whose answers the product documents encode.
   - name: speckit.github-lifecycle.documents
     file: commands/documents.md
     tier: project-setup
