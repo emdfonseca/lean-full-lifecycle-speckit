@@ -1,7 +1,29 @@
 # Lean Full-Lifecycle for Spec Kit
 
-This repository is a **Spec Kit bundle source**, not a separate development
-framework.
+[![validate](https://github.com/emdfonseca/lean-full-lifecycle-speckit/actions/workflows/validate.yml/badge.svg)](https://github.com/emdfonseca/lean-full-lifecycle-speckit/actions/workflows/validate.yml)
+
+[GitHub Spec Kit](https://github.com/github/spec-kit) gives a coding agent a
+disciplined loop for one feature: specify, plan, break into tasks, implement.
+It says nothing about where that feature came from or what happens once the
+code lands. This repository is a **Spec Kit bundle** that fills that gap. It
+composes the official Lean preset with an append-only governance preset,
+fourteen resumable workflows that carry an item from triage through refinement,
+delivery, release, outcome review and retirement, and one GitHub extension that
+keeps the issue board as the single record of state. Every shell step is a
+fixed command, every board mutation is planned, gated by a person, and read
+back before it is trusted.
+
+## Why I built it
+
+I wanted an agent to be able to pick up an item from the board, do the work,
+and leave behind the same evidence a careful engineer would, without me having
+to re-derive its judgement each time. Spec Kit had the right core loop but the
+lifecycle around it lived in my head. Encoding that lifecycle as policy files,
+workflows and a small extension, rather than as a new framework, means the
+rules are testable, the agent has less room to improvise, and the result is
+still plain Spec Kit underneath.
+
+## What it installs
 
 It preserves Spec Kit's core SDD loop and installs:
 
@@ -185,3 +207,14 @@ user or agent text. GitHub mutations require a deterministic plan, human gate,
 and read-back verification.
 
 Review [Security and trust](docs/security.md) before installation.
+
+## Status
+
+Pre-release, `0.1.0`. The components are unpublished; the supported install
+path is the local catalog installer in [INSTALL-LOCAL.md](INSTALL-LOCAL.md).
+[VALIDATION.md](VALIDATION.md) records what has been verified and what has
+not. Decisions live in [docs/decisions](docs/decisions).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
