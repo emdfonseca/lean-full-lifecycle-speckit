@@ -10,7 +10,7 @@ official Lean preset, without replacing any core Spec Kit command.
 | `lean` (official preset, priority 20, replace) | the stock Lean command set |
 | `lean-full-lifecycle-governance` (priority 10, append) | engineering, security, readiness, output, outcome, and brownfield addenda on 9 core commands |
 | `github-lifecycle` (extension) | audited GitHub Issue Field inspection, planning, transition, capture, and linking |
-| 7 lifecycle workflows | greenfield bootstrap, brownfield adoption, story delivery, bugfix, release/outcome, incident hotfix, retirement |
+| 14 lifecycle workflows | triage, discover, spike, prototype, decompose, refine, greenfield bootstrap, brownfield adoption, story delivery, bugfix, release/outcome, outcome review, incident hotfix, retirement |
 
 Governance installs at a lower priority number, so it composes *on top of* Lean:
 each command resolves as `[base] lean` → `[append] lean-full-lifecycle-governance`.

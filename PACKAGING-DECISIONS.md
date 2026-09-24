@@ -7,7 +7,7 @@ Spec Kit bundle
 ├── official Lean preset
 ├── additive governance preset
 ├── GitHub lifecycle extension
-└── seven workflows
+└── fourteen workflows
 ```
 
 It is not a standalone framework runtime.
@@ -27,8 +27,8 @@ It is append-only and preserves Lean/core content.
 ## Why workflows
 
 The workflows own sequencing, fixed shell verification, resumability, and human
-gates across greenfield, brownfield, Story, bugfix, release, incident, and
-retirement paths.
+gates across triage, discovery, refinement, greenfield, brownfield, Story,
+bugfix, release, outcome review, incident, and retirement paths.
 
 ## Why one extension
 

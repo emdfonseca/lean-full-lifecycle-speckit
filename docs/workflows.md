@@ -4,9 +4,16 @@
 |---|---|
 | `lifecycle-greenfield-bootstrap` | framework-first greenfield bootstrap |
 | `lifecycle-brownfield-adoption` | scoped incremental brownfield adoption |
+| `lifecycle-triage` | decide what an incoming item is and what happens next |
+| `lifecycle-discover` | bounded investigation of a capability |
+| `lifecycle-spike` | one time-boxed technical question |
+| `lifecycle-prototype` | throwaway code answering named interaction questions |
+| `lifecycle-decompose` | break an Epic into enough Ready children, no more |
+| `lifecycle-refine` | take one item from Refining to Ready with an evidenced verdict |
 | `lifecycle-story-delivery` | normal Story SDD cycle |
 | `lifecycle-bugfix` | regression-first defect path |
 | `lifecycle-release-outcome` | release readiness, rollout, outcome record |
+| `lifecycle-outcome-review` | record the measured result of finished work |
 | `lifecycle-incident-hotfix` | emergency containment/remediation |
 | `lifecycle-retirement` | deprecation and retirement |
 
