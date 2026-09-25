@@ -13,6 +13,8 @@ keeps the issue board as the single record of state. Every shell step is a
 fixed command, every board mutation is planned, gated by a person, and read
 back before it is trusted.
 
+> **Project status: learning experiment.** I built this to explore a full spec-driven development lifecycle layered on Spec Kit. It runs and has tests, but I do not plan to maintain it as a product. Read it as a worked example, not as a tool to depend on.
+
 ## Why I built it
 
 I wanted an agent to be able to pick up an item from the board, do the work,
